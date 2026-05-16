@@ -1,0 +1,179 @@
+@reference "../../../style.css";
+
+.rte-root {
+  overflow: hidden;
+}
+
+.rte-editable {
+  outline: none;
+  word-break: break-word;
+  min-height: var(--rte-min-h, 12rem);
+}
+
+.rte-paragraph {
+  margin: 0 0 0.5rem 0;
+}
+
+.rte-h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0.75rem 0 0.5rem 0;
+}
+.rte-h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0.75rem 0 0.5rem 0;
+}
+.rte-h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0.5rem 0 0.5rem 0;
+}
+
+.rte-quote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  color: var(--muted-foreground);
+  margin: 0.5rem 0;
+}
+
+.rte-list-ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
+}
+.rte-list-ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
+}
+.rte-listitem {
+  margin: 0.125rem 0;
+}
+.rte-nested-listitem {
+  list-style: none;
+}
+
+.rte-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.rte-text-bold {
+  font-weight: 700;
+}
+.rte-text-italic {
+  font-style: italic;
+}
+.rte-text-underline {
+  text-decoration: underline;
+}
+.rte-text-strikethrough {
+  text-decoration: line-through;
+}
+.rte-text-underline-strikethrough {
+  text-decoration: underline line-through;
+}
+.rte-text-code {
+  font-family:
+    "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background-color: var(--muted);
+  padding: 0.0625rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+.rte-code-block {
+  display: block;
+  background-color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.75rem 1rem;
+  margin: 0.5rem 0;
+  font-family:
+    "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.rte-mention {
+  background-color: color-mix(in oklch, var(--primary) 12%, transparent);
+  color: var(--primary);
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+  font-weight: 500;
+}
+
+.rte-table {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  width: 100%;
+  overflow-x: auto;
+}
+.rte-table-row {
+  border-bottom: 1px solid var(--border);
+}
+.rte-table-cell {
+  border: 1px solid var(--border);
+  padding: 0.375rem 0.5rem;
+  vertical-align: top;
+  min-width: 4rem;
+}
+.rte-table-cell-header {
+  background-color: var(--muted);
+  font-weight: 600;
+}
+
+.rte-image {
+  display: inline-block;
+  max-width: 100%;
+}
+.rte-image-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+}
+
+.rte-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.75rem 0;
+}
+
+/* Code highlight tokens (used during in-editor highlighting only) */
+.rte-tok-comment {
+  color: color-mix(in oklch, var(--muted-foreground) 80%, transparent);
+  font-style: italic;
+}
+.rte-tok-keyword,
+.rte-tok-attr {
+  color: oklch(0.55 0.18 260);
+}
+.rte-tok-string,
+.rte-tok-regex {
+  color: oklch(0.5 0.16 145);
+}
+.rte-tok-function,
+.rte-tok-class {
+  color: oklch(0.55 0.16 50);
+}
+.rte-tok-number,
+.rte-tok-boolean,
+.rte-tok-constant {
+  color: oklch(0.6 0.16 320);
+}
+.rte-tok-operator,
+.rte-tok-punctuation {
+  color: var(--foreground);
+}
+.rte-tok-tag {
+  color: oklch(0.55 0.18 25);
+}
