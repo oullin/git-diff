@@ -1,4 +1,4 @@
-module github.com/gocanto/dot-files
+module github.com/gocanto/git-diff
 
 go 1.26
 

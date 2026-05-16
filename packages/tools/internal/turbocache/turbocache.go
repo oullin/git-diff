@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gocanto/dot-files/tools/internal/runner"
+	"github.com/gocanto/git-diff/tools/internal/runner"
 )
 
 type Tool struct {

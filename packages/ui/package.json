@@ -33,7 +33,7 @@
     "icon:generate": "bash scripts/generate-app-icon.sh"
   },
   "dependencies": {
-    "@dot-files/bridge": "workspace:*",
+    "@git-diff/bridge": "workspace:*",
     "@lexical/code": "0.38.1",
     "@lexical/html": "0.38.1",
     "@lexical/link": "0.38.1",

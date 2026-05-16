@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/gocanto/dot-files/tools/internal/reporoot"
-	"github.com/gocanto/dot-files/tools/internal/turbocache"
+	"github.com/gocanto/git-diff/tools/internal/reporoot"
+	"github.com/gocanto/git-diff/tools/internal/turbocache"
 )
 
 func main() {

@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/currentstate/inventory"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/currentstate/inventory"
 )
 
 type AppStoreApp struct {

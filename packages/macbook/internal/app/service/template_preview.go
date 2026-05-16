@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/template/appconfig"
-	"github.com/gocanto/dot-files/internal/template/brewfile"
-	templatemacos "github.com/gocanto/dot-files/internal/template/macos"
-	"github.com/gocanto/dot-files/internal/template/secrets"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/template/appconfig"
+	"github.com/gocanto/git-diff/internal/template/brewfile"
+	templatemacos "github.com/gocanto/git-diff/internal/template/macos"
+	"github.com/gocanto/git-diff/internal/template/secrets"
 )
 
 func (s Service) PreviewTemplateBrew(_ Options) error {

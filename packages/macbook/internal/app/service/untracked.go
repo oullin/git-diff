@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"github.com/gocanto/dot-files/internal/converge/appstore"
-	"github.com/gocanto/dot-files/internal/converge/brew"
-	"github.com/gocanto/dot-files/internal/template/brewfile"
+	"github.com/gocanto/git-diff/internal/converge/appstore"
+	"github.com/gocanto/git-diff/internal/converge/brew"
+	"github.com/gocanto/git-diff/internal/template/brewfile"
 )
 
 type untrackedReport struct {

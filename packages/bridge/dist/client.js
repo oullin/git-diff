@@ -128,6 +128,18 @@ class HttpWorkflowBridgeClient {
       `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
     );
   }
+  listRepositories() {
+    return this.request("GET", "/v1/repositories");
+  }
+  upsertRepository(request) {
+    return this.request("POST", "/v1/repositories", {
+      path: request.path,
+      name: request.name ?? "",
+    });
+  }
+  removeRepository(request) {
+    return this.request("DELETE", `/v1/repositories?path=${encodeURIComponent(request.path)}`);
+  }
   listOpVaults() {
     return this.request("GET", "/v1/onepassword/vaults");
   }

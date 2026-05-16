@@ -1,6 +1,6 @@
 package service
 
-import "github.com/gocanto/dot-files/internal/currentstate/doctor"
+import "github.com/gocanto/git-diff/internal/currentstate/doctor"
 
 func (s Service) EnsurePrerequisites(opts Options) error {
 	return doctor.Service{GOOS: s.GOOS, GOARCH: s.GOARCH, Home: s.Home, Repo: s.Repo, Stdout: s.Stdout, Runner: s.Runner}.EnsurePrerequisites(opts.DryRun)

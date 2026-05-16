@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gocanto/dot-files/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/app/setting"
 )
 
 type validateSettingsRequest struct {

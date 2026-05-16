@@ -3,7 +3,7 @@ import {
   type SettingsResponse,
   type RunWorkflowRequest,
   type WorkflowEvent,
-} from "@dot-files/bridge";
+} from "@git-diff/bridge";
 import {
   BrowserWindow,
   dialog,
@@ -105,6 +105,20 @@ export function registerIpcHandlers(deps: IpcDeps) {
         commentId: string;
       },
     ) => (await client()).deleteReviewComment(request),
+  );
+
+  ipcMain.handle("repositories:list", async () => {
+    const response = await (await client()).listRepositories();
+
+    return response.repositories ?? [];
+  });
+
+  ipcMain.handle("repositories:upsert", async (_event, request: { path: string; name?: string }) =>
+    (await client()).upsertRepository(request),
+  );
+
+  ipcMain.handle("repositories:remove", async (_event, path: string) =>
+    (await client()).removeRepository({ path }),
   );
 
   ipcMain.handle("repository:choose", async (_event, defaultPath?: string) => {

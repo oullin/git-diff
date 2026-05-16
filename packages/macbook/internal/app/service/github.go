@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/gocanto/dot-files/internal/converge/github"
+	"github.com/gocanto/git-diff/internal/converge/github"
 )
 
 func (s Service) SetupGitHub(opts Options) error {

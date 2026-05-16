@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/gocanto/dot-files/internal/template/secrets"
+	"github.com/gocanto/git-diff/internal/template/secrets"
 )
 
 func (s Service) RestorePrivateSecrets(opts Options) error {

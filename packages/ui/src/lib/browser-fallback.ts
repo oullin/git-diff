@@ -1,5 +1,6 @@
 import type {
   DiffAppApi,
+  Repository,
   RepositoryState,
   ReviewComment,
   ReviewDetail,
@@ -19,6 +20,14 @@ export function installBrowserFallback() {
     lastRepoRoot: "/Users/local/project",
   };
   let reviews: ReviewDetail[] = [];
+  let repositories: Repository[] = [
+    {
+      path: "/Users/local/project",
+      name: "project",
+      addedAt: new Date().toISOString(),
+      lastOpenedAt: new Date().toISOString(),
+    },
+  ];
   const state: RepositoryState = {
     root: "/Users/local/project",
     launchPath: "/Users/local/project",
@@ -53,6 +62,27 @@ export function installBrowserFallback() {
     openRepository: async () => state,
     refreshRepository: async () => ({ ...state, generatedAt: new Date().toISOString() }),
     chooseRepository: async () => state.root,
+    listRepositories: async () => repositories,
+    upsertRepository: async ({ path, name }) => {
+      const existing = repositories.find((repo) => repo.path === path);
+      const now = new Date().toISOString();
+      if (existing) {
+        existing.lastOpenedAt = now;
+        if (name) existing.name = name;
+        return existing;
+      }
+      const repo: Repository = {
+        path,
+        name: name || path.split("/").filter(Boolean).pop() || path,
+        addedAt: now,
+        lastOpenedAt: now,
+      };
+      repositories = [repo, ...repositories];
+      return repo;
+    },
+    removeRepository: async (path) => {
+      repositories = repositories.filter((repo) => repo.path !== path);
+    },
     createReview: async (request) => {
       const review: ReviewSession = {
         id: `review-${Date.now()}`,

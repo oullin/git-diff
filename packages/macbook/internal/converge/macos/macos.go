@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/gocanto/dot-files/internal/command"
-	templatemacos "github.com/gocanto/dot-files/internal/template/macos"
+	"github.com/gocanto/git-diff/internal/command"
+	templatemacos "github.com/gocanto/git-diff/internal/template/macos"
 )
 
 type Service struct {

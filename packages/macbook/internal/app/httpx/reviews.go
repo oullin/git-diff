@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gocanto/dot-files/internal/review"
-	"github.com/gocanto/dot-files/internal/storage"
+	"github.com/gocanto/git-diff/internal/review"
+	"github.com/gocanto/git-diff/internal/storage"
 )
 
 func (s Server) repositoryState(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +61,7 @@ func (s Server) repositoryOpen(w http.ResponseWriter, r *http.Request) {
 		prefs, _ := store.GetUserPreferences(r.Context())
 		prefs.LastRepoRoot = state.Root
 		_, _ = store.SaveUserPreferences(r.Context(), prefs)
+		_, _ = store.UpsertRepository(r.Context(), state.Root, "")
 	}
 
 	writeJSON(w, http.StatusOK, state)

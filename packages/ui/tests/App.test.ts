@@ -8,9 +8,10 @@ describe("App", () => {
     installBrowserFallback();
     const wrapper = mount(App);
     await flushPromises();
+    await flushPromises();
 
     expect(wrapper.text()).toContain("/Users/local/project");
     expect(wrapper.text()).toContain("src/App.vue");
-    expect(wrapper.text()).toContain("Review Notes");
+    expect(wrapper.text()).toContain("Reviews");
   });
 });

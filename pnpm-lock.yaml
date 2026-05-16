@@ -39,7 +39,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@dot-files/bridge':
+      '@git-diff/bridge':
         specifier: workspace:*
         version: link:../bridge
       '@lexical/code':

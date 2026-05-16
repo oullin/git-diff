@@ -78,3 +78,12 @@ CREATE TABLE IF NOT EXISTS review_comments (
 CREATE INDEX IF NOT EXISTS idx_review_sessions_started_at ON review_sessions(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_review_events_review_id_created_at ON review_events(review_id, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_review_comments_review_id_file ON review_comments(review_id, file_path, line_number);
+
+CREATE TABLE IF NOT EXISTS repositories (
+  path TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  added_at TEXT NOT NULL,
+  last_opened_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_repositories_last_opened ON repositories(last_opened_at DESC);

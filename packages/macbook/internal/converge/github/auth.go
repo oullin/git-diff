@@ -3,7 +3,7 @@ package github
 import (
 	"fmt"
 
-	"github.com/gocanto/dot-files/internal/command"
+	"github.com/gocanto/git-diff/internal/command"
 )
 
 func (s Service) ensureGitHubAuth() error {

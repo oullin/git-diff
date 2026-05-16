@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gocanto/dot-files/internal/app/service"
+	"github.com/gocanto/git-diff/internal/app/service"
 )
 
 func (s Server) listOpVaults(w http.ResponseWriter, _ *http.Request) {

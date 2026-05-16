@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gocanto/dot-files/tools/internal/release"
-	"github.com/gocanto/dot-files/tools/internal/reporoot"
+	"github.com/gocanto/git-diff/tools/internal/release"
+	"github.com/gocanto/git-diff/tools/internal/reporoot"
 )
 
 func main() {

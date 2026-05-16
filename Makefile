@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 ROOT_PATH := $(shell pwd)
 UI_DIR := packages/ui
-PORTLESS_APP_NAME := dot-files-ui
+PORTLESS_APP_NAME := git-diff-ui
 PORTLESS_DEFAULT_DEV_SERVER_URL := https://$(PORTLESS_APP_NAME).localhost
 GO_FMT_COMPOSE_FILE := go-fmt.compose.yaml
 GO_FMT_SERVICE := go-fmt

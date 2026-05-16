@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/gocanto/dot-files/internal/converge/appstore"
-	"github.com/gocanto/dot-files/internal/currentstate/inventory"
+	"github.com/gocanto/git-diff/internal/converge/appstore"
+	"github.com/gocanto/git-diff/internal/currentstate/inventory"
 )
 
 func (s Service) ApplyAppStoreApps(opts Options) error {

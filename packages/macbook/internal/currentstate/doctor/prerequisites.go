@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/command"
+	"github.com/gocanto/git-diff/internal/command"
 )
 
 func (s Service) EnsurePrerequisites(dryRun bool) error {

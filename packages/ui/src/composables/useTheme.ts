@@ -20,7 +20,7 @@ function readCachedTheme(): Theme | null {
 
 const theme = ref<Theme>(readCachedTheme() ?? "light");
 
-function applyTheme(t: Theme): void {
+export function applyTheme(t: Theme): void {
   const root = globalThis.document?.documentElement;
 
   if (!root) {

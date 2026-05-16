@@ -16,6 +16,7 @@ import type {
   OpItem,
   OpVault,
   RepositoryState,
+  Repository,
   ReviewComment,
   ReviewDetail,
   ReviewEvent,
@@ -207,6 +208,24 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     return this.request<void>(
       "DELETE",
       `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
+    );
+  }
+
+  listRepositories(): Promise<{ repositories: Repository[] }> {
+    return this.request<{ repositories: Repository[] }>("GET", "/v1/repositories");
+  }
+
+  upsertRepository(request: { path: string; name?: string }): Promise<Repository> {
+    return this.request<Repository>("POST", "/v1/repositories", {
+      path: request.path,
+      name: request.name ?? "",
+    });
+  }
+
+  removeRepository(request: { path: string }): Promise<void> {
+    return this.request<void>(
+      "DELETE",
+      `/v1/repositories?path=${encodeURIComponent(request.path)}`,
     );
   }
 

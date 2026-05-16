@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gocanto/dot-files/internal/command"
+	"github.com/gocanto/git-diff/internal/command"
 )
 
 type stubRunner struct {

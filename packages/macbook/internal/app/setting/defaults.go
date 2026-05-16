@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/storage"
+	"github.com/gocanto/git-diff/internal/storage"
 )
 
 const (

@@ -34,7 +34,7 @@ requests, or modify the repository contents.
 | `packages/tools`   | Turbo cache wrapper and unsigned macOS release helper.  |
 | `storage/`         | Local build caches and generated runtime data.          |
 
-Some internal package names still use the older `dot-files` / `macbook` naming.
+Some internal package names still use the older `git-diff` / `macbook` naming.
 The app surface and release target are `Git Diff Review`.
 
 ## Requirements

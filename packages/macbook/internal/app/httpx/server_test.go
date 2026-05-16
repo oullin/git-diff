@@ -14,10 +14,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gocanto/dot-files/internal/app/service"
-	"github.com/gocanto/dot-files/internal/app/setting"
-	"github.com/gocanto/dot-files/internal/domain"
-	"github.com/gocanto/dot-files/internal/storage"
+	"github.com/gocanto/git-diff/internal/app/service"
+	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/domain"
+	"github.com/gocanto/git-diff/internal/storage"
 )
 
 type sseEvent struct {
@@ -49,7 +49,7 @@ func TestHTTPListWorkflowsReturnsMetadata(t *testing.T) {
 
 func TestHTTPRunPersistsEventsAndRunLog(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("DOT_FILES_WORKFLOW_DB_PATH", filepath.Join(home, "runs.sqlite3"))
+	t.Setenv("GIT_DIFF_WORKFLOW_DB_PATH", filepath.Join(home, "runs.sqlite3"))
 
 	server := httptest.NewServer(testHTTPServer(t, home, "/repo").BuildMux())
 

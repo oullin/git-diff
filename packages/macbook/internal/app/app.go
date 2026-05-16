@@ -6,11 +6,11 @@ import (
 	"os"
 	"runtime"
 
-	apphttpx "github.com/gocanto/dot-files/internal/app/httpx"
-	"github.com/gocanto/dot-files/internal/app/service"
-	"github.com/gocanto/dot-files/internal/app/setting"
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/domain"
+	apphttpx "github.com/gocanto/git-diff/internal/app/httpx"
+	"github.com/gocanto/git-diff/internal/app/service"
+	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/domain"
 )
 
 type app struct {

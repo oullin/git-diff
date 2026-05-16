@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gocanto/dot-files/internal/app/service"
-	"github.com/gocanto/dot-files/internal/app/setting"
-	"github.com/gocanto/dot-files/internal/domain"
-	"github.com/gocanto/dot-files/internal/storage"
+	"github.com/gocanto/git-diff/internal/app/service"
+	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/domain"
+	"github.com/gocanto/git-diff/internal/storage"
 )
 
 type WorkflowStore func(context.Context) (*storage.Store, func(), error)
@@ -156,6 +156,9 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("GET /v1/repository/state", s.repositoryState)
 	mux.HandleFunc("POST /v1/repository/open", s.repositoryOpen)
 	mux.HandleFunc("POST /v1/repository/refresh", s.repositoryRefresh)
+	mux.HandleFunc("GET /v1/repositories", s.listRepositories)
+	mux.HandleFunc("POST /v1/repositories", s.upsertRepository)
+	mux.HandleFunc("DELETE /v1/repositories", s.removeRepository)
 	mux.HandleFunc("POST /v1/reviews", s.createReview)
 	mux.HandleFunc("GET /v1/reviews", s.listReviews)
 	mux.HandleFunc("GET /v1/reviews/{id}", s.reviewDetail)

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/converge/appstore"
-	"github.com/gocanto/dot-files/internal/snapshot"
+	"github.com/gocanto/git-diff/internal/converge/appstore"
+	"github.com/gocanto/git-diff/internal/snapshot"
 )
 
 func (s Service) CaptureArchive(opts Options) error {

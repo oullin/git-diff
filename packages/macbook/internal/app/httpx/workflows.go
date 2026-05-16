@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/gocanto/dot-files/internal/domain"
-	"github.com/gocanto/dot-files/internal/storage"
+	"github.com/gocanto/git-diff/internal/domain"
+	"github.com/gocanto/git-diff/internal/storage"
 )
 
 type runWorkflowRequest struct {

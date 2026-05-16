@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/converge/brew"
-	templatemacos "github.com/gocanto/dot-files/internal/template/macos"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/converge/brew"
+	templatemacos "github.com/gocanto/git-diff/internal/template/macos"
 )
 
 func (s Service) InspectCurrentBrew(_ Options) error {

@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gocanto/dot-files/internal/domain"
-	"github.com/gocanto/dot-files/internal/storage/db"
+	"github.com/gocanto/git-diff/internal/domain"
+	"github.com/gocanto/git-diff/internal/storage/db"
 	_ "modernc.org/sqlite"
 )
 
@@ -150,6 +150,13 @@ type ReviewDetail struct {
 	Comments []ReviewComment `json:"comments"`
 }
 
+type Repository struct {
+	Path         string `json:"path"`
+	Name         string `json:"name"`
+	AddedAt      string `json:"addedAt"`
+	LastOpenedAt string `json:"lastOpenedAt,omitempty"`
+}
+
 type Recorder struct {
 	store *Store
 	runID string
@@ -162,7 +169,7 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-const envDBPath = "DOT_FILES_WORKFLOW_DB_PATH"
+const envDBPath = "GIT_DIFF_WORKFLOW_DB_PATH"
 
 func Open(ctx context.Context, path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -655,6 +662,88 @@ func (s *Store) ListReviewComments(ctx context.Context, reviewID string) ([]Revi
 	}
 
 	return comments, rows.Err()
+}
+
+func (s *Store) ListRepositories(ctx context.Context) ([]Repository, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT path, name, added_at, last_opened_at
+		FROM repositories
+		ORDER BY COALESCE(last_opened_at, added_at) DESC
+	`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	repos := []Repository{}
+
+	for rows.Next() {
+		var repo Repository
+
+		var lastOpenedAt sql.NullString
+
+		if err := rows.Scan(&repo.Path, &repo.Name, &repo.AddedAt, &lastOpenedAt); err != nil {
+			return nil, err
+		}
+
+		repo.LastOpenedAt = fromNull(lastOpenedAt)
+		repos = append(repos, repo)
+	}
+
+	return repos, rows.Err()
+}
+
+func (s *Store) UpsertRepository(ctx context.Context, path string, name string) (Repository, error) {
+	if path == "" {
+		return Repository{}, errors.New("repository path is required")
+	}
+
+	if name == "" {
+		name = filepath.Base(path)
+	}
+
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO repositories (path, name, added_at, last_opened_at)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT(path) DO UPDATE SET
+			name = excluded.name,
+			last_opened_at = excluded.last_opened_at
+	`, path, name, now, now)
+
+	if err != nil {
+		return Repository{}, err
+	}
+
+	row := s.db.QueryRowContext(ctx, `
+		SELECT path, name, added_at, last_opened_at
+		FROM repositories
+		WHERE path = ?
+	`, path)
+
+	var repo Repository
+
+	var lastOpenedAt sql.NullString
+
+	if err := row.Scan(&repo.Path, &repo.Name, &repo.AddedAt, &lastOpenedAt); err != nil {
+		return Repository{}, err
+	}
+
+	repo.LastOpenedAt = fromNull(lastOpenedAt)
+
+	return repo, nil
+}
+
+func (s *Store) RemoveRepository(ctx context.Context, path string) error {
+	if path == "" {
+		return errors.New("repository path is required")
+	}
+
+	_, err := s.db.ExecContext(ctx, `DELETE FROM repositories WHERE path = ?`, path)
+
+	return err
 }
 
 func NewRecorder(store *Store, runID string, also func(domain.Event) error) *Recorder {

@@ -139,6 +139,7 @@ export interface RepositoryState {
   headSha: string;
   generatedAt: string;
   files: ChangedFile[];
+  trackedFiles?: string[];
   additions: number;
   deletions: number;
 }
@@ -185,6 +186,13 @@ export interface ReviewDetail {
   review: ReviewSession;
   events: ReviewEvent[];
   comments: ReviewComment[];
+}
+
+export interface Repository {
+  path: string;
+  name: string;
+  addedAt: string;
+  lastOpenedAt?: string;
 }
 
 export interface OpVault {
@@ -259,6 +267,9 @@ export interface WorkflowBridgeClient {
     bodyHtml: string;
   }): Promise<ReviewComment>;
   deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void>;
+  listRepositories(): Promise<{ repositories: Repository[] }>;
+  upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
+  removeRepository(request: { path: string }): Promise<void>;
   listOpVaults(): Promise<{ vaults: OpVault[] }>;
   listOpItems(request: { vault: string }): Promise<{ items: OpItem[] }>;
   runWorkflow(request: RunWorkflowRequest): WorkflowRunStream;

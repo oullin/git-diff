@@ -32,7 +32,7 @@ prompts for a canonical destination, clones the repository there, and re-runs
 setup from the clone. The default destination is:
 
 ```text
-$HOME/Sites/dot-files
+$HOME/Sites/git-diff
 ```
 
 Install the JavaScript workspace and launch the desktop app:
@@ -65,7 +65,7 @@ api serve-http --socket <path>
 ```
 
 The backend serves a local HTTP API over a per-launch Unix socket. The Electron
-main process talks to it through `@dot-files/bridge`, and the UI presents the
+main process talks to it through `@git-diff/bridge`, and the UI presents the
 same workflows that the CLI can list or run.
 
 The UI is organized around these sections:
@@ -294,7 +294,7 @@ pnpm --dir packages/ui run dist:mac:unsigned
 Create a published GitHub release:
 
 ```sh
-pnpm release:mac:unsigned -- --notes-file /path/to/release-notes.md --repo gocanto/dot-files
+pnpm release:mac:unsigned -- --notes-file /path/to/release-notes.md --repo gocanto/git-diff
 ```
 
 Unsigned builds require a manual first launch. Use right-click -> Open, or

@@ -4,7 +4,7 @@ import {
   unixTarget,
   waitForReady,
   type WorkflowBridgeClient,
-} from "@dot-files/bridge";
+} from "@git-diff/bridge";
 import { app } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
 import { rmSync } from "node:fs";

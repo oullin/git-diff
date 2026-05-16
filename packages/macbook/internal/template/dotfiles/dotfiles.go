@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gocanto/dot-files/internal/safefs"
+	"github.com/gocanto/git-diff/internal/safefs"
 )
 
 type Service struct {

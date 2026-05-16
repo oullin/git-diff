@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/safefs"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/safefs"
 	"github.com/spf13/viper"
 )
 

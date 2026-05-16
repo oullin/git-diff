@@ -123,6 +123,10 @@ contextBridge.exposeInMainWorld("diffApp", {
   refreshRepository: (path: string) => ipcRenderer.invoke("repository:refresh", path),
   chooseRepository: (defaultPath?: string): Promise<string | null> =>
     ipcRenderer.invoke("repository:choose", defaultPath),
+  listRepositories: () => ipcRenderer.invoke("repositories:list"),
+  upsertRepository: (request: { path: string; name?: string }) =>
+    ipcRenderer.invoke("repositories:upsert", request),
+  removeRepository: (path: string) => ipcRenderer.invoke("repositories:remove", path),
   createReview: (request: Record<string, unknown>) => ipcRenderer.invoke("reviews:create", request),
   listReviews: (limit?: number) => ipcRenderer.invoke("reviews:list", limit),
   reviewDetail: (id: string) => ipcRenderer.invoke("reviews:detail", id),

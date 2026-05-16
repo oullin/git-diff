@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/domain"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/domain"
 )
 
 type stubRunner struct {

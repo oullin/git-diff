@@ -228,7 +228,7 @@ apps:
       install_method: system
       config_mode: manual
     - name: gus-mac
-      bundle_id: io.gocanto.dot-files
+      bundle_id: io.gocanto.git-diff
       install_method: manual
       config_mode: manual
     - name: Hand Mirror

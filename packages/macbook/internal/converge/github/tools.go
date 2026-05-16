@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/gocanto/dot-files/internal/command"
+	"github.com/gocanto/git-diff/internal/command"
 )
 
 var commandLookPath = exec.LookPath

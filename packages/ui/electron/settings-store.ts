@@ -1,4 +1,4 @@
-import type { RuntimeSettings } from "@dot-files/bridge";
+import type { RuntimeSettings } from "@git-diff/bridge";
 import { app } from "electron";
 import {
   copyFileSync,
@@ -12,7 +12,7 @@ import {
 import { dirname, join } from "node:path";
 
 export function settingsPath() {
-  const devSettingsPath = process.env.DOT_FILES_SETTINGS_PATH?.trim();
+  const devSettingsPath = process.env.GIT_DIFF_SETTINGS_PATH?.trim();
 
   if (devSettingsPath) {
     return devSettingsPath;

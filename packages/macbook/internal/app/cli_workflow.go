@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/domain"
+	"github.com/gocanto/git-diff/internal/domain"
 )
 
 func (a app) listWorkflows() int {

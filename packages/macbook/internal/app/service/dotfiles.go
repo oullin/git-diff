@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/safefs"
-	"github.com/gocanto/dot-files/internal/template/dotfiles"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/safefs"
+	"github.com/gocanto/git-diff/internal/template/dotfiles"
 )
 
 const ohMyZshInstallURL = "https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"

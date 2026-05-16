@@ -18,7 +18,7 @@ export function electronStartSpec(
     uiDir,
     {
       API_BRIDGE_SOCKET: backendSocketPath,
-      DOT_FILES_SETTINGS_PATH: settingsPath,
+      GIT_DIFF_SETTINGS_PATH: settingsPath,
       VITE_DEV_SERVER_URL: devServerUrl,
     },
   ];

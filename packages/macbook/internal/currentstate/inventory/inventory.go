@@ -5,9 +5,9 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/safefs"
-	"github.com/gocanto/dot-files/internal/template/appconfig"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/safefs"
+	"github.com/gocanto/git-diff/internal/template/appconfig"
 	"go.yaml.in/yaml/v3"
 )
 

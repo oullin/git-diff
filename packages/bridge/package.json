@@ -1,5 +1,5 @@
 {
-  "name": "@dot-files/bridge",
+  "name": "@git-diff/bridge",
   "version": "0.1.0",
   "private": true,
   "type": "module",

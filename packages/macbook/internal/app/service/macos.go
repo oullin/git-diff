@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/gocanto/dot-files/internal/command"
-	convergemacos "github.com/gocanto/dot-files/internal/converge/macos"
+	"github.com/gocanto/git-diff/internal/command"
+	convergemacos "github.com/gocanto/git-diff/internal/converge/macos"
 )
 
 func (s Service) ApplyMacOSDefaults(opts Options) error {

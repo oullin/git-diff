@@ -38,14 +38,15 @@ type ChangedFile struct {
 }
 
 type RepositoryState struct {
-	Root        string        `json:"root"`
-	LaunchPath  string        `json:"launchPath"`
-	Branch      string        `json:"branch"`
-	HeadSHA     string        `json:"headSha"`
-	GeneratedAt string        `json:"generatedAt"`
-	Files       []ChangedFile `json:"files"`
-	Additions   int           `json:"additions"`
-	Deletions   int           `json:"deletions"`
+	Root         string        `json:"root"`
+	LaunchPath   string        `json:"launchPath"`
+	Branch       string        `json:"branch"`
+	HeadSHA      string        `json:"headSha"`
+	GeneratedAt  string        `json:"generatedAt"`
+	Files        []ChangedFile `json:"files"`
+	TrackedFiles []string      `json:"trackedFiles"`
+	Additions    int           `json:"additions"`
+	Deletions    int           `json:"deletions"`
 }
 
 type statusEntry struct {
@@ -126,13 +127,16 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 
 	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 
+	tracked, _ := listTrackedFiles(ctx, root)
+
 	state := RepositoryState{
-		Root:        root,
-		LaunchPath:  launchPath,
-		Branch:      strings.TrimSpace(branch),
-		HeadSHA:     strings.TrimSpace(head),
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
-		Files:       files,
+		Root:         root,
+		LaunchPath:   launchPath,
+		Branch:       strings.TrimSpace(branch),
+		HeadSHA:      strings.TrimSpace(head),
+		GeneratedAt:  time.Now().UTC().Format(time.RFC3339Nano),
+		Files:        files,
+		TrackedFiles: tracked,
 	}
 
 	for _, file := range files {
@@ -282,6 +286,29 @@ func fingerprint(file ChangedFile) string {
 
 func (file ChangedFile) pathSectionID(kind string) string {
 	return fmt.Sprintf("%s:%s", kind, file.Path)
+}
+
+func listTrackedFiles(ctx context.Context, root string) ([]string, error) {
+	raw, err := gitBytes(ctx, root, "ls-files", "-z")
+
+	if err != nil {
+		return nil, err
+	}
+
+	parts := bytes.Split(raw, []byte{0})
+	files := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		if len(part) == 0 {
+			continue
+		}
+
+		files = append(files, string(part))
+	}
+
+	sort.Strings(files)
+
+	return files, nil
 }
 
 func gitOutput(ctx context.Context, dir string, args ...string) (string, error) {

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/dot-files/tools/internal/runner"
+	"github.com/gocanto/git-diff/tools/internal/runner"
 )
 
 type Tool struct {
@@ -415,7 +415,7 @@ func readUIVersion(path string) (string, error) {
 }
 
 func releaseTag(version string) string {
-	return "dot-files-" + version
+	return "git-diff-" + version
 }
 
 func releaseTitle(tag string) string {

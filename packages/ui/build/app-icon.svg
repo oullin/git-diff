@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Derivative of oullin.io brand mark (dark variant).
+       Source: https://oullin.io/brand/logo-primary-mark-dark.svg (80x80 viewBox).
+       Scaled 12.8x to 1024x1024 to preserve all Oullin proportions (rx ratio 17.5%,
+       inset border thickness, monogram placement). The solid "I" bar of the
+       Oullin monogram is reinterpreted as a vertical git trunk with three commit
+       nodes — keeps the Oullin silhouette while encoding the git-diff identity. -->
+
+  <!-- Rounded-square background: Oullin dark fill #0C1018 -->
+  <rect width="1024" height="1024" rx="179.2" ry="179.2" fill="#0C1018"/>
+
+  <!-- Oullin signature inset border: thin purple at 30% opacity -->
+  <rect x="9.6" y="9.6" width="1004.8" height="1004.8"
+        rx="169.6" ry="169.6"
+        fill="none" stroke="#9B8CE8" stroke-opacity="0.3" stroke-width="19.2"/>
+
+  <!-- Monogram, expressed in Oullin's 80-unit coordinate system, scaled 12.8x -->
+  <g transform="scale(12.8)">
+    <!-- "O" — Oullin's circle, unchanged -->
+    <circle cx="29" cy="40" r="12" fill="none" stroke="#9B8CE8" stroke-width="3.5"/>
+
+    <!-- Git trunk + three commit nodes, occupying the same footprint as the
+         original 8x38 I-bar (x=49..57, y=21..59). Centerline at x=53. -->
+    <line x1="53" y1="23" x2="53" y2="57"
+          stroke="#9B8CE8" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="53" cy="23" r="5" fill="#9B8CE8"/>
+    <circle cx="53" cy="40" r="5" fill="#9B8CE8"/>
+    <circle cx="53" cy="57" r="5" fill="#9B8CE8"/>
+  </g>
+</svg>

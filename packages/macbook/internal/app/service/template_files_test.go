@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gocanto/dot-files/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/app/setting"
 )
 
 func TestTemplateFilesListReadAndSaveAllowlistedFiles(t *testing.T) {

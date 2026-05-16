@@ -26,6 +26,7 @@ export interface RepositoryState {
   headSha: string;
   generatedAt: string;
   files: ChangedFile[];
+  trackedFiles?: string[];
   additions: number;
   deletions: number;
 }
@@ -74,6 +75,13 @@ export interface ReviewDetail {
   comments: ReviewComment[];
 }
 
+export interface Repository {
+  path: string;
+  name: string;
+  addedAt: string;
+  lastOpenedAt?: string;
+}
+
 export interface UserPreferences {
   theme: string;
   diffViewMode: DiffViewMode;
@@ -87,6 +95,9 @@ export interface DiffAppApi {
   openRepository(path: string): Promise<RepositoryState>;
   refreshRepository(path: string): Promise<RepositoryState>;
   chooseRepository(defaultPath?: string): Promise<string | null>;
+  listRepositories(): Promise<Repository[]>;
+  upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
+  removeRepository(path: string): Promise<void>;
   createReview(request: Partial<ReviewSession>): Promise<ReviewSession>;
   listReviews(limit?: number): Promise<{ reviews: ReviewSession[] }>;
   reviewDetail(id: string): Promise<ReviewDetail>;

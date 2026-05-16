@@ -5,7 +5,7 @@ import (
 	"io"
 	"runtime"
 
-	"github.com/gocanto/dot-files/internal/domain"
+	"github.com/gocanto/git-diff/internal/domain"
 )
 
 func (a app) approveHostPermissions(stdout io.Writer) error {

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/safefs"
-	templatemacos "github.com/gocanto/dot-files/internal/template/macos"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/safefs"
+	templatemacos "github.com/gocanto/git-diff/internal/template/macos"
 )
 
 type Service struct {

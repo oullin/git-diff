@@ -3,8 +3,8 @@
 set -euo pipefail
 
 DRY_RUN=0
-REPO_URL="https://github.com/gocanto/dot-files"
-DEFAULT_REPO_DEST="$HOME/Sites/dot-files"
+REPO_URL="https://github.com/gocanto/git-diff"
+DEFAULT_REPO_DEST="$HOME/Sites/git-diff"
 
 for arg in "$@"; do
 	case "$arg" in
@@ -95,7 +95,7 @@ ensure_canonical_location() {
 		local origin
 		origin="$(git -C "$destination" remote get-url origin 2>/dev/null || true)"
 
-		if [[ "$origin" != "$REPO_URL" && "$origin" != "git@github.com:gocanto/dot-files.git" ]]; then
+		if [[ "$origin" != "$REPO_URL" && "$origin" != "git@github.com:gocanto/git-diff.git" ]]; then
 			die "$destination is a git checkout but origin is $origin, expected $REPO_URL"
 		fi
 	else
@@ -138,9 +138,9 @@ ensure_command_line_tools() {
 		return 0
 	fi
 
-	if ! xcodebuild -license check >/tmp/dot-files-xcode-license.log 2>&1; then
-		if grep -qiE 'license|agree' /tmp/dot-files-xcode-license.log; then
-			cat /tmp/dot-files-xcode-license.log >&2
+	if ! xcodebuild -license check >/tmp/git-diff-xcode-license.log 2>&1; then
+		if grep -qiE 'license|agree' /tmp/git-diff-xcode-license.log; then
+			cat /tmp/git-diff-xcode-license.log >&2
 			die "Xcode license needs attention; run 'sudo xcodebuild -license' and accept Apple's prompts, then rerun setup"
 		fi
 	fi

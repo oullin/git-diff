@@ -3,7 +3,7 @@ package app
 import (
 	"io"
 
-	"github.com/gocanto/dot-files/internal/domain"
+	"github.com/gocanto/git-diff/internal/domain"
 )
 
 type convergeMode string

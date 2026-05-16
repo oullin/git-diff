@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/template/brewfile"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/template/brewfile"
 )
 
 func (s Service) ApplyHomebrewBundle(opts Options) error {

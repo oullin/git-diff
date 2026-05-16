@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/template/secrets"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/template/secrets"
 )
 
 func (s Service) Run(defaultOPVault, defaultOPItem, secretsPath string) error {

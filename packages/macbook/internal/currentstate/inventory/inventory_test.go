@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gocanto/dot-files/internal/command"
-	"github.com/gocanto/dot-files/internal/template/appconfig"
+	"github.com/gocanto/git-diff/internal/command"
+	"github.com/gocanto/git-diff/internal/template/appconfig"
 )
 
 type inventoryRunner struct {
