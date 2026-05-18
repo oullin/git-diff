@@ -122,11 +122,27 @@ export const PREF_KEYS = {
   theme: "theme",
   diffViewMode: "diff.viewMode",
   diffHideWhitespace: "diff.hideWhitespace",
+  diffStyle: "diff.style",
+  diffDensity: "diff.density",
+  diffWordHi: "diff.wordHi",
   lastRepoRoot: "repo.lastRoot",
   panelLeftWidth: "panel.left.width",
   panelFileTreeWidth: "panel.fileTree.width",
   panelRightWidth: "panel.right.width",
+  uiAccent: "ui.accent",
+  uiShowMinimap: "ui.minimap",
+  uiShowStatusBar: "ui.statusBar",
 } as const;
+
+export type DiffHunkStyle = "soft" | "punchy" | "bar";
+export type DiffDensity = "comfortable" | "compact";
+export type UIAccent = "indigo" | "emerald" | "amber" | "rose";
+
+export const VIEWED_KEY_PREFIX = "file.viewed.";
+
+export function viewedPrefKey(repoRoot: string, filePath: string): string {
+  return `${VIEWED_KEY_PREFIX}${repoRoot}.${filePath}`;
+}
 
 export interface DiffAppApi {
   repositoryState(path?: string): Promise<RepositoryState>;

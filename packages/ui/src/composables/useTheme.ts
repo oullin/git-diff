@@ -1,11 +1,6 @@
 export function applyTheme(): void {
-  const root = globalThis.document?.documentElement;
-  if (!root) {
-    return;
-  }
-  root.classList.remove("light");
-  root.classList.add("dark");
-  root.dataset.colorMode = "dark";
+  // Theme follows the OS via `@media (prefers-color-scheme: dark)` in style.css.
+  // No class is applied to the document root.
 }
 
 export function initTheme(): void {
