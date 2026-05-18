@@ -5,6 +5,7 @@ import FileRow from "./FileRow.vue";
 import Kbd from "./Kbd.vue";
 import SegGroup from "./SegGroup.vue";
 import RepoFileTree from "@entry/components/RepoFileTree.vue";
+import { ScrollArea } from "@ui/scroll-area";
 import type { ChangedFile, ReviewComment } from "@api";
 
 const props = defineProps<{
@@ -119,55 +120,57 @@ function onSearchInput(event: Event) {
       </div>
     </div>
 
-    <div class="flex-1 overflow-auto" :style="{ padding: '6px 6px 12px', minHeight: 0 }">
-      <div
-        :style="{
-          padding: '8px 10px 4px',
-          fontSize: '11px',
-          fontWeight: 600,
-          letterSpacing: '0.4px',
-          textTransform: 'uppercase',
-          color: 'var(--gd-text-muted)',
-        }"
-      >
-        Workspace
+    <ScrollArea class="min-h-0 flex-1">
+      <div :style="{ padding: '6px 6px 12px' }">
+        <div
+          :style="{
+            padding: '8px 10px 4px',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.4px',
+            textTransform: 'uppercase',
+            color: 'var(--gd-text-muted)',
+          }"
+        >
+          Workspace
+        </div>
+        <template v-if="scope === 'changed'">
+          <FileRow
+            v-for="file in filteredFiles"
+            :key="file.path"
+            :file="file"
+            :selected="selectedPath === file.path"
+            :viewed="isViewed(file)"
+            :threads="threadsForFile(file.path)"
+            @select="emit('select', file.path)"
+            @toggle-viewed="emit('toggle-viewed', file)"
+          />
+          <div
+            v-if="filteredFiles.length === 0"
+            :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
+          >
+            No changed files match the filter.
+          </div>
+        </template>
+        <template v-else>
+          <RepoFileTree
+            v-if="allPaths.length > 0"
+            :paths="allPaths"
+            :selected-path="selectedPath"
+            :changed-paths="changedPathsSet"
+            initial-expansion="closed"
+            class="p-2"
+            @select="(path) => emit('select', path)"
+          />
+          <div
+            v-else
+            :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
+          >
+            No tracked files yet.
+          </div>
+        </template>
       </div>
-      <template v-if="scope === 'changed'">
-        <FileRow
-          v-for="file in filteredFiles"
-          :key="file.path"
-          :file="file"
-          :selected="selectedPath === file.path"
-          :viewed="isViewed(file)"
-          :threads="threadsForFile(file.path)"
-          @select="emit('select', file.path)"
-          @toggle-viewed="emit('toggle-viewed', file)"
-        />
-        <div
-          v-if="filteredFiles.length === 0"
-          :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
-        >
-          No changed files match the filter.
-        </div>
-      </template>
-      <template v-else>
-        <RepoFileTree
-          v-if="allPaths.length > 0"
-          :paths="allPaths"
-          :selected-path="selectedPath"
-          :changed-paths="changedPathsSet"
-          initial-expansion="closed"
-          class="min-h-0 flex-1 overflow-auto p-2"
-          @select="(path) => emit('select', path)"
-        />
-        <div
-          v-else
-          :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
-        >
-          No tracked files yet.
-        </div>
-      </template>
-    </div>
+    </ScrollArea>
 
     <div
       :style="{
