@@ -8,6 +8,7 @@ export type {
   OpUnavailableError,
   OpVault,
   Phase,
+  RepositoryFile,
   RepositoryState,
   ReviewComment,
   ReviewDetail,

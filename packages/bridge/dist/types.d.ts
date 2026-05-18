@@ -126,6 +126,13 @@ export interface RepositoryState {
   additions: number;
   deletions: number;
 }
+export interface RepositoryFile {
+  path: string;
+  content: string;
+  binary: boolean;
+  truncated: boolean;
+  size: number;
+}
 export interface ReviewSession {
   id: string;
   repoRoot: string;
@@ -219,6 +226,7 @@ export interface WorkflowBridgeClient {
   repositoryState(request: { path?: string }): Promise<RepositoryState>;
   openRepository(request: { path: string }): Promise<RepositoryState>;
   refreshRepository(request: { path: string }): Promise<RepositoryState>;
+  readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
   createReview(request: Partial<ReviewSession>): Promise<ReviewSession>;
   listReviews(request: { limit?: number }): Promise<{
     reviews: ReviewSession[];

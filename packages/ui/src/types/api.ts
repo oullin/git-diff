@@ -26,9 +26,18 @@ export interface RepositoryState {
   headSha: string;
   generatedAt: string;
   files: ChangedFile[];
+  // Every file under the repo root that is tracked or untracked-not-ignored. Ignored files excluded.
   trackedFiles?: string[];
   additions: number;
   deletions: number;
+}
+
+export interface RepositoryFile {
+  path: string;
+  content: string;
+  binary: boolean;
+  truncated: boolean;
+  size: number;
 }
 
 export interface ReviewSession {
@@ -94,6 +103,7 @@ export interface DiffAppApi {
   repositoryState(path?: string): Promise<RepositoryState>;
   openRepository(path: string): Promise<RepositoryState>;
   refreshRepository(path: string): Promise<RepositoryState>;
+  readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
   chooseRepository(defaultPath?: string): Promise<string | null>;
   listRepositories(): Promise<Repository[]>;
   upsertRepository(request: { path: string; name?: string }): Promise<Repository>;

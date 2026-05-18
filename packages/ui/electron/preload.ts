@@ -121,6 +121,8 @@ contextBridge.exposeInMainWorld("diffApp", {
   repositoryState: (path?: string) => ipcRenderer.invoke("repository:state", path),
   openRepository: (path: string) => ipcRenderer.invoke("repository:open", path),
   refreshRepository: (path: string) => ipcRenderer.invoke("repository:refresh", path),
+  readRepositoryFile: (root: string, path: string) =>
+    ipcRenderer.invoke("repository:file:read", root, path),
   chooseRepository: (defaultPath?: string): Promise<string | null> =>
     ipcRenderer.invoke("repository:choose", defaultPath),
   listRepositories: () => ipcRenderer.invoke("repositories:list"),

@@ -61,6 +61,13 @@ export function installBrowserFallback() {
     repositoryState: async () => state,
     openRepository: async () => state,
     refreshRepository: async () => ({ ...state, generatedAt: new Date().toISOString() }),
+    readRepositoryFile: async (_root: string, path: string) => ({
+      path,
+      content: `// ${path}\n// Preview not available in browser fallback.\n`,
+      binary: false,
+      truncated: false,
+      size: 0,
+    }),
     chooseRepository: async () => state.root,
     listRepositories: async () => repositories,
     upsertRepository: async ({ path, name }) => {

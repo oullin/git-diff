@@ -38,15 +38,25 @@ type ChangedFile struct {
 }
 
 type RepositoryState struct {
-	Root         string        `json:"root"`
-	LaunchPath   string        `json:"launchPath"`
-	Branch       string        `json:"branch"`
-	HeadSHA      string        `json:"headSha"`
-	GeneratedAt  string        `json:"generatedAt"`
-	Files        []ChangedFile `json:"files"`
-	TrackedFiles []string      `json:"trackedFiles"`
-	Additions    int           `json:"additions"`
-	Deletions    int           `json:"deletions"`
+	Root        string        `json:"root"`
+	LaunchPath  string        `json:"launchPath"`
+	Branch      string        `json:"branch"`
+	HeadSHA     string        `json:"headSha"`
+	GeneratedAt string        `json:"generatedAt"`
+	Files       []ChangedFile `json:"files"`
+	// TrackedFiles contains every file under the repo root that is either tracked or
+	// untracked-not-ignored. Ignored files are excluded.
+	TrackedFiles []string `json:"trackedFiles"`
+	Additions    int      `json:"additions"`
+	Deletions    int      `json:"deletions"`
+}
+
+type RepositoryFile struct {
+	Path      string `json:"path"`
+	Content   string `json:"content"`
+	Binary    bool   `json:"binary"`
+	Truncated bool   `json:"truncated"`
+	Size      int64  `json:"size"`
 }
 
 type statusEntry struct {
@@ -56,6 +66,8 @@ type statusEntry struct {
 	old    string
 	rename bool
 }
+
+const maxFileReadBytes = 2 * 1024 * 1024
 
 const (
 	StatusAdded     GitFileStatus = "added"
@@ -127,7 +139,7 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 
 	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 
-	tracked, _ := listTrackedFiles(ctx, root)
+	tracked, _ := listRepositoryFiles(ctx, root)
 
 	state := RepositoryState{
 		Root:         root,
@@ -288,27 +300,126 @@ func (file ChangedFile) pathSectionID(kind string) string {
 	return fmt.Sprintf("%s:%s", kind, file.Path)
 }
 
-func listTrackedFiles(ctx context.Context, root string) ([]string, error) {
-	raw, err := gitBytes(ctx, root, "ls-files", "-z")
+func listRepositoryFiles(ctx context.Context, root string) ([]string, error) {
+	tracked, err := gitBytes(ctx, root, "ls-files", "-z")
 
 	if err != nil {
 		return nil, err
 	}
 
-	parts := bytes.Split(raw, []byte{0})
-	files := make([]string, 0, len(parts))
+	untracked, err := gitBytes(ctx, root, "ls-files", "-z", "-o", "--exclude-standard")
 
-	for _, part := range parts {
-		if len(part) == 0 {
-			continue
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]struct{})
+	files := make([]string, 0)
+
+	for _, raw := range [][]byte{tracked, untracked} {
+		for _, part := range bytes.Split(raw, []byte{0}) {
+			if len(part) == 0 {
+				continue
+			}
+
+			path := string(part)
+
+			if _, ok := seen[path]; ok {
+				continue
+			}
+
+			seen[path] = struct{}{}
+			files = append(files, path)
 		}
-
-		files = append(files, string(part))
 	}
 
 	sort.Strings(files)
 
 	return files, nil
+}
+
+func ReadRepositoryFile(ctx context.Context, launchPath, relPath string) (RepositoryFile, error) {
+	if relPath == "" {
+		return RepositoryFile{}, errors.New("path is required")
+	}
+
+	rootRaw, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+
+	if err != nil {
+		return RepositoryFile{}, fmt.Errorf("resolve git root: %w", err)
+	}
+
+	root, err := filepath.EvalSymlinks(strings.TrimSpace(rootRaw))
+
+	if err != nil {
+		return RepositoryFile{}, fmt.Errorf("resolve git root: %w", err)
+	}
+
+	clean := filepath.Clean(filepath.FromSlash(relPath))
+
+	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return RepositoryFile{}, fmt.Errorf("invalid path: %s", relPath)
+	}
+
+	fullPath := filepath.Join(root, clean)
+	resolved, err := filepath.EvalSymlinks(fullPath)
+
+	if err != nil {
+		return RepositoryFile{}, fmt.Errorf("read file: %w", err)
+	}
+
+	rel, err := filepath.Rel(root, resolved)
+
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return RepositoryFile{}, fmt.Errorf("path escapes repository root: %s", relPath)
+	}
+
+	info, err := os.Stat(resolved)
+
+	if err != nil {
+		return RepositoryFile{}, fmt.Errorf("stat file: %w", err)
+	}
+
+	if info.IsDir() {
+		return RepositoryFile{}, fmt.Errorf("path is a directory: %s", relPath)
+	}
+
+	size := info.Size()
+
+	if size > maxFileReadBytes {
+		return RepositoryFile{
+			Path:      filepath.ToSlash(rel),
+			Binary:    false,
+			Truncated: true,
+			Size:      size,
+		}, nil
+	}
+
+	content, err := os.ReadFile(resolved)
+
+	if err != nil {
+		return RepositoryFile{}, fmt.Errorf("read file: %w", err)
+	}
+
+	sniff := content
+
+	if len(sniff) > 8192 {
+		sniff = sniff[:8192]
+	}
+
+	if bytes.IndexByte(sniff, 0) >= 0 || !utf8.Valid(content) {
+		return RepositoryFile{
+			Path:   filepath.ToSlash(rel),
+			Binary: true,
+			Size:   size,
+		}, nil
+	}
+
+	return RepositoryFile{
+		Path:    filepath.ToSlash(rel),
+		Content: string(content),
+		Size:    size,
+	}, nil
 }
 
 func gitOutput(ctx context.Context, dir string, args ...string) (string, error) {

@@ -15,6 +15,7 @@ import type {
   WorkflowRunStream,
   OpItem,
   OpVault,
+  RepositoryFile,
   RepositoryState,
   Repository,
   ReviewComment,
@@ -135,6 +136,11 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
 
   refreshRepository(request: { path: string }): Promise<RepositoryState> {
     return this.request<RepositoryState>("POST", "/v1/repository/refresh", { path: request.path });
+  }
+
+  readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {
+    const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
+    return this.request<RepositoryFile>("GET", `/v1/repository/file${query}`);
   }
 
   createReview(request: Partial<ReviewSession>): Promise<ReviewSession> {

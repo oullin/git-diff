@@ -156,6 +156,7 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("GET /v1/repository/state", s.repositoryState)
 	mux.HandleFunc("POST /v1/repository/open", s.repositoryOpen)
 	mux.HandleFunc("POST /v1/repository/refresh", s.repositoryRefresh)
+	mux.HandleFunc("GET /v1/repository/file", s.repositoryFile)
 	mux.HandleFunc("GET /v1/repositories", s.listRepositories)
 	mux.HandleFunc("POST /v1/repositories", s.upsertRepository)
 	mux.HandleFunc("DELETE /v1/repositories", s.removeRepository)

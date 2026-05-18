@@ -71,6 +71,37 @@ func (s Server) repositoryRefresh(w http.ResponseWriter, r *http.Request) {
 	s.repositoryOpen(w, r)
 }
 
+func (s Server) repositoryFile(w http.ResponseWriter, r *http.Request) {
+	root := r.URL.Query().Get("root")
+	path := r.URL.Query().Get("path")
+
+	if root == "" {
+		root = s.Repo
+	}
+
+	if root == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("root is required"))
+
+		return
+	}
+
+	if path == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("path is required"))
+
+		return
+	}
+
+	file, err := review.ReadRepositoryFile(r.Context(), root, path)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, file)
+}
+
 func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
 	var input storage.ReviewSessionStart
 

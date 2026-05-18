@@ -42,6 +42,10 @@ export function registerIpcHandlers(deps: IpcDeps) {
     (await client()).refreshRepository({ path }),
   );
 
+  ipcMain.handle("repository:file:read", async (_event, root: string, path: string) =>
+    (await client()).readRepositoryFile({ root, path }),
+  );
+
   ipcMain.handle("reviews:create", async (_event, request: Record<string, unknown>) =>
     (await client()).createReview(request),
   );

@@ -87,6 +87,10 @@ class HttpWorkflowBridgeClient {
   refreshRepository(request) {
     return this.request("POST", "/v1/repository/refresh", { path: request.path });
   }
+  readRepositoryFile(request) {
+    const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
+    return this.request("GET", `/v1/repository/file${query}`);
+  }
   createReview(request) {
     return this.request("POST", "/v1/reviews", request);
   }
