@@ -31,6 +31,8 @@ export function installBrowserFallback() {
     {
       path: "/Users/local/project",
       name: "project",
+      ownerId: fallbackUser.id,
+      role: "owner",
       addedAt: new Date().toISOString(),
       lastOpenedAt: new Date().toISOString(),
     },
@@ -78,6 +80,9 @@ export function installBrowserFallback() {
     listBranches: async () => ({ branches: [state.branch] }),
     checkoutBranch: async () => state,
     createBranch: async (_path: string, name: string) => ({ ...state, branch: name }),
+    deleteBranch: async () => {},
+    lockBranch: async () => ({ branches: [] }),
+    unlockBranch: async () => ({ branches: [] }),
     chooseRepository: async () => state.root,
     listRepositories: async () => repositories,
     upsertRepository: async ({ path, name }) => {
@@ -91,6 +96,8 @@ export function installBrowserFallback() {
       const repo: Repository = {
         path,
         name: name || path.split("/").filter(Boolean).pop() || path,
+        ownerId: fallbackUser.id,
+        role: "owner",
         addedAt: now,
         lastOpenedAt: now,
       };
@@ -100,10 +107,20 @@ export function installBrowserFallback() {
     removeRepository: async (path) => {
       repositories = repositories.filter((repo) => repo.path !== path);
     },
+    listCollaborators: async () => [],
+    addCollaborator: async ({ userId, role }) => ({
+      userId,
+      osUsername: `user-${userId}`,
+      displayName: `user-${userId}`,
+      role,
+      grantedAt: new Date().toISOString(),
+    }),
+    removeCollaborator: async () => {},
     createReview: async (request) => {
       const review: ReviewSession = {
         id: `review-${Date.now()}`,
         repoRoot: request.repoRoot ?? state.root,
+        userId: fallbackUser.id,
         branch: request.branch ?? state.branch,
         headSha: request.headSha ?? state.headSha,
         status: "open",

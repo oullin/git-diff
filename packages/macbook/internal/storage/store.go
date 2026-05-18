@@ -123,6 +123,7 @@ type ReviewSessionStart struct {
 type ReviewSession struct {
 	ID           string `json:"id"`
 	RepoRoot     string `json:"repoRoot"`
+	UserID       int64  `json:"userId"`
 	Branch       string `json:"branch"`
 	HeadSHA      string `json:"headSha"`
 	Status       string `json:"status"`
@@ -184,8 +185,26 @@ type ReviewDetail struct {
 type Repository struct {
 	Path         string `json:"path"`
 	Name         string `json:"name"`
+	OwnerID      int64  `json:"ownerId"`
+	Role         string `json:"role"`
 	AddedAt      string `json:"addedAt"`
 	LastOpenedAt string `json:"lastOpenedAt,omitempty"`
+}
+
+type RepositoryCollaborator struct {
+	UserID      int64  `json:"userId"`
+	OSUsername  string `json:"osUsername"`
+	DisplayName string `json:"displayName"`
+	Role        string `json:"role"`
+	GrantedAt   string `json:"grantedAt"`
+}
+
+type Branch struct {
+	Name       string `json:"name"`
+	Locked     bool   `json:"locked"`
+	LockedBy   int64  `json:"lockedBy,omitempty"`
+	LockedAt   string `json:"lockedAt,omitempty"`
+	LastSeenAt string `json:"lastSeenAt"`
 }
 
 type Recorder struct {
@@ -199,6 +218,14 @@ type Recorder struct {
 type scanner interface {
 	Scan(dest ...any) error
 }
+
+const (
+	RepoRoleOwner = "owner"
+	RepoRoleWrite = "write"
+	RepoRoleRead  = "read"
+)
+
+var ErrBranchLocked = errors.New("branch is locked")
 
 const envDBPath = "GIT_DIFF_WORKFLOW_DB_PATH"
 
@@ -249,115 +276,59 @@ func (s *Store) Init(ctx context.Context) error {
 		return fmt.Errorf("read embedded sqlite schema: %w", err)
 	}
 
-	if _, err := s.db.ExecContext(ctx, string(schema)); err != nil {
-		return fmt.Errorf("initialize sqlite schema: %w", err)
+	if _, err := s.db.ExecContext(ctx, string(schema)); err == nil {
+		return nil
 	}
 
-	if err := s.migratePreferences(ctx); err != nil {
-		return err
+	if err := s.resetSchema(ctx); err != nil {
+		return fmt.Errorf("reset stale schema: %w", err)
+	}
+
+	if _, err := s.db.ExecContext(ctx, string(schema)); err != nil {
+		return fmt.Errorf("initialize sqlite schema after reset: %w", err)
 	}
 
 	return nil
 }
 
-func (s *Store) migratePreferences(ctx context.Context) error {
-	var hasLegacy string
-	err := s.db.QueryRowContext(ctx, `
-		SELECT name FROM sqlite_master WHERE type='table' AND name='user_preferences'
-	`).Scan(&hasLegacy)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
+func (s *Store) resetSchema(ctx context.Context) error {
+	if _, err := s.db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		return fmt.Errorf("disable foreign keys: %w", err)
 	}
 
-	if err != nil {
-		return fmt.Errorf("inspect legacy preferences: %w", err)
-	}
-
-	osUsername := currentOSUsername()
-
-	tx, err := s.db.BeginTx(ctx, nil)
-
-	if err != nil {
-		return fmt.Errorf("begin preferences migration: %w", err)
-	}
-
-	defer tx.Rollback()
-
-	now := s.now().UTC().Format(time.RFC3339Nano)
-	_, err = tx.ExecContext(ctx, `
-		INSERT OR IGNORE INTO users (os_username, display_name, password_hash, created_at, last_login_at)
-		VALUES (?, ?, '', ?, '')
-	`, osUsername, osUsername, now)
-
-	if err != nil {
-		return fmt.Errorf("seed user from legacy preferences: %w", err)
-	}
-
-	var userID int64
-
-	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE os_username = ?`, osUsername).Scan(&userID); err != nil {
-		return fmt.Errorf("read seeded user id: %w", err)
-	}
-
-	row := tx.QueryRowContext(ctx, `
-		SELECT theme, diff_view_mode, hide_whitespace, last_repo_root, updated_at
-		FROM user_preferences
-		WHERE id = 1
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT name FROM sqlite_master
+		WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
 	`)
 
-	var (
-		theme          string
-		diffViewMode   string
-		hideWhitespace int
-		lastRepoRoot   string
-		updatedAt      string
-	)
+	if err != nil {
+		return fmt.Errorf("list tables: %w", err)
+	}
 
-	switch err := row.Scan(&theme, &diffViewMode, &hideWhitespace, &lastRepoRoot, &updatedAt); {
-	case errors.Is(err, sql.ErrNoRows):
-		// legacy table existed but had no row; nothing to copy
-	case err != nil:
-		return fmt.Errorf("read legacy preferences row: %w", err)
-	default:
-		if updatedAt == "" {
-			updatedAt = now
+	tables := []string{}
+
+	for rows.Next() {
+		var name string
+
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+
+			return fmt.Errorf("scan table name: %w", err)
 		}
 
-		legacy := map[string]string{}
+		tables = append(tables, name)
+	}
 
-		if theme != "" && theme != DefaultTheme {
-			legacy[PrefKeyTheme] = theme
-		}
+	rows.Close()
 
-		if diffViewMode != "" && diffViewMode != DefaultDiffViewMode {
-			legacy[PrefKeyDiffViewMode] = diffViewMode
-		}
-
-		if hideWhitespace != 0 {
-			legacy[PrefKeyDiffHideWhitespace] = "1"
-		}
-
-		if lastRepoRoot != "" {
-			legacy[PrefKeyLastRepoRoot] = lastRepoRoot
-		}
-
-		for key, value := range legacy {
-			if _, err := tx.ExecContext(ctx, `
-				INSERT OR IGNORE INTO ui_preferences (user_id, key, value, updated_at)
-				VALUES (?, ?, ?, ?)
-			`, userID, key, value, updatedAt); err != nil {
-				return fmt.Errorf("copy legacy preference %q: %w", key, err)
-			}
+	for _, table := range tables {
+		if _, err := s.db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table); err != nil {
+			return fmt.Errorf("drop table %q: %w", table, err)
 		}
 	}
 
-	if _, err := tx.ExecContext(ctx, `DROP TABLE user_preferences`); err != nil {
-		return fmt.Errorf("drop legacy preferences: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit preferences migration: %w", err)
+	if _, err := s.db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
+		return fmt.Errorf("re-enable foreign keys: %w", err)
 	}
 
 	return nil
@@ -722,7 +693,11 @@ func hashToken(rawToken string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func (s *Store) CreateReview(ctx context.Context, review ReviewSessionStart) (ReviewSession, error) {
+func (s *Store) CreateReview(ctx context.Context, userID int64, review ReviewSessionStart) (ReviewSession, error) {
+	if userID == 0 {
+		return ReviewSession{}, errors.New("user id is required")
+	}
+
 	now := s.now().UTC().Format(time.RFC3339Nano)
 	title := review.Title
 
@@ -732,10 +707,10 @@ func (s *Store) CreateReview(ctx context.Context, review ReviewSessionStart) (Re
 
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO review_sessions (
-			id, repo_root, branch, head_sha, status, title, summary,
+			id, repo_root, user_id, branch, head_sha, status, title, summary,
 			files_changed, additions, deletions, started_at
-		) VALUES (?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?)
-	`, review.ID, review.RepoRoot, review.Branch, review.HeadSHA, title, review.Summary, review.FilesChanged, review.Additions, review.Deletions, now)
+		) VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?)
+	`, review.ID, review.RepoRoot, userID, review.Branch, review.HeadSHA, title, review.Summary, review.FilesChanged, review.Additions, review.Deletions, now)
 
 	if err != nil {
 		return ReviewSession{}, err
@@ -751,6 +726,7 @@ func (s *Store) CreateReview(ctx context.Context, review ReviewSessionStart) (Re
 	return ReviewSession{
 		ID:           review.ID,
 		RepoRoot:     review.RepoRoot,
+		UserID:       userID,
 		Branch:       review.Branch,
 		HeadSHA:      review.HeadSHA,
 		Status:       "open",
@@ -763,18 +739,23 @@ func (s *Store) CreateReview(ctx context.Context, review ReviewSessionStart) (Re
 	}, nil
 }
 
-func (s *Store) ListReviews(ctx context.Context, limit int64) ([]ReviewSession, error) {
+func (s *Store) ListReviews(ctx context.Context, userID int64, limit int64) ([]ReviewSession, error) {
+	if userID == 0 {
+		return nil, errors.New("user id is required")
+	}
+
 	if limit <= 0 {
 		limit = 50
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, repo_root, branch, head_sha, status, title, summary,
+		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
 			files_changed, additions, deletions, started_at, completed_at
 		FROM review_sessions
+		WHERE user_id = ?
 		ORDER BY started_at DESC
 		LIMIT ?
-	`, limit)
+	`, userID, limit)
 
 	if err != nil {
 		return nil, err
@@ -799,7 +780,7 @@ func (s *Store) ListReviews(ctx context.Context, limit int64) ([]ReviewSession, 
 
 func (s *Store) ReviewDetail(ctx context.Context, id string) (ReviewDetail, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, repo_root, branch, head_sha, status, title, summary,
+		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
 			files_changed, additions, deletions, started_at, completed_at
 		FROM review_sessions
 		WHERE id = ?
@@ -989,12 +970,19 @@ func (s *Store) ListReviewComments(ctx context.Context, reviewID string) ([]Revi
 	return comments, rows.Err()
 }
 
-func (s *Store) ListRepositories(ctx context.Context) ([]Repository, error) {
+func (s *Store) ListRepositoriesForUser(ctx context.Context, userID int64) ([]Repository, error) {
+	if userID == 0 {
+		return nil, errors.New("user id is required")
+	}
+
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT path, name, added_at, last_opened_at
-		FROM repositories
-		ORDER BY COALESCE(last_opened_at, added_at) DESC
-	`)
+		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
+			CASE WHEN r.owner_id = ?1 THEN 'owner' ELSE ru.role END AS role
+		FROM repositories r
+		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?1
+		WHERE r.owner_id = ?1 OR ru.user_id = ?1
+		ORDER BY COALESCE(r.last_opened_at, r.added_at) DESC
+	`, userID)
 
 	if err != nil {
 		return nil, err
@@ -1005,22 +993,62 @@ func (s *Store) ListRepositories(ctx context.Context) ([]Repository, error) {
 	repos := []Repository{}
 
 	for rows.Next() {
-		var repo Repository
+		var (
+			repo         Repository
+			lastOpenedAt sql.NullString
+			role         sql.NullString
+		)
 
-		var lastOpenedAt sql.NullString
-
-		if err := rows.Scan(&repo.Path, &repo.Name, &repo.AddedAt, &lastOpenedAt); err != nil {
+		if err := rows.Scan(&repo.Path, &repo.Name, &repo.OwnerID, &repo.AddedAt, &lastOpenedAt, &role); err != nil {
 			return nil, err
 		}
 
 		repo.LastOpenedAt = fromNull(lastOpenedAt)
+		repo.Role = fromNull(role)
 		repos = append(repos, repo)
 	}
 
 	return repos, rows.Err()
 }
 
-func (s *Store) UpsertRepository(ctx context.Context, path string, name string) (Repository, error) {
+func (s *Store) GetRepository(ctx context.Context, userID int64, path string) (Repository, error) {
+	if userID == 0 {
+		return Repository{}, errors.New("user id is required")
+	}
+
+	if path == "" {
+		return Repository{}, errors.New("repository path is required")
+	}
+
+	row := s.db.QueryRowContext(ctx, `
+		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
+			CASE WHEN r.owner_id = ?1 THEN 'owner' ELSE ru.role END AS role
+		FROM repositories r
+		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?1
+		WHERE r.path = ?2 AND (r.owner_id = ?1 OR ru.user_id = ?1)
+	`, userID, path)
+
+	var (
+		repo         Repository
+		lastOpenedAt sql.NullString
+		role         sql.NullString
+	)
+
+	if err := row.Scan(&repo.Path, &repo.Name, &repo.OwnerID, &repo.AddedAt, &lastOpenedAt, &role); err != nil {
+		return Repository{}, err
+	}
+
+	repo.LastOpenedAt = fromNull(lastOpenedAt)
+	repo.Role = fromNull(role)
+
+	return repo, nil
+}
+
+func (s *Store) UpsertRepository(ctx context.Context, ownerID int64, path string, name string) (Repository, error) {
+	if ownerID == 0 {
+		return Repository{}, errors.New("owner id is required")
+	}
+
 	if path == "" {
 		return Repository{}, errors.New("repository path is required")
 	}
@@ -1031,45 +1059,51 @@ func (s *Store) UpsertRepository(ctx context.Context, path string, name string) 
 
 	now := s.now().UTC().Format(time.RFC3339Nano)
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO repositories (path, name, added_at, last_opened_at)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO repositories (path, name, owner_id, added_at, last_opened_at)
+		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(path) DO UPDATE SET
 			name = excluded.name,
 			last_opened_at = excluded.last_opened_at
-	`, path, name, now, now)
+	`, path, name, ownerID, now, now)
 
 	if err != nil {
 		return Repository{}, err
 	}
 
-	row := s.db.QueryRowContext(ctx, `
-		SELECT path, name, added_at, last_opened_at
-		FROM repositories
-		WHERE path = ?
-	`, path)
-
-	var repo Repository
-
-	var lastOpenedAt sql.NullString
-
-	if err := row.Scan(&repo.Path, &repo.Name, &repo.AddedAt, &lastOpenedAt); err != nil {
-		return Repository{}, err
-	}
-
-	repo.LastOpenedAt = fromNull(lastOpenedAt)
-
-	return repo, nil
+	return s.GetRepository(ctx, ownerID, path)
 }
 
-func (s *Store) RemoveRepository(ctx context.Context, path string) error {
+func (s *Store) RemoveRepository(ctx context.Context, userID int64, path string) error {
+	if userID == 0 {
+		return errors.New("user id is required")
+	}
+
 	if path == "" {
 		return errors.New("repository path is required")
 	}
 
-	_, err := s.db.ExecContext(ctx, `DELETE FROM repositories WHERE path = ?`, path)
+	result, err := s.db.ExecContext(ctx, `
+		DELETE FROM repositories WHERE path = ? AND owner_id = ?
+	`, path, userID)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	affected, err := result.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return ErrRepositoryNotOwned
+	}
+
+	return nil
 }
+
+var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
 
 func NewRecorder(store *Store, runID string, also func(domain.Event) error) *Recorder {
 	return &Recorder{store: store, runID: runID, also: also}
@@ -1132,6 +1166,7 @@ func scanReview(row scanner) (ReviewSession, error) {
 	if err := row.Scan(
 		&review.ID,
 		&review.RepoRoot,
+		&review.UserID,
 		&review.Branch,
 		&review.HeadSHA,
 		&review.Status,

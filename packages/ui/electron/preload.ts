@@ -128,12 +128,23 @@ contextBridge.exposeInMainWorld("diffApp", {
     ipcRenderer.invoke("repository:checkout", path, branch),
   createBranch: (path: string, name: string) =>
     ipcRenderer.invoke("repository:branches:create", path, name),
+  deleteBranch: (name: string, path?: string) =>
+    ipcRenderer.invoke("repository:branches:delete", name, path),
+  lockBranch: (name: string, path?: string) =>
+    ipcRenderer.invoke("repository:branches:lock", name, path),
+  unlockBranch: (name: string, path?: string) =>
+    ipcRenderer.invoke("repository:branches:unlock", name, path),
   chooseRepository: (defaultPath?: string): Promise<string | null> =>
     ipcRenderer.invoke("repository:choose", defaultPath),
   listRepositories: () => ipcRenderer.invoke("repositories:list"),
   upsertRepository: (request: { path: string; name?: string }) =>
     ipcRenderer.invoke("repositories:upsert", request),
   removeRepository: (path: string) => ipcRenderer.invoke("repositories:remove", path),
+  listCollaborators: (path: string) => ipcRenderer.invoke("repositories:collaborators:list", path),
+  addCollaborator: (request: { path: string; userId: number; role: "write" | "read" }) =>
+    ipcRenderer.invoke("repositories:collaborators:add", request),
+  removeCollaborator: (request: { path: string; userId: number }) =>
+    ipcRenderer.invoke("repositories:collaborators:remove", request),
   createReview: (request: Record<string, unknown>) => ipcRenderer.invoke("reviews:create", request),
   listReviews: (limit?: number) => ipcRenderer.invoke("reviews:list", limit),
   reviewDetail: (id: string) => ipcRenderer.invoke("reviews:detail", id),

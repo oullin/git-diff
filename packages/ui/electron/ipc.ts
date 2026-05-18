@@ -64,6 +64,18 @@ export function registerIpcHandlers(deps: IpcDeps) {
     (await client()).createBranch({ path, name }),
   );
 
+  ipcMain.handle("repository:branches:delete", async (_event, name: string, path?: string) =>
+    (await client()).deleteBranch({ path, name }),
+  );
+
+  ipcMain.handle("repository:branches:lock", async (_event, name: string, path?: string) =>
+    (await client()).lockBranch({ path, name }),
+  );
+
+  ipcMain.handle("repository:branches:unlock", async (_event, name: string, path?: string) =>
+    (await client()).unlockBranch({ path, name }),
+  );
+
   ipcMain.handle("system:stats", async () => (await client()).getSystemStats());
 
   ipcMain.handle("reviews:create", async (_event, request: Record<string, unknown>) =>
@@ -143,6 +155,23 @@ export function registerIpcHandlers(deps: IpcDeps) {
 
   ipcMain.handle("repositories:remove", async (_event, path: string) =>
     (await client()).removeRepository({ path }),
+  );
+
+  ipcMain.handle("repositories:collaborators:list", async (_event, path: string) => {
+    const response = await (await client()).listCollaborators({ path });
+    return response.collaborators ?? [];
+  });
+
+  ipcMain.handle(
+    "repositories:collaborators:add",
+    async (_event, request: { path: string; userId: number; role: "write" | "read" }) =>
+      (await client()).addCollaborator(request),
+  );
+
+  ipcMain.handle(
+    "repositories:collaborators:remove",
+    async (_event, request: { path: string; userId: number }) =>
+      (await client()).removeCollaborator(request),
   );
 
   ipcMain.handle("repository:choose", async (_event, defaultPath?: string) => {

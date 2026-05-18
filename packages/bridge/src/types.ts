@@ -177,6 +177,7 @@ export interface SystemStats {
 export interface ReviewSession {
   id: string;
   repoRoot: string;
+  userId: number;
   branch: string;
   headSha: string;
   status: string;
@@ -218,11 +219,31 @@ export interface ReviewDetail {
   comments: ReviewComment[];
 }
 
+export type RepositoryRole = "owner" | "write" | "read";
+
 export interface Repository {
   path: string;
   name: string;
+  ownerId: number;
+  role: RepositoryRole;
   addedAt: string;
   lastOpenedAt?: string;
+}
+
+export interface RepositoryCollaborator {
+  userId: number;
+  osUsername: string;
+  displayName: string;
+  role: "write" | "read";
+  grantedAt: string;
+}
+
+export interface Branch {
+  name: string;
+  locked: boolean;
+  lockedBy?: number;
+  lockedAt?: string;
+  lastSeenAt: string;
 }
 
 export interface OpVault {
@@ -279,9 +300,21 @@ export interface WorkflowBridgeClient {
   openRepository(request: { path: string }): Promise<RepositoryState>;
   refreshRepository(request: { path: string }): Promise<RepositoryState>;
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
-  listBranches(request: { path?: string }): Promise<{ branches: string[] }>;
+  listBranches(request: { path?: string }): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState>;
   createBranch(request: { path: string; name: string }): Promise<RepositoryState>;
+  deleteBranch(request: { path?: string; name: string }): Promise<void>;
+  lockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }>;
+  unlockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }>;
+  listCollaborators(request: {
+    path: string;
+  }): Promise<{ collaborators: RepositoryCollaborator[] }>;
+  addCollaborator(request: {
+    path: string;
+    userId: number;
+    role: "write" | "read";
+  }): Promise<RepositoryCollaborator>;
+  removeCollaborator(request: { path: string; userId: number }): Promise<void>;
   getSystemStats(): Promise<SystemStats>;
   createReview(request: Partial<ReviewSession>): Promise<ReviewSession>;
   listReviews(request: { limit?: number }): Promise<{ reviews: ReviewSession[] }>;

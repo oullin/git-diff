@@ -50,6 +50,7 @@ export interface SystemStats {
 export interface ReviewSession {
   id: string;
   repoRoot: string;
+  userId: number;
   branch: string;
   headSha: string;
   status: string;
@@ -91,11 +92,31 @@ export interface ReviewDetail {
   comments: ReviewComment[];
 }
 
+export type RepositoryRole = "owner" | "write" | "read";
+
 export interface Repository {
   path: string;
   name: string;
+  ownerId: number;
+  role: RepositoryRole;
   addedAt: string;
   lastOpenedAt?: string;
+}
+
+export interface RepositoryCollaborator {
+  userId: number;
+  osUsername: string;
+  displayName: string;
+  role: "write" | "read";
+  grantedAt: string;
+}
+
+export interface Branch {
+  name: string;
+  locked: boolean;
+  lockedBy?: number;
+  lockedAt?: string;
+  lastSeenAt: string;
 }
 
 export interface UIPreferences {
@@ -156,13 +177,23 @@ export interface DiffAppApi {
   openRepository(path: string): Promise<RepositoryState>;
   refreshRepository(path: string): Promise<RepositoryState>;
   readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
-  listBranches(path?: string): Promise<{ branches: string[] }>;
+  listBranches(path?: string): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(path: string, branch: string): Promise<RepositoryState>;
   createBranch(path: string, name: string): Promise<RepositoryState>;
+  deleteBranch(name: string, path?: string): Promise<void>;
+  lockBranch(name: string, path?: string): Promise<{ branches: Branch[] }>;
+  unlockBranch(name: string, path?: string): Promise<{ branches: Branch[] }>;
   chooseRepository(defaultPath?: string): Promise<string | null>;
   listRepositories(): Promise<Repository[]>;
   upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
   removeRepository(path: string): Promise<void>;
+  listCollaborators(path: string): Promise<RepositoryCollaborator[]>;
+  addCollaborator(request: {
+    path: string;
+    userId: number;
+    role: "write" | "read";
+  }): Promise<RepositoryCollaborator>;
+  removeCollaborator(request: { path: string; userId: number }): Promise<void>;
   createReview(request: Partial<ReviewSession>): Promise<ReviewSession>;
   listReviews(limit?: number): Promise<{ reviews: ReviewSession[] }>;
   reviewDetail(id: string): Promise<ReviewDetail>;

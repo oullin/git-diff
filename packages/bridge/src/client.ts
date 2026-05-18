@@ -21,6 +21,8 @@ import type {
   RepositoryFile,
   RepositoryState,
   Repository,
+  RepositoryCollaborator,
+  Branch,
   SystemStats,
   ReviewComment,
   ReviewDetail,
@@ -171,9 +173,12 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     return this.request<RepositoryFile>("GET", `/v1/repository/file${query}`);
   }
 
-  listBranches(request: { path?: string }): Promise<{ branches: string[] }> {
+  listBranches(request: { path?: string }): Promise<{ branches: string[]; records?: Branch[] }> {
     const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
-    return this.request<{ branches: string[] }>("GET", `/v1/repository/branches${query}`);
+    return this.request<{ branches: string[]; records?: Branch[] }>(
+      "GET",
+      `/v1/repository/branches${query}`,
+    );
   }
 
   checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState> {
@@ -185,6 +190,26 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
 
   createBranch(request: { path: string; name: string }): Promise<RepositoryState> {
     return this.request<RepositoryState>("POST", "/v1/repository/branches/create", {
+      path: request.path,
+      name: request.name,
+    });
+  }
+
+  deleteBranch(request: { path?: string; name: string }): Promise<void> {
+    const params = new URLSearchParams({ name: request.name });
+    if (request.path) params.set("path", request.path);
+    return this.request<void>("DELETE", `/v1/repository/branches?${params.toString()}`);
+  }
+
+  lockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }> {
+    return this.request<{ branches: Branch[] }>("POST", "/v1/repository/branches/lock", {
+      path: request.path,
+      name: request.name,
+    });
+  }
+
+  unlockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }> {
+    return this.request<{ branches: Branch[] }>("POST", "/v1/repository/branches/unlock", {
       path: request.path,
       name: request.name,
     });
@@ -284,6 +309,35 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
       "DELETE",
       `/v1/repositories?path=${encodeURIComponent(request.path)}`,
     );
+  }
+
+  listCollaborators(request: {
+    path: string;
+  }): Promise<{ collaborators: RepositoryCollaborator[] }> {
+    return this.request<{ collaborators: RepositoryCollaborator[] }>(
+      "GET",
+      `/v1/repositories/collaborators?path=${encodeURIComponent(request.path)}`,
+    );
+  }
+
+  addCollaborator(request: {
+    path: string;
+    userId: number;
+    role: "write" | "read";
+  }): Promise<RepositoryCollaborator> {
+    return this.request<RepositoryCollaborator>("POST", "/v1/repositories/collaborators", {
+      path: request.path,
+      userId: request.userId,
+      role: request.role,
+    });
+  }
+
+  removeCollaborator(request: { path: string; userId: number }): Promise<void> {
+    const params = new URLSearchParams({
+      path: request.path,
+      userId: String(request.userId),
+    });
+    return this.request<void>("DELETE", `/v1/repositories/collaborators?${params.toString()}`);
   }
 
   listOpVaults(): Promise<{ vaults: OpVault[] }> {

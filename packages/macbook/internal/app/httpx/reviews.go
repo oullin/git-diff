@@ -59,12 +59,12 @@ func (s Server) repositoryOpen(w http.ResponseWriter, r *http.Request) {
 		defer closeStore()
 
 		if s.Auth != nil && s.Auth.CurrentUserID() != 0 {
-			_, _ = store.SaveUIPreferences(r.Context(), s.Auth.CurrentUserID(), map[string]string{
+			userID := s.Auth.CurrentUserID()
+			_, _ = store.SaveUIPreferences(r.Context(), userID, map[string]string{
 				storage.PrefKeyLastRepoRoot: state.Root,
 			})
+			_, _ = store.UpsertRepository(r.Context(), userID, state.Root, "")
 		}
-
-		_, _ = store.UpsertRepository(r.Context(), state.Root, "")
 	}
 
 	writeJSON(w, http.StatusOK, state)
@@ -81,7 +81,7 @@ func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 		path = s.Repo
 	}
 
-	branches, err := review.ListBranches(r.Context(), path)
+	names, err := review.ListBranches(r.Context(), path)
 
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
@@ -89,7 +89,32 @@ func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"branches": branches})
+	store, closeStore, storeErr := s.WorkflowStore(r.Context())
+
+	if storeErr != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"branches": names})
+
+		return
+	}
+
+	defer closeStore()
+
+	root, rootErr := review.ResolveRoot(r.Context(), path)
+
+	if rootErr == nil {
+		_ = store.SyncBranches(r.Context(), root, names)
+
+		if records, listErr := store.ListBranches(r.Context(), root); listErr == nil {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"branches": names,
+				"records":  records,
+			})
+
+			return
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"branches": names})
 }
 
 func (s Server) repositoryCheckout(w http.ResponseWriter, r *http.Request) {
@@ -190,6 +215,14 @@ func (s Server) repositoryFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
+	userID := s.Auth.CurrentUserID()
+
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, fmt.Errorf("authentication required"))
+
+		return
+	}
+
 	var input storage.ReviewSessionStart
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -212,7 +245,7 @@ func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
 
 	defer closeStore()
 
-	created, err := store.CreateReview(r.Context(), input)
+	created, err := store.CreateReview(r.Context(), userID, input)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -224,6 +257,14 @@ func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
+	userID := s.Auth.CurrentUserID()
+
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, fmt.Errorf("authentication required"))
+
+		return
+	}
+
 	limit := int64(50)
 
 	if raw := r.URL.Query().Get("limit"); raw != "" {
@@ -248,7 +289,7 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 
 	defer closeStore()
 
-	reviews, err := store.ListReviews(r.Context(), limit)
+	reviews, err := store.ListReviews(r.Context(), userID, limit)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

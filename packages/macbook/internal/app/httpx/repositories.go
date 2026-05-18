@@ -4,9 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/gocanto/git-diff/internal/storage"
 )
 
 func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
+	userID := s.Auth.CurrentUserID()
+
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+
+		return
+	}
+
 	store, closeStore, err := s.WorkflowStore(r.Context())
 
 	if err != nil {
@@ -17,7 +27,7 @@ func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
 
 	defer closeStore()
 
-	repos, err := store.ListRepositories(r.Context())
+	repos, err := store.ListRepositoriesForUser(r.Context(), userID)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -29,6 +39,14 @@ func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
+	userID := s.Auth.CurrentUserID()
+
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+
+		return
+	}
+
 	var body struct {
 		Path string `json:"path"`
 		Name string `json:"name"`
@@ -50,7 +68,7 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 
 	defer closeStore()
 
-	repo, err := store.UpsertRepository(r.Context(), body.Path, body.Name)
+	repo, err := store.UpsertRepository(r.Context(), userID, body.Path, body.Name)
 
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
@@ -62,6 +80,14 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) removeRepository(w http.ResponseWriter, r *http.Request) {
+	userID := s.Auth.CurrentUserID()
+
+	if userID == 0 {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+
+		return
+	}
+
 	path := r.URL.Query().Get("path")
 
 	if path == "" {
@@ -80,7 +106,13 @@ func (s Server) removeRepository(w http.ResponseWriter, r *http.Request) {
 
 	defer closeStore()
 
-	if err := store.RemoveRepository(r.Context(), path); err != nil {
+	if err := store.RemoveRepository(r.Context(), userID, path); err != nil {
+		if errors.Is(err, storage.ErrRepositoryNotOwned) {
+			writeError(w, http.StatusForbidden, err)
+
+			return
+		}
+
 		writeError(w, http.StatusInternalServerError, err)
 
 		return

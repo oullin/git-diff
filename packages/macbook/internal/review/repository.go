@@ -422,6 +422,16 @@ func ReadRepositoryFile(ctx context.Context, launchPath, relPath string) (Reposi
 	}, nil
 }
 
+func ResolveRoot(ctx context.Context, launchPath string) (string, error) {
+	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+
+	if err != nil {
+		return "", fmt.Errorf("resolve git root: %w", err)
+	}
+
+	return strings.TrimSpace(root), nil
+}
+
 func ListBranches(ctx context.Context, launchPath string) ([]string, error) {
 	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
 
@@ -465,6 +475,32 @@ func CheckoutBranch(ctx context.Context, launchPath string, branch string) error
 
 	if _, err := gitOutput(ctx, root, "checkout", branch); err != nil {
 		return fmt.Errorf("checkout branch: %w", err)
+	}
+
+	return nil
+}
+
+func DeleteBranch(ctx context.Context, launchPath string, name string) error {
+	if err := validateBranchName(name); err != nil {
+		return err
+	}
+
+	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+
+	if err != nil {
+		return fmt.Errorf("resolve git root: %w", err)
+	}
+
+	root = strings.TrimSpace(root)
+
+	current, err := gitOutput(ctx, root, "branch", "--show-current")
+
+	if err == nil && strings.TrimSpace(current) == name {
+		return fmt.Errorf("cannot delete the currently checked-out branch")
+	}
+
+	if _, err := gitOutput(ctx, root, "branch", "-D", name); err != nil {
+		return fmt.Errorf("delete branch: %w", err)
 	}
 
 	return nil
