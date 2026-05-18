@@ -103,13 +103,14 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .repo-file-tree {
-  --trees-row-height: 24px;
   min-height: 120px;
+  font-family: var(--font-code);
+  font-size: 13px;
 }
 
 .repo-file-tree :deep([data-changed="true"]) {
   position: relative;
-  color: hsl(var(--primary, 220 90% 56%));
+  color: var(--codex-accent, var(--primary));
   font-weight: 500;
 }
 
@@ -121,7 +122,7 @@ onBeforeUnmount(() => {
   width: 6px;
   height: 6px;
   border-radius: 9999px;
-  background: hsl(var(--primary, 220 90% 56%));
+  background: var(--codex-accent, var(--primary));
   transform: translateY(-50%);
 }
 </style>

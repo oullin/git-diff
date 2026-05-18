@@ -14,7 +14,7 @@ export function installBrowserFallback() {
   }
 
   let preferences: UserPreferences = {
-    theme: "light",
+    theme: "dark",
     diffViewMode: "split",
     hideWhitespace: false,
     lastRepoRoot: "/Users/local/project",
