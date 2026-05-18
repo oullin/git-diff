@@ -3,8 +3,21 @@
 @import "@primer/primitives/dist/css/base/typography/typography.css";
 @import "@primer/primitives/dist/css/functional/typography/typography.css";
 @import "@primer/primitives/dist/css/functional/themes/dark.css";
-@import "@fontsource/inter/latin.css";
-@import "@fontsource-variable/jetbrains-mono/wght.css";
+@font-face {
+  font-display: swap;
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 400;
+  src: url("./fonts/firacode/FiraCode-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-display: swap;
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 600;
+  src: url("./fonts/firacode/FiraCode-SemiBold.woff2") format("woff2");
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -92,7 +105,7 @@
       "Segoe UI Emoji"
     );
   --font-code:
-    "JetBrains Mono Variable", "JetBrains Mono",
+    "Fira Code",
     var(
       --fontStack-monospace,
       ui-monospace,
@@ -387,6 +400,66 @@
     color: var(--diff-removed);
   }
 
+  .diff-line.diff-split-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2rem;
+    align-items: stretch;
+  }
+
+  .diff-line.diff-split-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .split-side {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    min-width: 0;
+  }
+
+  .split-side:disabled {
+    cursor: default;
+  }
+
+  .split-side + .split-side {
+    border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  }
+
+  .split-side .line-no {
+    border-right: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  }
+
+  .split-side.side-del {
+    background: var(--diff-removed-bg);
+  }
+
+  .split-side.side-del .line-no {
+    background: var(--diff-removed-bg-strong);
+    color: var(--diff-removed);
+  }
+
+  .split-side.side-add {
+    background: var(--diff-added-bg);
+  }
+
+  .split-side.side-add .line-no {
+    background: var(--diff-added-bg-strong);
+    color: var(--diff-added);
+  }
+
+  .split-side.side-empty {
+    background: var(--codex-section-muted);
+  }
+
+  .split-side.side-empty .line-no {
+    background: transparent;
+  }
+
   .comment-icon {
     align-self: center;
     color: var(--muted-foreground);
@@ -471,9 +544,10 @@
   .hero-title {
     font-family: var(--font-ui);
     font-size: clamp(2.25rem, 4vw, 3.25rem);
-    font-weight: 500;
+    font-weight: 600;
     line-height: 1.05;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
     color: var(--foreground);
   }
 
@@ -539,6 +613,7 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    corner-shape: squircle;
   }
 
   html,
@@ -554,7 +629,13 @@
     font-size: var(--text-body);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.025em;
+    text-wrap: balance;
   }
 
   code,

@@ -58,9 +58,12 @@ func (s Server) repositoryOpen(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		defer closeStore()
 
-		prefs, _ := store.GetUserPreferences(r.Context())
-		prefs.LastRepoRoot = state.Root
-		_, _ = store.SaveUserPreferences(r.Context(), prefs)
+		if s.Auth != nil && s.Auth.CurrentUserID() != 0 {
+			_, _ = store.SaveUIPreferences(r.Context(), s.Auth.CurrentUserID(), map[string]string{
+				storage.PrefKeyLastRepoRoot: state.Root,
+			})
+		}
+
 		_, _ = store.UpsertRepository(r.Context(), state.Root, "")
 	}
 

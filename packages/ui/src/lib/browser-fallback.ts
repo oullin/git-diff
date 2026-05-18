@@ -1,24 +1,31 @@
 import type {
+  AuthBootstrapResponse,
+  AuthLoginResponse,
+  AuthStateResponse,
+  AuthUser,
   DiffAppApi,
   Repository,
   RepositoryState,
   ReviewComment,
   ReviewDetail,
   ReviewSession,
-  UserPreferences,
+  UIPreferences,
 } from "@api";
+import { PREF_KEYS } from "@api";
 
 export function installBrowserFallback() {
   if (window.diffApp) {
     return;
   }
 
-  let preferences: UserPreferences = {
-    theme: "dark",
-    diffViewMode: "split",
-    hideWhitespace: false,
-    lastRepoRoot: "/Users/local/project",
+  let preferences: UIPreferences = {
+    values: {
+      [PREF_KEYS.theme]: "dark",
+      [PREF_KEYS.diffViewMode]: "split",
+      [PREF_KEYS.lastRepoRoot]: "/Users/local/project",
+    },
   };
+  const fallbackUser: AuthUser = { id: 1, osUsername: "local", displayName: "local" };
   let reviews: ReviewDetail[] = [];
   let repositories: Repository[] = [
     {
@@ -160,11 +167,36 @@ export function installBrowserFallback() {
         detail.comments = detail.comments.filter((comment) => comment.id !== request.commentId);
       }
     },
-    getUserPreferences: async () => preferences,
-    saveUserPreferences: async (next) => {
-      preferences = { ...preferences, ...next };
+    getUIPreferences: async () => preferences,
+    saveUIPreferences: async (patch) => {
+      const values = { ...preferences.values };
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === "") {
+          delete values[key];
+        } else {
+          values[key] = value;
+        }
+      }
+      preferences = { values, updatedAt: new Date().toISOString() };
       return preferences;
     },
+    getAuthState: async (): Promise<AuthStateResponse> => ({
+      osUsername: fallbackUser.osUsername,
+      needsSetup: false,
+      isAuthenticated: true,
+    }),
+    authBootstrap: async (): Promise<AuthBootstrapResponse> => ({
+      user: fallbackUser,
+      state: {
+        osUsername: fallbackUser.osUsername,
+        needsSetup: false,
+        isAuthenticated: true,
+      },
+    }),
+    authSetup: async (): Promise<AuthLoginResponse> => ({ user: fallbackUser }),
+    authLogin: async (): Promise<AuthLoginResponse> => ({ user: fallbackUser }),
+    authLogout: async () => {},
+    authWipe: async () => {},
     openDevTools: async () => {},
   };
 

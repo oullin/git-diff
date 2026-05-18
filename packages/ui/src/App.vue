@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FolderOpen,
   GitPullRequest,
+  LogOut,
   MessageSquare,
   Plus,
   RefreshCw,
@@ -15,12 +16,23 @@ import {
   X,
 } from "lucide-vue-next";
 import { LazyRichTextEditor, type RichTextFeatures } from "@ui/rich-text-editor";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@ui/accordion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@ui/dropdown-menu";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@ui/resizable";
 import RepoFileTree from "@entry/components/RepoFileTree.vue";
 import FileContentViewer from "@entry/components/FileContentViewer.vue";
+import AuthSetup from "@entry/components/AuthSetup.vue";
+import AuthLogin from "@entry/components/AuthLogin.vue";
 import { SafeHtml, sanitizeHtml } from "@ui/safe-html";
 import type {
+  AuthLoginResponse,
+  AuthUser,
   ChangedFile,
   DiffSection,
   DiffViewMode,
@@ -30,8 +42,8 @@ import type {
   ReviewComment,
   ReviewDetail,
   ReviewSession,
-  UserPreferences,
 } from "@api";
+import { PREF_KEYS } from "@api";
 import { cn } from "@lib/utils";
 import { ensureLanguage, highlightLine, highlighterRev, languageFor } from "@lib/highlight";
 
@@ -43,6 +55,11 @@ type PatchLine = {
   newLine?: number;
 };
 
+type SplitRow =
+  | { id: string; kind: "meta"; line: PatchLine }
+  | { id: string; kind: "context"; line: PatchLine }
+  | { id: string; kind: "pair"; left?: PatchLine; right?: PatchLine };
+
 const commentFeatures: RichTextFeatures = {
   checklist: false,
   images: false,
@@ -52,16 +69,55 @@ const commentFeatures: RichTextFeatures = {
   tables: false,
 };
 
+const DEFAULT_PANEL_RIGHT_WIDTH = 25;
+const DEFAULT_PANEL_FILE_TREE_WIDTH = 28;
+
+type AuthMode = "loading" | "setup" | "login" | "ready";
+
 const state = ref<RepositoryState | null>(null);
-const preferences = ref<UserPreferences>({
-  theme: "dark",
-  diffViewMode: "split",
-  hideWhitespace: false,
-  lastRepoRoot: "",
+const prefValues = ref<Record<string, string>>({});
+const authMode = ref<AuthMode>("loading");
+const authOSUsername = ref("");
+const currentUser = ref<AuthUser | null>(null);
+
+const theme = computed(() => prefValues.value[PREF_KEYS.theme] ?? "dark");
+const diffViewMode = computed<DiffViewMode>(
+  () => (prefValues.value[PREF_KEYS.diffViewMode] as DiffViewMode) || "split",
+);
+const hideWhitespace = computed(() => prefValues.value[PREF_KEYS.diffHideWhitespace] === "1");
+const lastRepoRoot = computed(() => prefValues.value[PREF_KEYS.lastRepoRoot] ?? "");
+const panelFileTreeWidth = computed(() =>
+  parsePercent(prefValues.value[PREF_KEYS.panelFileTreeWidth]),
+);
+const panelRightWidth = computed(() => parsePercent(prefValues.value[PREF_KEYS.panelRightWidth]));
+
+function parsePercent(raw: string | undefined): number | null {
+  if (!raw) {
+    return null;
+  }
+
+  const value = Number(raw);
+
+  if (!Number.isFinite(value) || value <= 0 || value >= 100) {
+    return null;
+  }
+
+  return value;
+}
+
+const rightPanelDefault = computed(() => panelRightWidth.value ?? DEFAULT_PANEL_RIGHT_WIDTH);
+const fileTreeDefault = computed(() => panelFileTreeWidth.value ?? DEFAULT_PANEL_FILE_TREE_WIDTH);
+const diffPanelDefault = computed(() => {
+  const remaining =
+    100 - fileTreeDefault.value - (reviewPanelOpen.value ? rightPanelDefault.value : 0);
+
+  return Math.max(25, remaining);
 });
 const repositories = ref<Repository[]>([]);
 const activeRepoPath = ref<string>("");
-const openAccordion = ref<string>("");
+const activeRepo = computed(
+  () => repositories.value.find((repo) => repo.path === activeRepoPath.value) ?? null,
+);
 const reviews = ref<ReviewSession[]>([]);
 const activeReview = ref<ReviewDetail | null>(null);
 const selectedPath = ref("");
@@ -148,23 +204,78 @@ function highlightedLine(text: string, file: ChangedFile): string {
 }
 
 onMounted(async () => {
-  preferences.value = normalizePreferences(await window.diffApp.getUserPreferences());
+  await bootstrapAuth();
+});
+
+async function bootstrapAuth() {
+  authMode.value = "loading";
+
+  try {
+    const result = await window.diffApp.authBootstrap();
+    authOSUsername.value = result.state.osUsername;
+
+    if (result.user) {
+      currentUser.value = result.user;
+      await enterApp();
+
+      return;
+    }
+
+    authMode.value = result.state.needsSetup ? "setup" : "login";
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+    authMode.value = "login";
+  }
+}
+
+async function enterApp() {
+  authMode.value = "ready";
+  prefValues.value = (await window.diffApp.getUIPreferences()).values;
   repositories.value = await window.diffApp.listRepositories();
-  const lastRoot = preferences.value.lastRepoRoot;
+  const lastRoot = lastRepoRoot.value;
   const initial =
     repositories.value.find((repo) => repo.path === lastRoot)?.path ??
     repositories.value[0]?.path ??
     "";
+
   if (initial) {
     await openRepo(initial);
   }
-});
+}
+
+async function handleAuthCompleted(response: AuthLoginResponse) {
+  currentUser.value = response.user;
+  await enterApp();
+}
+
+async function handleAuthWiped() {
+  currentUser.value = null;
+  authMode.value = "setup";
+}
+
+async function logOut() {
+  try {
+    await window.diffApp.authLogout();
+  } catch {
+    // ignore — we'll still reset locally
+  }
+
+  currentUser.value = null;
+  prefValues.value = {};
+  state.value = null;
+  repositories.value = [];
+  activeRepoPath.value = "";
+  reviews.value = [];
+  activeReview.value = null;
+  selectedPath.value = "";
+  selectedRepoFile.value = null;
+  await bootstrapAuth();
+}
 
 async function openRepo(path: string) {
   loading.value = true;
   error.value = "";
   activeRepoPath.value = path;
-  openAccordion.value = path;
   try {
     state.value = await window.diffApp.repositoryState(path);
     selectedPath.value = state.value.files[0]?.path ?? "";
@@ -178,7 +289,7 @@ async function openRepo(path: string) {
     activeReview.value = reviews.value[0]
       ? await window.diffApp.reviewDetail(reviews.value[0].id)
       : null;
-    await savePreferences({ lastRepoRoot: state.value.root });
+    await savePreferences({ [PREF_KEYS.lastRepoRoot]: state.value.root });
     await window.diffApp.upsertRepository({ path: state.value.root });
     await refreshRepositoryList();
     activeRepoPath.value = state.value.root;
@@ -211,9 +322,7 @@ async function refresh() {
 }
 
 async function addRepository() {
-  const chosen = await window.diffApp.chooseRepository(
-    activeRepoPath.value || preferences.value.lastRepoRoot,
-  );
+  const chosen = await window.diffApp.chooseRepository(activeRepoPath.value || lastRepoRoot.value);
   if (chosen) {
     await openRepo(chosen);
   }
@@ -383,30 +492,63 @@ async function deleteComment(comment: ReviewComment) {
 }
 
 async function setViewMode(mode: DiffViewMode) {
-  await savePreferences({ diffViewMode: mode });
+  await savePreferences({ [PREF_KEYS.diffViewMode]: mode });
 }
 
 async function toggleWhitespace() {
-  await savePreferences({ hideWhitespace: !preferences.value.hideWhitespace });
+  await savePreferences({ [PREF_KEYS.diffHideWhitespace]: hideWhitespace.value ? "" : "1" });
 }
 
-async function savePreferences(next: Partial<UserPreferences>) {
-  preferences.value = normalizePreferences(
-    await window.diffApp.saveUserPreferences({
-      ...preferences.value,
-      ...next,
-    }),
-  );
+async function savePreferences(patch: Record<string, string>) {
+  const next = { ...prefValues.value, ...patch };
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === "") {
+      delete next[key];
+    } else {
+      next[key] = value;
+    }
+  }
+
+  prefValues.value = next;
+
+  try {
+    const response = await window.diffApp.saveUIPreferences(patch);
+    prefValues.value = response.values;
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  }
 }
 
-function normalizePreferences(value: UserPreferences): UserPreferences {
-  return {
-    theme: "dark",
-    diffViewMode: value.diffViewMode || "split",
-    hideWhitespace: Boolean(value.hideWhitespace),
-    lastRepoRoot: value.lastRepoRoot || "",
-    updatedAt: value.updatedAt,
-  };
+const panelSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function schedulePanelSave(key: string, value: number) {
+  const existing = panelSaveTimers.get(key);
+
+  if (existing) {
+    clearTimeout(existing);
+  }
+
+  const timer = setTimeout(() => {
+    panelSaveTimers.delete(key);
+    void savePreferences({ [key]: value.toFixed(2) });
+  }, 300);
+
+  panelSaveTimers.set(key, timer);
+}
+
+function handleOuterLayout(sizes: number[]) {
+  if (sizes.length === 0) {
+    return;
+  }
+
+  if (activeRepoPath.value && !loading.value && !error.value) {
+    schedulePanelSave(PREF_KEYS.panelFileTreeWidth, sizes[0]!);
+  }
+
+  if (sizes.length >= 2 && reviewPanelOpen.value) {
+    schedulePanelSave(PREF_KEYS.panelRightWidth, sizes[sizes.length - 1]!);
+  }
 }
 
 function parsePatch(section: DiffSection): PatchLine[] {
@@ -460,9 +602,63 @@ function parsePatch(section: DiffSection): PatchLine[] {
     newLine++;
   }
 
-  return preferences.value.hideWhitespace
+  return hideWhitespace.value
     ? lines.filter((line) => line.type === "meta" || line.text.trim() !== "")
     : lines;
+}
+
+function splitPatch(section: DiffSection): SplitRow[] {
+  const lines = parsePatch(section);
+  const rows: SplitRow[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i]!;
+
+    if (line.type === "meta") {
+      rows.push({ id: `${line.id}:split-meta`, kind: "meta", line });
+      i++;
+      continue;
+    }
+
+    if (line.type === "context") {
+      rows.push({ id: `${line.id}:split-ctx`, kind: "context", line });
+      i++;
+      continue;
+    }
+
+    const dels: PatchLine[] = [];
+    while (i < lines.length && lines[i]!.type === "del") {
+      dels.push(lines[i]!);
+      i++;
+    }
+
+    const adds: PatchLine[] = [];
+    while (i < lines.length && lines[i]!.type === "add") {
+      adds.push(lines[i]!);
+      i++;
+    }
+
+    const pairCount = Math.max(dels.length, adds.length);
+    for (let j = 0; j < pairCount; j++) {
+      const left = dels[j];
+      const right = adds[j];
+      const id = `${(left ?? right)!.id}:split-pair:${j}`;
+      rows.push({ id, kind: "pair", left, right });
+    }
+  }
+
+  return rows;
+}
+
+function splitRowCommentLines(row: SplitRow): PatchLine[] {
+  if (row.kind === "pair") {
+    return [row.left, row.right].filter((line): line is PatchLine => Boolean(line));
+  }
+  if (row.kind === "context") {
+    return [row.line];
+  }
+  return [];
 }
 
 function commentsFor(file: ChangedFile, section: DiffSection, line?: PatchLine) {
@@ -509,20 +705,95 @@ function formatDate(value: string) {
 
 <template>
   <div
+    v-if="authMode === 'loading'"
+    class="grid h-screen place-items-center bg-background text-sm text-muted-foreground"
+  >
+    Loading…
+  </div>
+  <AuthSetup
+    v-else-if="authMode === 'setup'"
+    :os-username="authOSUsername"
+    @completed="handleAuthCompleted"
+  />
+  <AuthLogin
+    v-else-if="authMode === 'login'"
+    :os-username="authOSUsername"
+    @logged-in="handleAuthCompleted"
+    @wiped="handleAuthWiped"
+  />
+  <div
+    v-else
     class="flex h-screen flex-col overflow-hidden bg-background pt-[var(--app-header-height)] text-foreground"
   >
     <header
       class="fixed inset-x-0 top-0 z-50 flex h-[var(--app-header-height)] items-center gap-3 border-b border-border bg-section-muted px-4"
     >
-      <GitPullRequest class="h-5 w-5 text-muted-foreground" />
-      <div class="min-w-0 flex-1">
-        <div class="truncate text-sm font-semibold">{{ state?.root ?? "Git Diff" }}</div>
-        <div v-if="state" class="text-xs text-muted-foreground">
-          {{ state.branch || "detached" }} · {{ state.headSha || "no HEAD" }} ·
-          <span class="text-success">+{{ state.additions }}</span>
-          <span class="text-destructive">-{{ state.deletions }}</span>
-        </div>
+      <div class="relative w-72 max-w-[40%]">
+        <Search
+          class="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
+        <input
+          v-model="searchQuery"
+          class="h-8 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+          placeholder="Filter files"
+        />
       </div>
+      <div class="flex-1" />
+      <div v-if="state" class="truncate text-xs text-muted-foreground" :title="state.root">
+        {{ state.branch || "detached" }} · {{ state.headSha || "no HEAD" }} ·
+        <span class="text-success">+{{ state.additions }}</span>
+        <span class="text-destructive">-{{ state.deletions }}</span>
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <button
+            class="toolbar-btn min-w-0 max-w-[260px]"
+            type="button"
+            :title="activeRepo?.path ?? ''"
+          >
+            <FolderOpen class="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span class="min-w-0 truncate text-sm font-semibold">
+              {{ activeRepo?.name ?? state?.root ?? "Select repository" }}
+            </span>
+            <ChevronDown class="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" class="w-[320px]">
+          <DropdownMenuLabel>Repositories</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <div v-if="repositories.length === 0" class="px-2 py-3 text-xs text-muted-foreground">
+            No repositories yet.
+          </div>
+          <DropdownMenuItem
+            v-for="repo in repositories"
+            :key="repo.path"
+            class="group flex items-center gap-2"
+            @select="openRepo(repo.path)"
+          >
+            <Check
+              :class="
+                cn(
+                  'h-3.5 w-3.5 shrink-0',
+                  activeRepoPath === repo.path ? 'opacity-100' : 'opacity-0',
+                )
+              "
+            />
+            <span class="min-w-0 flex-1 truncate" :title="repo.path">{{ repo.name }}</span>
+            <button
+              class="icon-btn opacity-0 group-hover:opacity-100"
+              type="button"
+              title="Remove from list"
+              @click.stop="removeRepository(repo.path)"
+            >
+              <Trash2 class="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem @select="addRepository">
+            <Plus class="h-4 w-4" />Add repository…
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <button class="toolbar-btn" type="button" @click="refresh" :disabled="!state">
         <RefreshCw class="h-4 w-4" />Refresh
       </button>
@@ -531,14 +802,14 @@ function formatDate(value: string) {
       </button>
       <div class="flex rounded-md border border-border p-0.5">
         <button
-          :class="cn('seg-btn', preferences.diffViewMode === 'split' && 'seg-active')"
+          :class="cn('seg-btn', diffViewMode === 'split' && 'seg-active')"
           type="button"
           @click="setViewMode('split')"
         >
           Split
         </button>
         <button
-          :class="cn('seg-btn', preferences.diffViewMode === 'unified' && 'seg-active')"
+          :class="cn('seg-btn', diffViewMode === 'unified' && 'seg-active')"
           type="button"
           @click="setViewMode('unified')"
         >
@@ -546,391 +817,403 @@ function formatDate(value: string) {
         </button>
       </div>
       <button class="toolbar-btn" type="button" @click="toggleWhitespace">Whitespace</button>
+      <button
+        v-if="currentUser"
+        class="toolbar-btn"
+        type="button"
+        :title="`Log out ${currentUser.osUsername}`"
+        @click="logOut"
+      >
+        <LogOut class="h-4 w-4" />Log out
+      </button>
     </header>
 
-    <ResizablePanelGroup direction="horizontal" class="min-h-0 flex-1 overflow-hidden">
-      <ResizablePanel
-        :default-size="reviewPanelOpen ? 22 : 25"
-        :min-size="14"
-        :max-size="50"
-        class="flex min-h-0 flex-col overflow-hidden border-r border-border bg-sidebar"
-        style="min-width: 220px"
-      >
-        <div class="flex items-center justify-between border-b border-border p-3">
-          <div class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Repositories
-          </div>
-          <button class="icon-btn" type="button" title="Add repository" @click="addRepository">
-            <Plus class="h-4 w-4" />
-          </button>
-        </div>
-        <div class="min-h-0 flex-1 overflow-auto">
-          <div v-if="repositories.length === 0" class="px-3 py-4 text-xs text-muted-foreground">
-            No repositories yet. Click + to add one.
-          </div>
-          <Accordion
-            v-else
-            type="single"
-            collapsible
-            :model-value="openAccordion"
-            class="w-full"
-            @update:model-value="(value) => (openAccordion = (value as string) ?? '')"
-          >
-            <AccordionItem
-              v-for="repo in repositories"
-              :key="repo.path"
-              :value="repo.path"
-              class="border-b border-border last:border-b-0"
-            >
-              <div
-                :class="
-                  cn(
-                    'group flex items-center gap-1 px-3',
-                    activeRepoPath === repo.path && 'bg-muted',
-                  )
-                "
-              >
-                <AccordionTrigger
-                  class="flex-1 min-w-0 py-2 hover:no-underline"
-                  @click="openRepo(repo.path)"
-                >
-                  <span class="flex min-w-0 items-center gap-2">
-                    <FolderOpen class="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span class="min-w-0 truncate text-left text-sm" :title="repo.path">
-                      {{ repo.name }}
-                    </span>
-                  </span>
-                </AccordionTrigger>
-                <button
-                  class="icon-btn opacity-0 group-hover:opacity-100"
-                  type="button"
-                  title="Remove from list"
-                  @click.stop="removeRepository(repo.path)"
-                >
-                  <Trash2 class="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <AccordionContent class="px-2 pb-2 pt-0">
-                <template v-if="activeRepoPath !== repo.path">
-                  <button
-                    class="px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
-                    type="button"
-                    @click="openRepo(repo.path)"
-                  >
-                    Open to load files…
-                  </button>
-                </template>
-                <template v-else-if="loading">
-                  <div class="px-3 py-2 text-xs text-muted-foreground">Loading…</div>
-                </template>
-                <template v-else>
-                  <div class="px-3 py-2 text-xs text-muted-foreground">
-                    {{ repoPaths.length }} files · {{ files.length }} changed
-                  </div>
-                </template>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      </ResizablePanel>
-      <ResizableHandle with-handle />
-
-      <ResizablePanel
-        :default-size="reviewPanelOpen ? 53 : 75"
-        :min-size="25"
-        class="flex min-h-0 min-w-0 flex-col overflow-hidden bg-panel"
-      >
-        <div v-if="!activeRepoPath" class="flex flex-1 flex-col overflow-auto bg-background">
-          <div class="mx-auto w-full max-w-5xl px-8 pt-16 pb-10">
-            <div class="hero">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-section"
-              >
-                <GitPullRequest class="h-5 w-5 text-muted-foreground" />
-              </div>
-              <h1 class="hero-title">A local git diff viewer</h1>
-              <p class="hero-subtitle">
-                Inspect changes across your repositories with a fast file tree, side-by-side diffs,
-                and lightweight local reviews. Made for the terminal-native developer.
-              </p>
-              <div class="hero-cta-row">
-                <button class="toolbar-btn" type="button" @click="addRepository">
-                  <Plus class="h-4 w-4" />Add repository
-                </button>
-                <button
-                  v-if="preferences.lastRepoRoot"
-                  class="toolbar-btn"
-                  type="button"
-                  @click="openRepo(preferences.lastRepoRoot)"
-                >
-                  <FolderOpen class="h-4 w-4" />Open last repo
-                </button>
-              </div>
-              <div class="hero-version">No repository selected.</div>
-            </div>
-          </div>
-
-          <div class="mx-auto w-full max-w-5xl px-8 pb-16">
-            <div class="window-frame">
-              <div class="window-titlebar">
-                <span class="window-dots"><span /><span /><span /></span>
-                <span class="window-title">git-diff</span>
-              </div>
-              <div class="grid grid-cols-[220px_1fr] min-h-[280px]">
-                <div class="border-r border-border bg-panel p-3">
-                  <div class="text-xs text-muted-foreground font-mono">
-                    Add a repository to see your file tree here.
-                  </div>
-                </div>
-                <div class="p-6 font-mono text-xs text-muted-foreground">
-                  <div>// Your changed files appear here.</div>
-                  <div class="mt-1">// Click "Add repository" to begin.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div
-          v-else-if="loading"
-          class="grid flex-1 place-items-center text-sm text-muted-foreground"
+    <ResizablePanelGroup
+      direction="horizontal"
+      class="min-h-0 flex-1 overflow-hidden"
+      @layout="handleOuterLayout"
+    >
+      <template v-if="!activeRepoPath || loading || error">
+        <ResizablePanel
+          :default-size="reviewPanelOpen ? 100 - rightPanelDefault : 100"
+          :min-size="25"
+          class="flex min-h-0 min-w-0 flex-col overflow-hidden bg-panel"
         >
-          Loading repository…
-        </div>
-        <div v-else-if="error" class="grid flex-1 place-items-center p-8">
-          <div class="max-w-xl rounded-md border border-border bg-section p-5">
-            <div class="font-semibold">Unable to read repository</div>
-            <p class="mt-2 text-sm text-muted-foreground">{{ error }}</p>
-            <button class="mt-4 toolbar-btn" type="button" @click="addRepository">
-              Choose another repository
-            </button>
-          </div>
-        </div>
-        <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
-          <div class="window-frame flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div class="window-titlebar">
-              <span class="window-dots"><span /><span /><span /></span>
-              <span class="window-title truncate">
-                {{ selectedPath || state?.root || "git-diff" }}
-              </span>
-            </div>
-            <ResizablePanelGroup direction="horizontal" class="min-h-0 flex-1 overflow-hidden">
-              <ResizablePanel
-                :default-size="28"
-                :min-size="15"
-                :max-size="60"
-                class="flex min-h-0 flex-col overflow-hidden border-r border-border bg-sidebar"
-                style="min-width: 240px"
-              >
-                <aside class="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <div class="border-b border-border p-3">
-                    <div class="relative">
-                      <Search
-                        class="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground"
-                      />
-                      <input
-                        v-model="searchQuery"
-                        class="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                        placeholder="Filter files"
-                      />
-                    </div>
-                    <div class="mt-2 flex items-center justify-between gap-3">
-                      <span class="text-xs text-muted-foreground">
-                        {{ visibleTreePaths.length }}
-                        {{ repoViewMode === "all" ? "files" : "changed" }}
-                      </span>
-                      <div
-                        class="inline-flex items-center rounded-md border border-input bg-background p-0.5 text-xs"
-                        role="tablist"
-                        aria-label="File view mode"
-                      >
-                        <button
-                          :class="
-                            cn(
-                              'rounded px-2 py-1 transition-colors',
-                              repoViewMode === 'changed'
-                                ? 'bg-muted text-foreground'
-                                : 'text-muted-foreground hover:text-foreground',
-                            )
-                          "
-                          type="button"
-                          role="tab"
-                          :aria-selected="repoViewMode === 'changed'"
-                          @click="repoViewMode = 'changed'"
-                        >
-                          Changed
-                        </button>
-                        <button
-                          :class="
-                            cn(
-                              'rounded px-2 py-1 transition-colors',
-                              repoViewMode === 'all'
-                                ? 'bg-muted text-foreground'
-                                : 'text-muted-foreground hover:text-foreground',
-                            )
-                          "
-                          type="button"
-                          role="tab"
-                          :aria-selected="repoViewMode === 'all'"
-                          @click="repoViewMode = 'all'"
-                        >
-                          All
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    v-if="visibleTreePaths.length === 0"
-                    class="px-3 py-2 text-xs text-muted-foreground"
-                  >
-                    {{
-                      repoViewMode === "all" ? "No files match the filter." : "No changed files."
-                    }}
-                  </div>
-                  <RepoFileTree
-                    v-else
-                    :key="repoViewMode"
-                    :paths="visibleTreePaths"
-                    :selected-path="selectedPath"
-                    :changed-paths="changedPathsSet"
-                    :initial-expansion="repoViewMode === 'all' ? 'closed' : 'open'"
-                    class="min-h-0 flex-1 overflow-auto p-2"
-                    @select="selectFile"
-                  />
-                </aside>
-              </ResizablePanel>
-
-              <ResizableHandle with-handle />
-
-              <ResizablePanel
-                :default-size="72"
-                :min-size="30"
-                class="flex min-h-0 min-w-0 flex-col overflow-hidden bg-panel"
-                style="min-width: 320px"
-              >
-                <section
-                  :class="
-                    cn(
-                      'min-h-0 flex-1 bg-panel',
-                      selectedPath && !selectedIsChanged
-                        ? 'flex flex-col overflow-hidden'
-                        : 'overflow-auto p-4',
-                    )
-                  "
+          <div v-if="!activeRepoPath" class="flex flex-1 flex-col overflow-auto bg-background">
+            <div class="mx-auto w-full max-w-5xl px-8 pt-16 pb-10">
+              <div class="hero">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-section"
                 >
-                  <FileContentViewer
-                    v-if="selectedPath && !selectedIsChanged"
-                    :file="selectedRepoFile"
-                    :path="selectedPath"
-                    :loading="selectedFileLoading"
-                    :error="selectedFileError"
-                  />
-                  <div
-                    v-else-if="files.length === 0"
-                    class="grid h-full place-items-center text-sm text-muted-foreground"
+                  <GitPullRequest class="h-5 w-5 text-muted-foreground" />
+                </div>
+                <h1 class="hero-title">A local git diff viewer</h1>
+                <p class="hero-subtitle">
+                  Inspect changes across your repositories with a fast file tree, side-by-side
+                  diffs, and lightweight local reviews. Made for the terminal-native developer.
+                </p>
+                <div class="hero-cta-row">
+                  <button class="toolbar-btn" type="button" @click="addRepository">
+                    <Plus class="h-4 w-4" />Add repository
+                  </button>
+                  <button
+                    v-if="lastRepoRoot"
+                    class="toolbar-btn"
+                    type="button"
+                    @click="openRepo(lastRepoRoot)"
                   >
-                    Select a file from the tree to preview its contents.
-                  </div>
-                  <template v-else>
-                    <article
-                      v-for="file in files"
-                      :id="fileElementID(file.path)"
-                      :key="file.path"
-                      class="mb-4 overflow-hidden rounded-md border border-border bg-background"
-                    >
-                      <header
-                        class="flex min-h-12 items-center gap-3 border-b border-border bg-section-muted px-3"
-                      >
-                        <button
-                          class="icon-btn"
-                          type="button"
-                          @click="collapsed[file.path] = !collapsed[file.path]"
-                        >
-                          <ChevronRight v-if="collapsed[file.path]" class="h-4 w-4" />
-                          <ChevronDown v-else class="h-4 w-4" />
-                        </button>
-                        <span :class="cn('status-dot', `status-${file.status}`)">{{
-                          statusLabel(file)
-                        }}</span>
-                        <div class="min-w-0 flex-1">
-                          <div class="truncate text-sm font-semibold">{{ file.path }}</div>
-                          <div v-if="file.oldPath" class="truncate text-xs text-muted-foreground">
-                            {{ file.oldPath }}
-                          </div>
-                        </div>
-                        <div class="text-xs">
-                          <span class="text-success">+{{ file.additions }}</span>
-                          <span class="ml-2 text-destructive">-{{ file.deletions }}</span>
-                        </div>
-                        <button class="toolbar-btn" type="button" @click="toggleViewed(file)">
-                          <Check class="h-4 w-4" />{{ isViewed(file) ? "Viewed" : "Mark viewed" }}
-                        </button>
-                      </header>
+                    <FolderOpen class="h-4 w-4" />Open last repo
+                  </button>
+                </div>
+                <div class="hero-version">No repository selected.</div>
+              </div>
+            </div>
 
-                      <div v-if="!collapsed[file.path]">
-                        <section
-                          v-for="section in file.sections"
-                          :key="section.id"
-                          class="border-b border-border last:border-b-0"
-                        >
-                          <div
-                            class="border-b border-border bg-muted px-3 py-2 text-xs font-medium uppercase text-muted-foreground"
-                          >
-                            {{ section.kind }}
-                          </div>
-                          <div class="diff-table" :data-view-mode="preferences.diffViewMode">
-                            <template v-for="line in parsePatch(section)" :key="line.id">
-                              <button
-                                :class="cn('diff-line', `diff-${line.type}`)"
-                                type="button"
-                                @click="openComment(file, section, line)"
-                              >
-                                <span class="line-no">{{ line.oldLine ?? "" }}</span>
-                                <span class="line-no">{{ line.newLine ?? "" }}</span>
-                                <code
-                                  v-if="line.type !== 'meta'"
-                                  v-html="highlightedLine(line.text || ' ', file)"
-                                />
-                                <code v-else>{{ line.text || " " }}</code>
-                                <MessageSquare
-                                  v-if="line.type !== 'meta'"
-                                  class="comment-icon h-3.5 w-3.5"
-                                />
-                              </button>
-                              <div
-                                v-for="comment in commentsFor(file, section, line)"
-                                :key="comment.id"
-                                class="comment-row"
-                              >
-                                <div class="text-xs font-semibold">
-                                  {{ comment.authorLabel }} commented on line
-                                  {{ comment.lineNumber }}
-                                </div>
-                                <SafeHtml :html="comment.bodyHtml" class="mt-2 text-sm" />
-                                <button
-                                  class="mt-2 text-xs text-destructive"
-                                  type="button"
-                                  @click="deleteComment(comment)"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </template>
-                          </div>
-                        </section>
-                      </div>
-                    </article>
-                  </template>
-                </section>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+            <div class="mx-auto w-full max-w-5xl px-8 pb-16">
+              <div class="window-frame">
+                <div class="window-titlebar">
+                  <span class="window-dots"><span /><span /><span /></span>
+                  <span class="window-title">git-diff</span>
+                </div>
+                <div class="grid grid-cols-[220px_1fr] min-h-[280px]">
+                  <div class="border-r border-border bg-panel p-3">
+                    <div class="text-xs text-muted-foreground font-mono">
+                      Add a repository to see your file tree here.
+                    </div>
+                  </div>
+                  <div class="p-6 font-mono text-xs text-muted-foreground">
+                    <div>// Your changed files appear here.</div>
+                    <div class="mt-1">// Click "Add repository" to begin.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </ResizablePanel>
+          <div
+            v-else-if="loading"
+            class="grid flex-1 place-items-center text-sm text-muted-foreground"
+          >
+            Loading repository…
+          </div>
+          <div v-else class="grid flex-1 place-items-center p-8">
+            <div class="max-w-xl rounded-md border border-border bg-section p-5">
+              <div class="font-semibold">Unable to read repository</div>
+              <p class="mt-2 text-sm text-muted-foreground">{{ error }}</p>
+              <button class="mt-4 toolbar-btn" type="button" @click="addRepository">
+                Choose another repository
+              </button>
+            </div>
+          </div>
+        </ResizablePanel>
+      </template>
+      <template v-else>
+        <ResizablePanel
+          :default-size="fileTreeDefault"
+          :min-size="15"
+          :max-size="60"
+          class="flex min-h-0 flex-col overflow-hidden border-r border-border bg-sidebar"
+          style="min-width: 240px"
+        >
+          <aside class="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div class="border-b border-border p-3">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs text-muted-foreground">
+                  {{ visibleTreePaths.length }}
+                  {{ repoViewMode === "all" ? "files" : "changed" }}
+                </span>
+                <div
+                  class="inline-flex items-center rounded-md border border-input bg-background p-0.5 text-xs"
+                  role="tablist"
+                  aria-label="File view mode"
+                >
+                  <button
+                    :class="
+                      cn(
+                        'rounded px-2 py-1 transition-colors',
+                        repoViewMode === 'changed'
+                          ? 'bg-muted text-foreground'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )
+                    "
+                    type="button"
+                    role="tab"
+                    :aria-selected="repoViewMode === 'changed'"
+                    @click="repoViewMode = 'changed'"
+                  >
+                    Changed
+                  </button>
+                  <button
+                    :class="
+                      cn(
+                        'rounded px-2 py-1 transition-colors',
+                        repoViewMode === 'all'
+                          ? 'bg-muted text-foreground'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )
+                    "
+                    type="button"
+                    role="tab"
+                    :aria-selected="repoViewMode === 'all'"
+                    @click="repoViewMode = 'all'"
+                  >
+                    All
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div
+              v-if="visibleTreePaths.length === 0"
+              class="px-3 py-2 text-xs text-muted-foreground"
+            >
+              {{ repoViewMode === "all" ? "No files match the filter." : "No changed files." }}
+            </div>
+            <RepoFileTree
+              v-else
+              :key="repoViewMode"
+              :paths="visibleTreePaths"
+              :selected-path="selectedPath"
+              :changed-paths="changedPathsSet"
+              :initial-expansion="repoViewMode === 'all' ? 'closed' : 'open'"
+              class="min-h-0 flex-1 overflow-auto p-2"
+              @select="selectFile"
+            />
+          </aside>
+        </ResizablePanel>
+
+        <ResizableHandle with-handle />
+
+        <ResizablePanel
+          :default-size="diffPanelDefault"
+          :min-size="30"
+          class="flex min-h-0 min-w-0 flex-col overflow-hidden bg-panel"
+          style="min-width: 320px"
+        >
+          <section
+            :class="
+              cn(
+                'min-h-0 flex-1 bg-panel',
+                selectedPath && !selectedIsChanged
+                  ? 'flex flex-col overflow-hidden'
+                  : 'overflow-auto p-4',
+              )
+            "
+          >
+            <FileContentViewer
+              v-if="selectedPath && !selectedIsChanged"
+              :file="selectedRepoFile"
+              :path="selectedPath"
+              :loading="selectedFileLoading"
+              :error="selectedFileError"
+            />
+            <div
+              v-else-if="files.length === 0"
+              class="grid h-full place-items-center text-sm text-muted-foreground"
+            >
+              Select a file from the tree to preview its contents.
+            </div>
+            <template v-else>
+              <article
+                v-for="file in files"
+                :id="fileElementID(file.path)"
+                :key="file.path"
+                class="mb-4 overflow-hidden rounded-md border border-border bg-background"
+              >
+                <header
+                  class="flex min-h-12 items-center gap-3 border-b border-border bg-section-muted px-3"
+                >
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    @click="collapsed[file.path] = !collapsed[file.path]"
+                  >
+                    <ChevronRight v-if="collapsed[file.path]" class="h-4 w-4" />
+                    <ChevronDown v-else class="h-4 w-4" />
+                  </button>
+                  <span :class="cn('status-dot', `status-${file.status}`)">{{
+                    statusLabel(file)
+                  }}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm font-semibold">{{ file.path }}</div>
+                    <div v-if="file.oldPath" class="truncate text-xs text-muted-foreground">
+                      {{ file.oldPath }}
+                    </div>
+                  </div>
+                  <div class="text-xs">
+                    <span class="text-success">+{{ file.additions }}</span>
+                    <span class="ml-2 text-destructive">-{{ file.deletions }}</span>
+                  </div>
+                  <button class="toolbar-btn" type="button" @click="toggleViewed(file)">
+                    <Check class="h-4 w-4" />{{ isViewed(file) ? "Viewed" : "Mark viewed" }}
+                  </button>
+                </header>
+
+                <div v-if="!collapsed[file.path]">
+                  <section
+                    v-for="section in file.sections"
+                    :key="section.id"
+                    class="border-b border-border last:border-b-0"
+                  >
+                    <div
+                      class="border-b border-border bg-muted px-3 py-2 text-xs font-medium uppercase text-muted-foreground"
+                    >
+                      {{ section.kind }}
+                    </div>
+                    <div class="diff-table" :data-view-mode="diffViewMode">
+                      <template v-if="diffViewMode === 'unified'">
+                        <template v-for="line in parsePatch(section)" :key="line.id">
+                          <button
+                            :class="cn('diff-line', `diff-${line.type}`)"
+                            type="button"
+                            @click="openComment(file, section, line)"
+                          >
+                            <span class="line-no">{{ line.oldLine ?? "" }}</span>
+                            <span class="line-no">{{ line.newLine ?? "" }}</span>
+                            <code
+                              v-if="line.type !== 'meta'"
+                              v-html="highlightedLine(line.text || ' ', file)"
+                            />
+                            <code v-else>{{ line.text || " " }}</code>
+                            <MessageSquare
+                              v-if="line.type !== 'meta'"
+                              class="comment-icon h-3.5 w-3.5"
+                            />
+                          </button>
+                          <div
+                            v-for="comment in commentsFor(file, section, line)"
+                            :key="comment.id"
+                            class="comment-row"
+                          >
+                            <div class="text-xs font-semibold">
+                              {{ comment.authorLabel }} commented on line
+                              {{ comment.lineNumber }}
+                            </div>
+                            <SafeHtml :html="comment.bodyHtml" class="mt-2 text-sm" />
+                            <button
+                              class="mt-2 text-xs text-destructive"
+                              type="button"
+                              @click="deleteComment(comment)"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </template>
+                      </template>
+                      <template v-else>
+                        <template v-for="row in splitPatch(section)" :key="row.id">
+                          <button
+                            v-if="row.kind === 'meta'"
+                            class="diff-line diff-meta diff-split-meta"
+                            type="button"
+                          >
+                            <code>{{ row.line.text || " " }}</code>
+                          </button>
+                          <div
+                            v-else
+                            class="diff-line diff-split-row"
+                            :class="row.kind === 'context' ? 'diff-context' : 'diff-pair'"
+                          >
+                            <button
+                              type="button"
+                              class="split-side"
+                              :class="
+                                row.kind === 'context'
+                                  ? 'side-context'
+                                  : row.left
+                                    ? 'side-del'
+                                    : 'side-empty'
+                              "
+                              :disabled="row.kind === 'pair' && !row.left"
+                              @click="
+                                row.kind === 'context'
+                                  ? openComment(file, section, row.line)
+                                  : row.left && openComment(file, section, row.left)
+                              "
+                            >
+                              <span class="line-no">{{
+                                (row.kind === "context" ? row.line.oldLine : row.left?.oldLine) ??
+                                ""
+                              }}</span>
+                              <code
+                                v-if="row.kind === 'context'"
+                                v-html="highlightedLine(row.line.text || ' ', file)"
+                              />
+                              <code
+                                v-else-if="row.left"
+                                v-html="highlightedLine(row.left.text || ' ', file)"
+                              />
+                              <code v-else>&nbsp;</code>
+                            </button>
+                            <button
+                              type="button"
+                              class="split-side"
+                              :class="
+                                row.kind === 'context'
+                                  ? 'side-context'
+                                  : row.right
+                                    ? 'side-add'
+                                    : 'side-empty'
+                              "
+                              :disabled="row.kind === 'pair' && !row.right"
+                              @click="
+                                row.kind === 'context'
+                                  ? openComment(file, section, row.line)
+                                  : row.right && openComment(file, section, row.right)
+                              "
+                            >
+                              <span class="line-no">{{
+                                (row.kind === "context" ? row.line.newLine : row.right?.newLine) ??
+                                ""
+                              }}</span>
+                              <code
+                                v-if="row.kind === 'context'"
+                                v-html="highlightedLine(row.line.text || ' ', file)"
+                              />
+                              <code
+                                v-else-if="row.right"
+                                v-html="highlightedLine(row.right.text || ' ', file)"
+                              />
+                              <code v-else>&nbsp;</code>
+                            </button>
+                            <MessageSquare class="comment-icon h-3.5 w-3.5" />
+                          </div>
+                          <template
+                            v-for="line in splitRowCommentLines(row)"
+                            :key="`${row.id}:${line.id}:comments`"
+                          >
+                            <div
+                              v-for="comment in commentsFor(file, section, line)"
+                              :key="comment.id"
+                              class="comment-row"
+                            >
+                              <div class="text-xs font-semibold">
+                                {{ comment.authorLabel }} commented on line
+                                {{ comment.lineNumber }}
+                              </div>
+                              <SafeHtml :html="comment.bodyHtml" class="mt-2 text-sm" />
+                              <button
+                                class="mt-2 text-xs text-destructive"
+                                type="button"
+                                @click="deleteComment(comment)"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </template>
+                        </template>
+                      </template>
+                    </div>
+                  </section>
+                </div>
+              </article>
+            </template>
+          </section>
+        </ResizablePanel>
+      </template>
 
       <template v-if="reviewPanelOpen">
         <ResizableHandle with-handle />
         <ResizablePanel
-          :default-size="25"
+          :default-size="rightPanelDefault"
           :min-size="15"
           :max-size="50"
           class="flex min-h-0 flex-col overflow-hidden border-l border-border bg-background"

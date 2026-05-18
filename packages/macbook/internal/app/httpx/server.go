@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/user"
+	"strings"
 
 	"github.com/gocanto/git-diff/internal/app/service"
 	"github.com/gocanto/git-diff/internal/app/setting"
@@ -37,6 +39,7 @@ type Server struct {
 	Settings      setting.RuntimeSettings
 	Workflows     func() []domain.Workflow
 	WorkflowStore WorkflowStore
+	Auth          *AuthState
 }
 
 func Serve(args []string, cfg ServeConfig) int {
@@ -126,6 +129,16 @@ func Serve(args []string, cfg ServeConfig) int {
 		}
 	}()
 
+	osUsername := resolveOSUsername()
+
+	if _, err := store.EnsureUser(context.Background(), osUsername); err != nil {
+		fmt.Fprintf(cfg.Stderr, "seed os user %q: %v\n", osUsername, err)
+
+		return 1
+	}
+
+	authState := NewAuthState(osUsername)
+
 	appServer := Server{
 		Service:   cfg.Service(settings),
 		Home:      cfg.Home,
@@ -135,9 +148,10 @@ func Serve(args []string, cfg ServeConfig) int {
 		WorkflowStore: func(context.Context) (*storage.Store, func(), error) {
 			return store, func() {}, nil
 		},
+		Auth: authState,
 	}
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{
-		Mux:           appServer.BuildMux(),
+		Mux:           appServer.requireAuth(appServer.BuildMux()),
 		SafeQueryKeys: []string{"limit"},
 	})}
 
@@ -178,6 +192,12 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("POST /v1/settings/validate", s.validateSettings)
 	mux.HandleFunc("GET /v1/preferences", s.getPreferences)
 	mux.HandleFunc("POST /v1/preferences", s.savePreferences)
+	mux.HandleFunc("GET /v1/auth/state", s.authState)
+	mux.HandleFunc("POST /v1/auth/setup", s.authSetup)
+	mux.HandleFunc("POST /v1/auth/login", s.authLogin)
+	mux.HandleFunc("POST /v1/auth/resume", s.authResume)
+	mux.HandleFunc("POST /v1/auth/logout", s.authLogout)
+	mux.HandleFunc("POST /v1/auth/wipe", s.authWipe)
 	mux.HandleFunc("GET /v1/onepassword/vaults", s.listOpVaults)
 	mux.HandleFunc("GET /v1/onepassword/items", s.listOpItems)
 
@@ -186,4 +206,22 @@ func (s Server) BuildMux() *http.ServeMux {
 
 func (s Server) healthz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
+
+func resolveOSUsername() string {
+	if u, err := user.Current(); err == nil {
+		if name := strings.TrimSpace(u.Username); name != "" {
+			return name
+		}
+	}
+
+	if name := strings.TrimSpace(os.Getenv("USER")); name != "" {
+		return name
+	}
+
+	if name := strings.TrimSpace(os.Getenv("USERNAME")); name != "" {
+		return name
+	}
+
+	return "user"
 }

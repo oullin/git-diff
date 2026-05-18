@@ -1,5 +1,8 @@
 export { createWorkflowBridgeClient, unixTarget, waitForReady } from "#bridge/client.js";
 export type {
+  AuthLoginResponse,
+  AuthStateResponse,
+  AuthUser,
   ConfirmationOption,
   ChangedFile,
   DiffSection,
@@ -22,8 +25,8 @@ export type {
   SettingsResponse,
   TemplateFileContent,
   TemplateFileSummary,
+  UIPreferencesResponse,
   UnixTarget,
-  UserPreferencesResponse,
   Workflow,
   WorkflowBridgeClient,
   WorkflowEvent,

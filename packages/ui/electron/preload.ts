@@ -81,8 +81,8 @@ contextBridge.exposeInMainWorld("macOS", {
   validateSettings: (settings: RuntimeSettings) =>
     ipcRenderer.invoke("settings:validate", settings),
   saveSettings: (settings: RuntimeSettings) => ipcRenderer.invoke("settings:save", settings),
-  getUserPreferences: () => ipcRenderer.invoke("preferences:get"),
-  saveUserPreferences: (theme: string) => ipcRenderer.invoke("preferences:save", theme),
+  getUIPreferences: () => ipcRenderer.invoke("ui-prefs:get"),
+  saveUIPreferences: (patch: Record<string, string>) => ipcRenderer.invoke("ui-prefs:save", patch),
   chooseDirectory: (defaultPath?: string) =>
     ipcRenderer.invoke("settings:choose-directory", defaultPath),
   chooseFile: (defaultPath?: string) => ipcRenderer.invoke("settings:choose-file", defaultPath),
@@ -140,8 +140,14 @@ contextBridge.exposeInMainWorld("diffApp", {
     ipcRenderer.invoke("reviews:comment:update", request),
   deleteReviewComment: (request: Record<string, unknown>) =>
     ipcRenderer.invoke("reviews:comment:delete", request),
-  getUserPreferences: () => ipcRenderer.invoke("preferences:get"),
-  saveUserPreferences: (preferences: Record<string, unknown>) =>
-    ipcRenderer.invoke("preferences:save", preferences),
+  getUIPreferences: () => ipcRenderer.invoke("ui-prefs:get"),
+  saveUIPreferences: (patch: Record<string, string>) => ipcRenderer.invoke("ui-prefs:save", patch),
+  getAuthState: () => ipcRenderer.invoke("auth:state"),
+  authBootstrap: () => ipcRenderer.invoke("auth:bootstrap"),
+  authSetup: (password: string) => ipcRenderer.invoke("auth:setup", { password }),
+  authLogin: (password: string, remember: boolean) =>
+    ipcRenderer.invoke("auth:login", { password, remember }),
+  authLogout: () => ipcRenderer.invoke("auth:logout"),
+  authWipe: (osUsername?: string) => ipcRenderer.invoke("auth:wipe", { osUsername }),
   openDevTools: () => ipcRenderer.invoke("system:openDevTools"),
 });

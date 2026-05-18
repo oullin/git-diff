@@ -91,13 +91,42 @@ export interface Repository {
   lastOpenedAt?: string;
 }
 
-export interface UserPreferences {
-  theme: string;
-  diffViewMode: DiffViewMode;
-  hideWhitespace: boolean;
-  lastRepoRoot: string;
+export interface UIPreferences {
+  values: Record<string, string>;
   updatedAt?: string;
 }
+
+export interface AuthUser {
+  id: number;
+  osUsername: string;
+  displayName: string;
+}
+
+export interface AuthStateResponse {
+  osUsername: string;
+  needsSetup: boolean;
+  isAuthenticated: boolean;
+}
+
+export interface AuthLoginResponse {
+  token?: string;
+  user: AuthUser;
+}
+
+export interface AuthBootstrapResponse {
+  user: AuthUser | null;
+  state: AuthStateResponse;
+}
+
+export const PREF_KEYS = {
+  theme: "theme",
+  diffViewMode: "diff.viewMode",
+  diffHideWhitespace: "diff.hideWhitespace",
+  lastRepoRoot: "repo.lastRoot",
+  panelLeftWidth: "panel.left.width",
+  panelFileTreeWidth: "panel.fileTree.width",
+  panelRightWidth: "panel.right.width",
+} as const;
 
 export interface DiffAppApi {
   repositoryState(path?: string): Promise<RepositoryState>;
@@ -133,8 +162,14 @@ export interface DiffAppApi {
     bodyHtml: string;
   }): Promise<ReviewComment>;
   deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void>;
-  getUserPreferences(): Promise<UserPreferences>;
-  saveUserPreferences(preferences: Partial<UserPreferences>): Promise<UserPreferences>;
+  getUIPreferences(): Promise<UIPreferences>;
+  saveUIPreferences(patch: Record<string, string>): Promise<UIPreferences>;
+  getAuthState(): Promise<AuthStateResponse>;
+  authBootstrap(): Promise<AuthBootstrapResponse>;
+  authSetup(password: string): Promise<AuthLoginResponse>;
+  authLogin(password: string, remember: boolean): Promise<AuthLoginResponse>;
+  authLogout(): Promise<void>;
+  authWipe(osUsername?: string): Promise<void>;
   openDevTools(): Promise<void>;
 }
 

@@ -66,16 +66,34 @@ class HttpWorkflowBridgeClient {
       settings: request.settings,
     });
   }
-  getUserPreferences() {
+  getUIPreferences() {
     return this.request("GET", "/v1/preferences");
   }
-  saveUserPreferences(request) {
-    return this.request("POST", "/v1/preferences", {
-      theme: request.theme,
-      diffViewMode: request.diffViewMode,
-      hideWhitespace: request.hideWhitespace,
-      lastRepoRoot: request.lastRepoRoot,
+  saveUIPreferences(values) {
+    return this.request("POST", "/v1/preferences", { values });
+  }
+  getAuthState() {
+    return this.request("GET", "/v1/auth/state");
+  }
+  authSetup(request) {
+    return this.request("POST", "/v1/auth/setup", {
+      password: request.password,
     });
+  }
+  authLogin(request) {
+    return this.request("POST", "/v1/auth/login", {
+      password: request.password,
+      remember: request.remember,
+    });
+  }
+  authResume(request) {
+    return this.request("POST", "/v1/auth/resume", { token: request.token });
+  }
+  authLogout() {
+    return this.request("POST", "/v1/auth/logout");
+  }
+  authWipe(request) {
+    return this.request("POST", "/v1/auth/wipe", { osUsername: request.osUsername ?? "" });
   }
   repositoryState(request) {
     const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";

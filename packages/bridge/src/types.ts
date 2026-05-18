@@ -104,12 +104,26 @@ export interface SettingsResponse {
   valid: boolean;
 }
 
-export interface UserPreferencesResponse {
-  theme: string;
-  diffViewMode: string;
-  hideWhitespace: boolean;
-  lastRepoRoot: string;
+export interface UIPreferencesResponse {
+  values: Record<string, string>;
   updatedAt: string;
+}
+
+export interface AuthUser {
+  id: number;
+  osUsername: string;
+  displayName: string;
+}
+
+export interface AuthStateResponse {
+  osUsername: string;
+  needsSetup: boolean;
+  isAuthenticated: boolean;
+}
+
+export interface AuthLoginResponse {
+  token?: string;
+  user: AuthUser;
 }
 
 export type GitFileStatus = "added" | "deleted" | "modified" | "renamed" | "untracked";
@@ -246,8 +260,14 @@ export interface WorkflowBridgeClient {
   saveTemplateFile(request: { path: string; content: string }): Promise<TemplateFileContent>;
   getSettings(): Promise<SettingsResponse>;
   validateSettings(request: { settings: RuntimeSettings }): Promise<SettingsResponse>;
-  getUserPreferences(): Promise<UserPreferencesResponse>;
-  saveUserPreferences(request: Partial<UserPreferencesResponse>): Promise<UserPreferencesResponse>;
+  getUIPreferences(): Promise<UIPreferencesResponse>;
+  saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse>;
+  getAuthState(): Promise<AuthStateResponse>;
+  authSetup(request: { password: string }): Promise<AuthLoginResponse>;
+  authLogin(request: { password: string; remember: boolean }): Promise<AuthLoginResponse>;
+  authResume(request: { token: string }): Promise<{ user: AuthUser }>;
+  authLogout(): Promise<void>;
+  authWipe(request: { osUsername?: string }): Promise<void>;
   repositoryState(request: { path?: string }): Promise<RepositoryState>;
   openRepository(request: { path: string }): Promise<RepositoryState>;
   refreshRepository(request: { path: string }): Promise<RepositoryState>;

@@ -27,14 +27,34 @@ CREATE TABLE IF NOT EXISTS workflow_events (
 CREATE INDEX IF NOT EXISTS idx_workflow_runs_started_at ON workflow_runs(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_workflow_events_run_id_seq ON workflow_events(run_id, seq);
 
-CREATE TABLE IF NOT EXISTS user_preferences (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  theme TEXT NOT NULL DEFAULT 'light',
-  diff_view_mode TEXT NOT NULL DEFAULT 'split',
-  hide_whitespace INTEGER NOT NULL DEFAULT 0,
-  last_repo_root TEXT NOT NULL DEFAULT '',
-  updated_at TEXT NOT NULL
+CREATE TABLE IF NOT EXISTS users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  os_username   TEXT NOT NULL UNIQUE,
+  display_name  TEXT NOT NULL DEFAULT '',
+  password_hash TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL,
+  last_login_at TEXT NOT NULL DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+  token        TEXT PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at   TEXT NOT NULL,
+  expires_at   TEXT NOT NULL,
+  last_used_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+
+CREATE TABLE IF NOT EXISTS ui_preferences (
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key        TEXT NOT NULL,
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ui_preferences_user ON ui_preferences(user_id);
 
 CREATE TABLE IF NOT EXISTS review_sessions (
   id TEXT PRIMARY KEY,

@@ -2,20 +2,22 @@ package httpx
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-
-	"github.com/gocanto/git-diff/internal/storage"
 )
 
 type savePreferencesRequest struct {
-	Theme          string `json:"theme"`
-	DiffViewMode   string `json:"diffViewMode"`
-	HideWhitespace bool   `json:"hideWhitespace"`
-	LastRepoRoot   string `json:"lastRepoRoot"`
+	Values map[string]string `json:"values"`
 }
 
 func (s Server) getPreferences(w http.ResponseWriter, r *http.Request) {
+	if s.Auth == nil || s.Auth.CurrentUserID() == 0 {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+
+		return
+	}
+
 	store, closeStore, err := s.WorkflowStore(r.Context())
 
 	if err != nil {
@@ -26,10 +28,10 @@ func (s Server) getPreferences(w http.ResponseWriter, r *http.Request) {
 
 	defer closeStore()
 
-	prefs, err := store.GetUserPreferences(r.Context())
+	prefs, err := store.GetUIPreferences(r.Context(), s.Auth.CurrentUserID())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("read user preferences: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("read ui preferences: %w", err))
 
 		return
 	}
@@ -38,6 +40,12 @@ func (s Server) getPreferences(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) savePreferences(w http.ResponseWriter, r *http.Request) {
+	if s.Auth == nil || s.Auth.CurrentUserID() == 0 {
+		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
+
+		return
+	}
+
 	var req savePreferencesRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -56,15 +64,10 @@ func (s Server) savePreferences(w http.ResponseWriter, r *http.Request) {
 
 	defer closeStore()
 
-	prefs, err := store.SaveUserPreferences(r.Context(), storage.UserPreferences{
-		Theme:          req.Theme,
-		DiffViewMode:   req.DiffViewMode,
-		HideWhitespace: req.HideWhitespace,
-		LastRepoRoot:   req.LastRepoRoot,
-	})
+	prefs, err := store.SaveUIPreferences(r.Context(), s.Auth.CurrentUserID(), req.Values)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("save user preferences: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("save ui preferences: %w", err))
 
 		return
 	}

@@ -51,8 +51,6 @@
     "prismjs": "1.30.0"
   },
   "devDependencies": {
-    "@fontsource-variable/jetbrains-mono": "^5.2.7",
-    "@fontsource/inter": "^5.2.7",
     "@primer/primitives": "^11.8.0",
     "@radix-icons/vue": "^1.0.0",
     "@shikijs/themes": "^4.0.2",

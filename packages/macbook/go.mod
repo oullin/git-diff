@@ -7,6 +7,7 @@ require (
 	github.com/oullin/workflow v0.1.0-alpha.1
 	github.com/spf13/viper v1.21.0
 	go.yaml.in/yaml/v3 v3.0.4
+	golang.org/x/crypto v0.51.0
 	modernc.org/sqlite v1.50.0
 )
 

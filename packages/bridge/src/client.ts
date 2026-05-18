@@ -1,6 +1,9 @@
 import { requestJson } from "#bridge/http.js";
 import { runWorkflowStream } from "#bridge/sse.js";
 import type {
+  AuthLoginResponse,
+  AuthStateResponse,
+  AuthUser,
   RunLog,
   RunSummary,
   RunWorkflowRequest,
@@ -8,8 +11,8 @@ import type {
   SettingsResponse,
   TemplateFileContent,
   TemplateFileSummary,
+  UIPreferencesResponse,
   UnixTarget,
-  UserPreferencesResponse,
   Workflow,
   WorkflowBridgeClient,
   WorkflowRunStream,
@@ -112,17 +115,41 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     });
   }
 
-  getUserPreferences(): Promise<UserPreferencesResponse> {
-    return this.request<UserPreferencesResponse>("GET", "/v1/preferences");
+  getUIPreferences(): Promise<UIPreferencesResponse> {
+    return this.request<UIPreferencesResponse>("GET", "/v1/preferences");
   }
 
-  saveUserPreferences(request: Partial<UserPreferencesResponse>): Promise<UserPreferencesResponse> {
-    return this.request<UserPreferencesResponse>("POST", "/v1/preferences", {
-      theme: request.theme,
-      diffViewMode: request.diffViewMode,
-      hideWhitespace: request.hideWhitespace,
-      lastRepoRoot: request.lastRepoRoot,
+  saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse> {
+    return this.request<UIPreferencesResponse>("POST", "/v1/preferences", { values });
+  }
+
+  getAuthState(): Promise<AuthStateResponse> {
+    return this.request<AuthStateResponse>("GET", "/v1/auth/state");
+  }
+
+  authSetup(request: { password: string }): Promise<AuthLoginResponse> {
+    return this.request<AuthLoginResponse>("POST", "/v1/auth/setup", {
+      password: request.password,
     });
+  }
+
+  authLogin(request: { password: string; remember: boolean }): Promise<AuthLoginResponse> {
+    return this.request<AuthLoginResponse>("POST", "/v1/auth/login", {
+      password: request.password,
+      remember: request.remember,
+    });
+  }
+
+  authResume(request: { token: string }): Promise<{ user: AuthUser }> {
+    return this.request<{ user: AuthUser }>("POST", "/v1/auth/resume", { token: request.token });
+  }
+
+  authLogout(): Promise<void> {
+    return this.request<void>("POST", "/v1/auth/logout");
+  }
+
+  authWipe(request: { osUsername?: string }): Promise<void> {
+    return this.request<void>("POST", "/v1/auth/wipe", { osUsername: request.osUsername ?? "" });
   }
 
   repositoryState(request: { path?: string }): Promise<RepositoryState> {

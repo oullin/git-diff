@@ -1,17 +1,23 @@
 import {
+  type AuthStateResponse,
+  type AuthUser,
   type RuntimeSettings,
   type SettingsResponse,
   type RunWorkflowRequest,
   type WorkflowEvent,
 } from "@git-diff/bridge";
 import {
+  app,
   BrowserWindow,
   dialog,
   ipcMain,
+  safeStorage,
   type OpenDialogOptions,
   type SaveDialogOptions,
 } from "electron";
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import {
   client,
   getBridgeSettings,
@@ -176,14 +182,68 @@ export function registerIpcHandlers(deps: IpcDeps) {
     saveSettings(settings),
   );
 
-  ipcMain.handle("preferences:get", async () => (await client()).getUserPreferences());
+  ipcMain.handle("ui-prefs:get", async () => (await client()).getUIPreferences());
+
+  ipcMain.handle("ui-prefs:save", async (_event, patch: Record<string, string>) =>
+    (await client()).saveUIPreferences(patch ?? {}),
+  );
+
+  ipcMain.handle("auth:state", async () => (await client()).getAuthState());
+
+  ipcMain.handle("auth:setup", async (_event, request: { password: string }) => {
+    const response = await (await client()).authSetup(request);
+
+    if (response.token) {
+      writeSessionToken(response.token);
+    }
+
+    return response;
+  });
+
+  ipcMain.handle("auth:login", async (_event, request: { password: string; remember: boolean }) => {
+    const response = await (await client()).authLogin(request);
+
+    if (request.remember && response.token) {
+      writeSessionToken(response.token);
+    } else {
+      clearSessionToken();
+    }
+
+    return response;
+  });
+
+  ipcMain.handle("auth:logout", async () => {
+    clearSessionToken();
+
+    await (await client()).authLogout();
+  });
+
+  ipcMain.handle("auth:wipe", async (_event, request: { osUsername?: string } = {}) => {
+    clearSessionToken();
+
+    await (await client()).authWipe({ osUsername: request.osUsername });
+  });
 
   ipcMain.handle(
-    "preferences:save",
-    async (_event, preferences: Record<string, unknown> | string) =>
-      typeof preferences === "string"
-        ? (await client()).saveUserPreferences({ theme: preferences })
-        : (await client()).saveUserPreferences(preferences),
+    "auth:bootstrap",
+    async (): Promise<{ user: AuthUser | null; state: AuthStateResponse }> => {
+      const token = readSessionToken();
+      const c = await client();
+      let user: AuthUser | null = null;
+
+      if (token) {
+        try {
+          const resumed = await c.authResume({ token });
+          user = resumed.user;
+        } catch {
+          clearSessionToken();
+        }
+      }
+
+      const state = await c.getAuthState();
+
+      return { user, state };
+    },
   );
 
   ipcMain.handle("op:list-vaults", async () => {
@@ -345,6 +405,65 @@ async function saveSettings(settings: RuntimeSettings): Promise<SettingsResponse
     }
 
     throw error;
+  }
+}
+
+function sessionTokenPath(): string {
+  return path.join(app.getPath("userData"), ".session-token");
+}
+
+function readSessionToken(): string | null {
+  const filePath = sessionTokenPath();
+
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const buf = fs.readFileSync(filePath);
+
+    if (safeStorage.isEncryptionAvailable()) {
+      return safeStorage.decryptString(buf);
+    }
+
+    return buf.toString("utf8");
+  } catch {
+    try {
+      fs.unlinkSync(filePath);
+    } catch {
+      /* ignore */
+    }
+
+    return null;
+  }
+}
+
+function writeSessionToken(token: string): void {
+  const filePath = sessionTokenPath();
+
+  try {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+
+    if (safeStorage.isEncryptionAvailable()) {
+      fs.writeFileSync(filePath, safeStorage.encryptString(token), { mode: 0o600 });
+    } else {
+      console.warn("electron safeStorage unavailable; persisting session token in plaintext");
+      fs.writeFileSync(filePath, token, { mode: 0o600, encoding: "utf8" });
+    }
+  } catch (error) {
+    console.warn("failed to persist session token", error);
+  }
+}
+
+function clearSessionToken(): void {
+  const filePath = sessionTokenPath();
+
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch {
+    /* ignore */
   }
 }
 

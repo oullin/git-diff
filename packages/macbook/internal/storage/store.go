@@ -2,8 +2,12 @@ package storage
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"embed"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -19,6 +23,18 @@ import (
 
 const DefaultTheme = "light"
 const DefaultDiffViewMode = "split"
+
+const (
+	PrefKeyTheme              = "theme"
+	PrefKeyDiffViewMode       = "diff.viewMode"
+	PrefKeyDiffHideWhitespace = "diff.hideWhitespace"
+	PrefKeyLastRepoRoot       = "repo.lastRoot"
+	PrefKeyPanelLeftWidth     = "panel.left.width"
+	PrefKeyPanelFileTreeWidth = "panel.fileTree.width"
+	PrefKeyPanelRightWidth    = "panel.right.width"
+)
+
+var ErrSessionNotFound = errors.New("session not found")
 
 //go:embed schema.sql
 var schemaFS embed.FS
@@ -69,12 +85,27 @@ type RunLog struct {
 	Events []EventRecord `json:"events"`
 }
 
-type UserPreferences struct {
-	Theme          string `json:"theme"`
-	DiffViewMode   string `json:"diffViewMode"`
-	HideWhitespace bool   `json:"hideWhitespace"`
-	LastRepoRoot   string `json:"lastRepoRoot"`
-	UpdatedAt      string `json:"updatedAt,omitempty"`
+type UIPreferences struct {
+	Values    map[string]string `json:"values"`
+	UpdatedAt string            `json:"updatedAt,omitempty"`
+}
+
+type User struct {
+	ID           int64  `json:"id"`
+	OSUsername   string `json:"osUsername"`
+	DisplayName  string `json:"displayName"`
+	HasPassword  bool   `json:"hasPassword"`
+	CreatedAt    string `json:"createdAt"`
+	LastLoginAt  string `json:"lastLoginAt,omitempty"`
+	PasswordHash string `json:"-"`
+}
+
+type Session struct {
+	RawToken   string `json:"token"`
+	UserID     int64  `json:"userId"`
+	CreatedAt  string `json:"createdAt"`
+	ExpiresAt  string `json:"expiresAt"`
+	LastUsedAt string `json:"lastUsedAt"`
 }
 
 type ReviewSessionStart struct {
@@ -182,6 +213,12 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
 
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
+		_ = conn.Close()
+
+		return nil, fmt.Errorf("enable sqlite foreign keys: %w", err)
+	}
+
 	store := &Store{db: conn, queries: db.New(conn), now: time.Now}
 
 	if err := store.Init(ctx); err != nil {
@@ -224,19 +261,122 @@ func (s *Store) Init(ctx context.Context) error {
 }
 
 func (s *Store) migratePreferences(ctx context.Context) error {
-	migrations := []string{
-		"ALTER TABLE user_preferences ADD COLUMN diff_view_mode TEXT NOT NULL DEFAULT 'split'",
-		"ALTER TABLE user_preferences ADD COLUMN hide_whitespace INTEGER NOT NULL DEFAULT 0",
-		"ALTER TABLE user_preferences ADD COLUMN last_repo_root TEXT NOT NULL DEFAULT ''",
+	var hasLegacy string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT name FROM sqlite_master WHERE type='table' AND name='user_preferences'
+	`).Scan(&hasLegacy)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
 	}
 
-	for _, migration := range migrations {
-		if _, err := s.db.ExecContext(ctx, migration); err != nil && !isDuplicateColumn(err) {
-			return fmt.Errorf("migrate user preferences: %w", err)
+	if err != nil {
+		return fmt.Errorf("inspect legacy preferences: %w", err)
+	}
+
+	osUsername := currentOSUsername()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+
+	if err != nil {
+		return fmt.Errorf("begin preferences migration: %w", err)
+	}
+
+	defer tx.Rollback()
+
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	_, err = tx.ExecContext(ctx, `
+		INSERT OR IGNORE INTO users (os_username, display_name, password_hash, created_at, last_login_at)
+		VALUES (?, ?, '', ?, '')
+	`, osUsername, osUsername, now)
+
+	if err != nil {
+		return fmt.Errorf("seed user from legacy preferences: %w", err)
+	}
+
+	var userID int64
+
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM users WHERE os_username = ?`, osUsername).Scan(&userID); err != nil {
+		return fmt.Errorf("read seeded user id: %w", err)
+	}
+
+	row := tx.QueryRowContext(ctx, `
+		SELECT theme, diff_view_mode, hide_whitespace, last_repo_root, updated_at
+		FROM user_preferences
+		WHERE id = 1
+	`)
+
+	var (
+		theme          string
+		diffViewMode   string
+		hideWhitespace int
+		lastRepoRoot   string
+		updatedAt      string
+	)
+
+	switch err := row.Scan(&theme, &diffViewMode, &hideWhitespace, &lastRepoRoot, &updatedAt); {
+	case errors.Is(err, sql.ErrNoRows):
+		// legacy table existed but had no row; nothing to copy
+	case err != nil:
+		return fmt.Errorf("read legacy preferences row: %w", err)
+	default:
+		if updatedAt == "" {
+			updatedAt = now
+		}
+
+		legacy := map[string]string{}
+
+		if theme != "" && theme != DefaultTheme {
+			legacy[PrefKeyTheme] = theme
+		}
+
+		if diffViewMode != "" && diffViewMode != DefaultDiffViewMode {
+			legacy[PrefKeyDiffViewMode] = diffViewMode
+		}
+
+		if hideWhitespace != 0 {
+			legacy[PrefKeyDiffHideWhitespace] = "1"
+		}
+
+		if lastRepoRoot != "" {
+			legacy[PrefKeyLastRepoRoot] = lastRepoRoot
+		}
+
+		for key, value := range legacy {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT OR IGNORE INTO ui_preferences (user_id, key, value, updated_at)
+				VALUES (?, ?, ?, ?)
+			`, userID, key, value, updatedAt); err != nil {
+				return fmt.Errorf("copy legacy preference %q: %w", key, err)
+			}
 		}
 	}
 
+	if _, err := tx.ExecContext(ctx, `DROP TABLE user_preferences`); err != nil {
+		return fmt.Errorf("drop legacy preferences: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit preferences migration: %w", err)
+	}
+
 	return nil
+}
+
+func currentOSUsername() string {
+	if name := strings.TrimSpace(os.Getenv("USER")); name != "" {
+		return name
+	}
+
+	if name := strings.TrimSpace(os.Getenv("USERNAME")); name != "" {
+		return name
+	}
+
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Base(home)
+	}
+
+	return "user"
 }
 
 func (s *Store) CreateRun(ctx context.Context, run RunStart) error {
@@ -316,85 +456,270 @@ func (s *Store) RunLog(ctx context.Context, runID string) (RunLog, error) {
 	return RunLog{Run: runSummary(run), Events: events}, nil
 }
 
-func (s *Store) GetUserPreferences(ctx context.Context) (UserPreferences, error) {
-	row := s.db.QueryRowContext(ctx, `
-		SELECT theme, diff_view_mode, hide_whitespace, last_repo_root, updated_at
-		FROM user_preferences
-		WHERE id = 1
-	`)
-
-	var prefs UserPreferences
-
-	var hideWhitespace int
-	err := row.Scan(&prefs.Theme, &prefs.DiffViewMode, &hideWhitespace, &prefs.LastRepoRoot, &prefs.UpdatedAt)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return defaultUserPreferences(), nil
-	}
+func (s *Store) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT key, value, updated_at
+		FROM ui_preferences
+		WHERE user_id = ?
+	`, userID)
 
 	if err != nil {
-		return UserPreferences{}, err
+		return UIPreferences{}, err
 	}
 
-	prefs.HideWhitespace = hideWhitespace != 0
+	defer rows.Close()
 
-	if prefs.Theme == "" {
-		prefs.Theme = DefaultTheme
+	prefs := UIPreferences{Values: map[string]string{}}
+
+	for rows.Next() {
+		var (
+			key       string
+			value     string
+			updatedAt string
+		)
+
+		if err := rows.Scan(&key, &value, &updatedAt); err != nil {
+			return UIPreferences{}, err
+		}
+
+		prefs.Values[key] = value
+
+		if updatedAt > prefs.UpdatedAt {
+			prefs.UpdatedAt = updatedAt
+		}
 	}
 
-	if prefs.DiffViewMode == "" {
-		prefs.DiffViewMode = DefaultDiffViewMode
-	}
-
-	return prefs, nil
+	return prefs, rows.Err()
 }
 
-func (s *Store) SaveUserPreferences(ctx context.Context, prefs UserPreferences) (UserPreferences, error) {
-	theme := prefs.Theme
-
-	if theme == "" {
-		theme = DefaultTheme
+func (s *Store) SaveUIPreferences(ctx context.Context, userID int64, patch map[string]string) (UIPreferences, error) {
+	if len(patch) == 0 {
+		return s.GetUIPreferences(ctx, userID)
 	}
 
-	diffViewMode := prefs.DiffViewMode
-
-	if diffViewMode == "" {
-		diffViewMode = DefaultDiffViewMode
-	}
-
-	updatedAt := s.now().UTC().Format(time.RFC3339Nano)
-	hideWhitespace := 0
-
-	if prefs.HideWhitespace {
-		hideWhitespace = 1
-	}
-
-	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO user_preferences (id, theme, diff_view_mode, hide_whitespace, last_repo_root, updated_at)
-		VALUES (1, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			theme = excluded.theme,
-			diff_view_mode = excluded.diff_view_mode,
-			hide_whitespace = excluded.hide_whitespace,
-			last_repo_root = excluded.last_repo_root,
-			updated_at = excluded.updated_at
-	`, theme, diffViewMode, hideWhitespace, prefs.LastRepoRoot, updatedAt)
+	tx, err := s.db.BeginTx(ctx, nil)
 
 	if err != nil {
-		return UserPreferences{}, err
+		return UIPreferences{}, err
 	}
 
-	return UserPreferences{
-		Theme:          theme,
-		DiffViewMode:   diffViewMode,
-		HideWhitespace: prefs.HideWhitespace,
-		LastRepoRoot:   prefs.LastRepoRoot,
-		UpdatedAt:      updatedAt,
+	defer tx.Rollback()
+
+	updatedAt := s.now().UTC().Format(time.RFC3339Nano)
+
+	for key, value := range patch {
+		key = strings.TrimSpace(key)
+
+		if key == "" {
+			continue
+		}
+
+		if value == "" {
+			if _, err := tx.ExecContext(ctx, `
+				DELETE FROM ui_preferences WHERE user_id = ? AND key = ?
+			`, userID, key); err != nil {
+				return UIPreferences{}, err
+			}
+
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO ui_preferences (user_id, key, value, updated_at)
+			VALUES (?, ?, ?, ?)
+			ON CONFLICT(user_id, key) DO UPDATE SET
+				value = excluded.value,
+				updated_at = excluded.updated_at
+		`, userID, key, value, updatedAt); err != nil {
+			return UIPreferences{}, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return UIPreferences{}, err
+	}
+
+	return s.GetUIPreferences(ctx, userID)
+}
+
+func (s *Store) EnsureUser(ctx context.Context, osUsername string) (User, error) {
+	osUsername = strings.TrimSpace(osUsername)
+
+	if osUsername == "" {
+		return User{}, errors.New("os username is required")
+	}
+
+	now := s.now().UTC().Format(time.RFC3339Nano)
+
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT OR IGNORE INTO users (os_username, display_name, password_hash, created_at, last_login_at)
+		VALUES (?, ?, '', ?, '')
+	`, osUsername, osUsername, now); err != nil {
+		return User{}, fmt.Errorf("seed user: %w", err)
+	}
+
+	return s.GetUserByOSUsername(ctx, osUsername)
+}
+
+func (s *Store) GetUserByOSUsername(ctx context.Context, osUsername string) (User, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, os_username, display_name, password_hash, created_at, last_login_at
+		FROM users
+		WHERE os_username = ?
+	`, osUsername)
+
+	return scanUser(row)
+}
+
+func (s *Store) GetUserByID(ctx context.Context, id int64) (User, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, os_username, display_name, password_hash, created_at, last_login_at
+		FROM users
+		WHERE id = ?
+	`, id)
+
+	return scanUser(row)
+}
+
+func (s *Store) SetPasswordHash(ctx context.Context, userID int64, hash string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
+
+	return err
+}
+
+func (s *Store) TouchUserLogin(ctx context.Context, userID int64) error {
+	now := s.now().UTC().Format(time.RFC3339Nano)
+	_, err := s.db.ExecContext(ctx, `UPDATE users SET last_login_at = ? WHERE id = ?`, now, userID)
+
+	return err
+}
+
+func (s *Store) WipeUser(ctx context.Context, userID int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
+
+	return err
+}
+
+func (s *Store) CreateSession(ctx context.Context, userID int64, ttl time.Duration) (Session, error) {
+	rawToken, err := generateToken(32)
+
+	if err != nil {
+		return Session{}, fmt.Errorf("generate session token: %w", err)
+	}
+
+	now := s.now().UTC()
+	created := now.Format(time.RFC3339Nano)
+	expires := now.Add(ttl).Format(time.RFC3339Nano)
+	stored := hashToken(rawToken)
+
+	if _, err := s.db.ExecContext(ctx, `
+		INSERT INTO user_sessions (token, user_id, created_at, expires_at, last_used_at)
+		VALUES (?, ?, ?, ?, ?)
+	`, stored, userID, created, expires, created); err != nil {
+		return Session{}, fmt.Errorf("insert session: %w", err)
+	}
+
+	return Session{
+		RawToken:   rawToken,
+		UserID:     userID,
+		CreatedAt:  created,
+		ExpiresAt:  expires,
+		LastUsedAt: created,
 	}, nil
 }
 
-func defaultUserPreferences() UserPreferences {
-	return UserPreferences{Theme: DefaultTheme, DiffViewMode: DefaultDiffViewMode}
+func (s *Store) ResumeSession(ctx context.Context, rawToken string) (User, error) {
+	rawToken = strings.TrimSpace(rawToken)
+
+	if rawToken == "" {
+		return User{}, ErrSessionNotFound
+	}
+
+	stored := hashToken(rawToken)
+	row := s.db.QueryRowContext(ctx, `
+		SELECT user_id, expires_at
+		FROM user_sessions
+		WHERE token = ?
+	`, stored)
+
+	var (
+		userID    int64
+		expiresAt string
+	)
+
+	switch err := row.Scan(&userID, &expiresAt); {
+	case errors.Is(err, sql.ErrNoRows):
+		return User{}, ErrSessionNotFound
+	case err != nil:
+		return User{}, err
+	}
+
+	expiry, err := time.Parse(time.RFC3339Nano, expiresAt)
+
+	if err == nil && s.now().After(expiry) {
+		_, _ = s.db.ExecContext(ctx, `DELETE FROM user_sessions WHERE token = ?`, stored)
+
+		return User{}, ErrSessionNotFound
+	}
+
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE user_sessions SET last_used_at = ? WHERE token = ?
+	`, s.now().UTC().Format(time.RFC3339Nano), stored); err != nil {
+		return User{}, err
+	}
+
+	return s.GetUserByID(ctx, userID)
+}
+
+func (s *Store) DeleteSession(ctx context.Context, rawToken string) error {
+	rawToken = strings.TrimSpace(rawToken)
+
+	if rawToken == "" {
+		return nil
+	}
+
+	_, err := s.db.ExecContext(ctx, `DELETE FROM user_sessions WHERE token = ?`, hashToken(rawToken))
+
+	return err
+}
+
+func scanUser(row scanner) (User, error) {
+	var (
+		user        User
+		lastLoginAt string
+	)
+
+	if err := row.Scan(
+		&user.ID,
+		&user.OSUsername,
+		&user.DisplayName,
+		&user.PasswordHash,
+		&user.CreatedAt,
+		&lastLoginAt,
+	); err != nil {
+		return User{}, err
+	}
+
+	user.LastLoginAt = lastLoginAt
+	user.HasPassword = user.PasswordHash != ""
+
+	return user, nil
+}
+
+func generateToken(size int) (string, error) {
+	buf := make([]byte, size)
+
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(buf), nil
+}
+
+func hashToken(rawToken string) string {
+	sum := sha256.Sum256([]byte(rawToken))
+
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *Store) CreateReview(ctx context.Context, review ReviewSessionStart) (ReviewSession, error) {
@@ -862,8 +1187,4 @@ func fromNull(value sql.NullString) string {
 	}
 
 	return value.String
-}
-
-func isDuplicateColumn(err error) bool {
-	return strings.Contains(strings.ToLower(err.Error()), "duplicate column")
 }
