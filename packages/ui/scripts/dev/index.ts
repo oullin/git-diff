@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { backendSocketPath, backendStartSpec, waitForBackend } from "#scripts/dev/backend.js";
 import { compileElectron, electronStartSpec } from "#scripts/dev/electron.js";
 import { settingsPath, storageDir } from "#scripts/dev/paths.js";
+import { patchElectronBundle } from "#scripts/dev/patch-electron-bundle.js";
 import { start, stopChildren } from "#scripts/dev/processes.js";
 import { stopDevServer, startDevServer } from "#scripts/dev/vite.js";
 import { installWatchers } from "#scripts/dev/watchers.js";
@@ -11,6 +12,7 @@ let restarting: Promise<void> = Promise.resolve();
 let restartTimer: NodeJS.Timeout | undefined;
 
 await mkdir(storageDir, { recursive: true });
+await patchElectronBundle();
 installSignalHandlers();
 installWatchers((changed) => scheduleRestart(changed));
 restarting = restart("initial start");
