@@ -23,6 +23,7 @@ export type {
   RuntimeSettings,
   SettingsCheck,
   SettingsResponse,
+  SystemStats,
   TemplateFileContent,
   TemplateFileSummary,
   UIPreferencesResponse,

@@ -74,6 +74,90 @@ func (s Server) repositoryRefresh(w http.ResponseWriter, r *http.Request) {
 	s.repositoryOpen(w, r)
 }
 
+func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+
+	if path == "" {
+		path = s.Repo
+	}
+
+	branches, err := review.ListBranches(r.Context(), path)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"branches": branches})
+}
+
+func (s Server) repositoryCheckout(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Path   string `json:"path"`
+		Branch string `json:"branch"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	if body.Path == "" {
+		body.Path = s.Repo
+	}
+
+	if err := review.CheckoutBranch(r.Context(), body.Path, body.Branch); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	state, err := review.ReadRepositoryState(r.Context(), body.Path)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, state)
+}
+
+func (s Server) repositoryCreateBranch(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Path string `json:"path"`
+		Name string `json:"name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	if body.Path == "" {
+		body.Path = s.Repo
+	}
+
+	if err := review.CreateBranch(r.Context(), body.Path, body.Name); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	state, err := review.ReadRepositoryState(r.Context(), body.Path)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, state)
+}
+
 func (s Server) repositoryFile(w http.ResponseWriter, r *http.Request) {
 	root := r.URL.Query().Get("root")
 	path := r.URL.Query().Get("path")

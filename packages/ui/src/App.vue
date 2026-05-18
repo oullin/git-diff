@@ -11,7 +11,6 @@ import FileHeader from "@entry/components/diff/FileHeader.vue";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
 import StatusBar from "@entry/components/diff/StatusBar.vue";
-import TweaksPanel from "@entry/components/diff/TweaksPanel.vue";
 import ReviewPanel from "@entry/components/diff/ReviewPanel.vue";
 import { sanitizeHtml } from "@ui/safe-html";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
@@ -313,6 +312,41 @@ async function refresh() {
   }
 }
 
+const creatingBranch = ref(false);
+const branchCreateError = ref("");
+
+async function switchBranch(branch: string) {
+  if (!state.value) return;
+  loading.value = true;
+  error.value = "";
+  try {
+    state.value = await window.diffApp.checkoutBranch(state.value.root, branch);
+    if (!state.value.files.some((file) => file.path === selectedPath.value)) {
+      selectedPath.value = state.value.files[0]?.path ?? "";
+    }
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function createBranch(name: string) {
+  if (!state.value) return;
+  creatingBranch.value = true;
+  branchCreateError.value = "";
+  try {
+    state.value = await window.diffApp.createBranch(state.value.root, name);
+    if (!state.value.files.some((file) => file.path === selectedPath.value)) {
+      selectedPath.value = state.value.files[0]?.path ?? "";
+    }
+  } catch (cause) {
+    branchCreateError.value = cause instanceof Error ? cause.message : String(cause);
+  } finally {
+    creatingBranch.value = false;
+  }
+}
+
 async function addRepository() {
   const chosen = await window.diffApp.chooseRepository(activeRepoPath.value || lastRepoRoot.value);
   if (chosen) {
@@ -483,14 +517,6 @@ async function replyToComment(parent: ReviewComment, bodyHtml: string) {
   activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
 }
 
-async function setViewMode(mode: DiffViewMode) {
-  await savePreferences({ [PREF_KEYS.diffViewMode]: mode });
-}
-
-async function toggleWhitespace() {
-  await savePreferences({ [PREF_KEYS.diffHideWhitespace]: hideWhitespace.value ? "" : "1" });
-}
-
 async function updateTweak<K extends keyof Tweaks>(key: K, value: Tweaks[K]) {
   await savePreferences(tweakPrefPatch(key, value));
 }
@@ -520,10 +546,6 @@ function fileElementID(path: string): string {
 function copyPath() {
   const path = selectedFile.value?.path;
   if (path) void navigator.clipboard.writeText(path);
-}
-
-function explainFile() {
-  console.warn("[git-diff] Explain action is not wired to a backend yet.");
 }
 
 void TWEAK_DEFAULTS;
@@ -557,23 +579,24 @@ void ACCENTS;
       :state="state"
       :repositories="repositories"
       :active-repo-path="activeRepoPath"
-      :current-user="currentUser"
       @select-repo="openRepo"
       @add-repo="addRepository"
       @remove-repo="removeRepository"
     />
     <TopBar
       :state="state"
-      :view-mode="diffViewMode"
-      :hide-whitespace="hideWhitespace"
       :search-query="searchQuery"
       :current-user="currentUser"
       :user-initials="userInitials"
-      @update:view-mode="setViewMode"
+      :tweaks="tweaks"
+      :creating-branch="creatingBranch"
+      :branch-create-error="branchCreateError"
       @update:search-query="(value) => (searchQuery = value)"
-      @toggle-whitespace="toggleWhitespace"
+      @update:tweak="updateTweak"
       @refresh="refresh"
       @log-out="logOut"
+      @switch-branch="switchBranch"
+      @create-branch="createBranch"
     />
 
     <main class="flex flex-1 min-h-0">
@@ -681,7 +704,6 @@ void ACCENTS;
                   @toggle-collapsed="collapsed[file.path] = !collapsed[file.path]"
                   @toggle-viewed="toggleViewed(file)"
                   @copy="copyPath"
-                  @explain="explainFile"
                 />
                 <DiffBody
                   v-if="!collapsed[file.path]"
@@ -740,7 +762,5 @@ void ACCENTS;
       :viewed-count="files.filter((f) => isViewed(f)).length"
       :total="files.length"
     />
-
-    <TweaksPanel :tweaks="tweaks" @update:tweak="updateTweak" />
   </div>
 </template>

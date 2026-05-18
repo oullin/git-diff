@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { Check, ChevronDown, Folder, Plus, Trash2 } from "lucide-vue-next";
 import {
   DropdownMenu,
@@ -10,13 +10,13 @@ import {
   DropdownMenuTrigger,
 } from "@ui/dropdown-menu";
 import DiffLogo from "./DiffLogo.vue";
-import type { AuthUser, Repository, RepositoryState } from "@api";
+import { Skeleton } from "@ui/skeleton";
+import type { Repository, RepositoryState, SystemStats } from "@api";
 
 const props = defineProps<{
   state: RepositoryState | null;
   repositories: Repository[];
   activeRepoPath: string;
-  currentUser: AuthUser | null;
 }>();
 
 const emit = defineEmits<{
@@ -32,21 +32,24 @@ const workspaceLabel = computed(() => {
   return parts[parts.length - 1] ?? root;
 });
 
-const userInitials = computed(() => {
-  const name = props.currentUser?.displayName ?? props.currentUser?.osUsername ?? "GO";
-  return (
-    name
-      .split(/[\s_-]+/)
-      .map((part) => part[0]?.toUpperCase() ?? "")
-      .slice(0, 2)
-      .join("") || "GO"
-  );
+const stats = ref<SystemStats | null>(null);
+let statsTimer: ReturnType<typeof setInterval> | null = null;
+
+async function refreshStats() {
+  try {
+    stats.value = await window.diffApp.getSystemStats();
+  } catch {
+    /* stats are non-critical — leave the previous value in place */
+  }
+}
+
+onMounted(() => {
+  refreshStats();
+  statsTimer = setInterval(refreshStats, 2000);
 });
 
-const branchSummary = computed(() => {
-  const s = props.state;
-  if (!s) return "—";
-  return `${s.branch || "detached"} · ${s.headSha?.slice(0, 8) || "no HEAD"}`;
+onBeforeUnmount(() => {
+  if (statsTimer) clearInterval(statsTimer);
 });
 </script>
 
@@ -62,16 +65,6 @@ const branchSummary = computed(() => {
       flexShrink: 0,
     }"
   >
-    <div class="flex items-center" style="gap: 8px">
-      <span class="gd-traffic-light red" />
-      <span class="gd-traffic-light yellow" />
-      <span class="gd-traffic-light green" />
-    </div>
-
-    <div
-      :style="{ width: '1px', height: '16px', background: 'var(--gd-border)', marginLeft: '4px' }"
-    />
-
     <div class="flex items-center" style="gap: 9px" data-no-drag>
       <DiffLogo />
       <span
@@ -170,29 +163,60 @@ const branchSummary = computed(() => {
 
     <div class="flex-1" />
 
-    <div v-if="state" class="flex items-center" :style="{ gap: '8px' }" data-no-drag>
-      <span
-        :style="{
-          width: '22px',
-          height: '22px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--gd-accent-strong), var(--gd-accent))',
-          color: '#fff',
-          fontSize: '10px',
-          fontWeight: 600,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 0 0 1px var(--gd-border)',
-        }"
-        >{{ userInitials }}</span
-      >
-      <span :style="{ fontSize: '12.5px', color: 'var(--gd-text-2)', whiteSpace: 'nowrap' }">
-        <span :style="{ color: 'var(--gd-text)', fontWeight: 500 }">{{
-          currentUser?.displayName || currentUser?.osUsername || "—"
-        }}</span>
-        <span :style="{ color: 'var(--gd-text-muted)', margin: '0 6px' }">·</span>
-        <span :style="{ color: 'var(--gd-text-3)' }">{{ branchSummary }}</span>
+    <div
+      v-if="stats"
+      class="flex items-center"
+      :style="{
+        gap: '10px',
+        fontFamily: 'var(--font-mono)',
+        fontSize: '12px',
+        color: 'var(--gd-text-2)',
+        whiteSpace: 'nowrap',
+      }"
+      data-no-drag
+    >
+      <span>
+        <span :style="{ color: 'var(--gd-text-muted)' }">CPU</span>
+        {{ stats.cpuPercent.toFixed(0) }}%
+      </span>
+      <span :style="{ color: 'var(--gd-text-muted)' }">·</span>
+      <span>
+        <span :style="{ color: 'var(--gd-text-muted)' }">MEM</span>
+        {{ stats.memoryUsedGB.toFixed(1) }} / {{ stats.memoryTotalGB.toFixed(1) }} GB
+      </span>
+      <span :style="{ color: 'var(--gd-text-muted)' }">·</span>
+      <span>
+        <span :style="{ color: 'var(--gd-text-muted)' }">LOAD</span>
+        {{ stats.loadAvg1.toFixed(2) }}
+      </span>
+    </div>
+    <div
+      v-else
+      class="flex items-center"
+      :style="{
+        gap: '10px',
+        fontFamily: 'var(--font-mono)',
+        fontSize: '12px',
+        color: 'var(--gd-text-muted)',
+        whiteSpace: 'nowrap',
+      }"
+      data-no-drag
+      aria-busy="true"
+      aria-label="Loading system stats"
+    >
+      <span class="flex items-center" :style="{ gap: '6px' }">
+        <span>CPU</span>
+        <Skeleton :style="{ width: '28px', height: '10px' }" />
+      </span>
+      <span>·</span>
+      <span class="flex items-center" :style="{ gap: '6px' }">
+        <span>MEM</span>
+        <Skeleton :style="{ width: '78px', height: '10px' }" />
+      </span>
+      <span>·</span>
+      <span class="flex items-center" :style="{ gap: '6px' }">
+        <span>LOAD</span>
+        <Skeleton :style="{ width: '32px', height: '10px' }" />
       </span>
     </div>
   </div>

@@ -52,6 +52,20 @@ export function registerIpcHandlers(deps: IpcDeps) {
     (await client()).readRepositoryFile({ root, path }),
   );
 
+  ipcMain.handle("repository:branches", async (_event, path?: string) =>
+    (await client()).listBranches({ path }),
+  );
+
+  ipcMain.handle("repository:checkout", async (_event, path: string, branch: string) =>
+    (await client()).checkoutBranch({ path, branch }),
+  );
+
+  ipcMain.handle("repository:branches:create", async (_event, path: string, name: string) =>
+    (await client()).createBranch({ path, name }),
+  );
+
+  ipcMain.handle("system:stats", async () => (await client()).getSystemStats());
+
   ipcMain.handle("reviews:create", async (_event, request: Record<string, unknown>) =>
     (await client()).createReview(request),
   );

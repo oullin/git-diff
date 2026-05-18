@@ -171,12 +171,12 @@ function onSearchInput(event: Event) {
 
     <div
       :style="{
-        padding: '10px',
+        padding: '6px 6px 14px',
         borderTop: '1px solid var(--gd-border)',
         background: 'var(--gd-panel)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '14px',
       }"
     >
       <button
@@ -202,7 +202,7 @@ function onSearchInput(event: Event) {
       >
         <Check :size="13" />
         Submit review
-        <Kbd>⌘↵</Kbd>
+        <Kbd tone="on-accent">⌘↵</Kbd>
       </button>
       <div :style="{ display: 'flex', gap: '6px' }">
         <button

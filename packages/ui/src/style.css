@@ -367,6 +367,14 @@
     corner-shape: squircle;
   }
 
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: default;
+  }
+
   .toolbar-btn {
     -webkit-app-region: no-drag;
     display: inline-flex;
@@ -736,22 +744,6 @@
     -webkit-app-region: no-drag;
   }
 
-  .gd-traffic-light {
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-    box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.2);
-  }
-  .gd-traffic-light.red {
-    background: var(--traffic-red);
-  }
-  .gd-traffic-light.yellow {
-    background: var(--traffic-yellow);
-  }
-  .gd-traffic-light.green {
-    background: var(--traffic-green);
-  }
-
   /* Char-level word highlight chips inside diff lines */
   .wh-add {
     background: var(--gd-word-add-bg);
@@ -851,42 +843,10 @@
     border: 1px solid var(--gd-border);
     border-radius: 4px;
   }
-
-  /* Floating tweaks panel */
-  .gd-tweaks-panel {
-    position: fixed;
-    right: 16px;
-    bottom: 56px;
-    z-index: 40;
-    width: 280px;
-    background: var(--gd-panel);
-    border: 1px solid var(--gd-border);
-    border-radius: 10px;
-    box-shadow: var(--gd-shadow-lg);
-    color: var(--gd-text);
-    font-family: var(--font-sans);
-    font-size: 13px;
-  }
-  .gd-tweaks-toggle {
-    position: fixed;
-    right: 16px;
-    bottom: 16px;
-    z-index: 41;
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 8px;
-    border: 1px solid var(--gd-border);
-    background: var(--gd-panel-2);
-    color: var(--gd-text-2);
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-  }
-  .gd-tweaks-toggle:hover {
-    background: var(--gd-hover);
-    color: var(--gd-text);
+  .gd-kbd--on-accent {
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.28);
   }
 
   /* hero / landing block */

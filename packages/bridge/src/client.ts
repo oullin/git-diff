@@ -21,6 +21,7 @@ import type {
   RepositoryFile,
   RepositoryState,
   Repository,
+  SystemStats,
   ReviewComment,
   ReviewDetail,
   ReviewEvent,
@@ -168,6 +169,29 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {
     const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
     return this.request<RepositoryFile>("GET", `/v1/repository/file${query}`);
+  }
+
+  listBranches(request: { path?: string }): Promise<{ branches: string[] }> {
+    const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
+    return this.request<{ branches: string[] }>("GET", `/v1/repository/branches${query}`);
+  }
+
+  checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState> {
+    return this.request<RepositoryState>("POST", "/v1/repository/checkout", {
+      path: request.path,
+      branch: request.branch,
+    });
+  }
+
+  createBranch(request: { path: string; name: string }): Promise<RepositoryState> {
+    return this.request<RepositoryState>("POST", "/v1/repository/branches/create", {
+      path: request.path,
+      name: request.name,
+    });
+  }
+
+  getSystemStats(): Promise<SystemStats> {
+    return this.request<SystemStats>("GET", "/v1/system/stats");
   }
 
   createReview(request: Partial<ReviewSession>): Promise<ReviewSession> {

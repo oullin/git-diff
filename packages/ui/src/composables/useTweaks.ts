@@ -83,10 +83,10 @@ export function tweakPrefPatch(
     case "density":
       return { [PREF_KEYS.diffDensity]: String(value) };
     case "showMinimap":
-      return { [PREF_KEYS.uiShowMinimap]: value ? "1" : "" };
+      return { [PREF_KEYS.uiShowMinimap]: value ? "1" : "0" };
     case "showStatusBar":
-      return { [PREF_KEYS.uiShowStatusBar]: value ? "1" : "" };
+      return { [PREF_KEYS.uiShowStatusBar]: value ? "1" : "0" };
     case "wordHighlight":
-      return { [PREF_KEYS.diffWordHi]: value ? "1" : "" };
+      return { [PREF_KEYS.diffWordHi]: value ? "1" : "0" };
   }
 }

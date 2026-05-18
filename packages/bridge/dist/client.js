@@ -109,6 +109,25 @@ class HttpWorkflowBridgeClient {
     const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
     return this.request("GET", `/v1/repository/file${query}`);
   }
+  listBranches(request) {
+    const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
+    return this.request("GET", `/v1/repository/branches${query}`);
+  }
+  checkoutBranch(request) {
+    return this.request("POST", "/v1/repository/checkout", {
+      path: request.path,
+      branch: request.branch,
+    });
+  }
+  createBranch(request) {
+    return this.request("POST", "/v1/repository/branches/create", {
+      path: request.path,
+      name: request.name,
+    });
+  }
+  getSystemStats() {
+    return this.request("GET", "/v1/system/stats");
+  }
   createReview(request) {
     return this.request("POST", "/v1/reviews", request);
   }

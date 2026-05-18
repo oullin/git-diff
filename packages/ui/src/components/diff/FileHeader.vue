@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Check, ChevronDown, ChevronRight, Copy, Sparkles } from "lucide-vue-next";
+import { Check, ChevronDown, ChevronRight, Copy } from "lucide-vue-next";
 import StatusBadge from "./StatusBadge.vue";
 import type { ChangedFile, DiffSection } from "@api";
 
@@ -14,7 +14,6 @@ const emit = defineEmits<{
   "toggle-collapsed": [];
   "toggle-viewed": [];
   copy: [];
-  explain: [];
 }>();
 
 const parts = computed(() => props.file.path.split("/"));
@@ -107,27 +106,6 @@ const hasUnstaged = computed(() =>
       @click="emit('copy')"
     >
       <Copy :size="14" />
-    </button>
-    <button
-      type="button"
-      :style="{
-        height: '26px',
-        padding: '0 10px',
-        borderRadius: '8px',
-        border: '1px solid transparent',
-        background: 'transparent',
-        color: 'var(--gd-text-2)',
-        fontSize: '13px',
-        fontWeight: 500,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '6px',
-        cursor: 'pointer',
-      }"
-      @click="emit('explain')"
-    >
-      <Sparkles :size="14" />
-      Explain
     </button>
     <button
       type="button"

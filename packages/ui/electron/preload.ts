@@ -123,6 +123,11 @@ contextBridge.exposeInMainWorld("diffApp", {
   refreshRepository: (path: string) => ipcRenderer.invoke("repository:refresh", path),
   readRepositoryFile: (root: string, path: string) =>
     ipcRenderer.invoke("repository:file:read", root, path),
+  listBranches: (path?: string) => ipcRenderer.invoke("repository:branches", path),
+  checkoutBranch: (path: string, branch: string) =>
+    ipcRenderer.invoke("repository:checkout", path, branch),
+  createBranch: (path: string, name: string) =>
+    ipcRenderer.invoke("repository:branches:create", path, name),
   chooseRepository: (defaultPath?: string): Promise<string | null> =>
     ipcRenderer.invoke("repository:choose", defaultPath),
   listRepositories: () => ipcRenderer.invoke("repositories:list"),
@@ -150,4 +155,5 @@ contextBridge.exposeInMainWorld("diffApp", {
   authLogout: () => ipcRenderer.invoke("auth:logout"),
   authWipe: (osUsername?: string) => ipcRenderer.invoke("auth:wipe", { osUsername }),
   openDevTools: () => ipcRenderer.invoke("system:openDevTools"),
+  getSystemStats: () => ipcRenderer.invoke("system:stats"),
 });

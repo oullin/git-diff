@@ -75,6 +75,9 @@ export function installBrowserFallback() {
       truncated: false,
       size: 0,
     }),
+    listBranches: async () => ({ branches: [state.branch] }),
+    checkoutBranch: async () => state,
+    createBranch: async (_path: string, name: string) => ({ ...state, branch: name }),
     chooseRepository: async () => state.root,
     listRepositories: async () => repositories,
     upsertRepository: async ({ path, name }) => {
@@ -198,6 +201,12 @@ export function installBrowserFallback() {
     authLogout: async () => {},
     authWipe: async () => {},
     openDevTools: async () => {},
+    getSystemStats: async () => ({
+      cpuPercent: 0,
+      memoryUsedGB: 0,
+      memoryTotalGB: 0,
+      loadAvg1: 0,
+    }),
   };
 
   window.diffApp = api;

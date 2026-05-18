@@ -40,6 +40,13 @@ export interface RepositoryFile {
   size: number;
 }
 
+export interface SystemStats {
+  cpuPercent: number;
+  memoryUsedGB: number;
+  memoryTotalGB: number;
+  loadAvg1: number;
+}
+
 export interface ReviewSession {
   id: string;
   repoRoot: string;
@@ -149,6 +156,9 @@ export interface DiffAppApi {
   openRepository(path: string): Promise<RepositoryState>;
   refreshRepository(path: string): Promise<RepositoryState>;
   readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
+  listBranches(path?: string): Promise<{ branches: string[] }>;
+  checkoutBranch(path: string, branch: string): Promise<RepositoryState>;
+  createBranch(path: string, name: string): Promise<RepositoryState>;
   chooseRepository(defaultPath?: string): Promise<string | null>;
   listRepositories(): Promise<Repository[]>;
   upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
@@ -187,6 +197,7 @@ export interface DiffAppApi {
   authLogout(): Promise<void>;
   authWipe(osUsername?: string): Promise<void>;
   openDevTools(): Promise<void>;
+  getSystemStats(): Promise<SystemStats>;
 }
 
 declare global {

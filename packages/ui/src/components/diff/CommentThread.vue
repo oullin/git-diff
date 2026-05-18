@@ -171,7 +171,7 @@ function relativeTime(iso: string): string {
             }"
             @click="submit"
           >
-            Reply <Kbd>↵</Kbd>
+            Reply <Kbd tone="on-accent">↵</Kbd>
           </button>
         </div>
       </div>
