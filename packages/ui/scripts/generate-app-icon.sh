@@ -40,5 +40,31 @@ rm -rf "${iconset_dir}"
 
 sips -z 256 256 "${source_png}" --out "${public_dir}/favicon.png" >/dev/null
 
+sips -z 16 16   "${source_png}" --out "${public_dir}/favicon-16.png"       >/dev/null
+sips -z 32 32   "${source_png}" --out "${public_dir}/favicon-32.png"       >/dev/null
+sips -z 180 180 "${source_png}" --out "${public_dir}/apple-touch-icon.png" >/dev/null
+sips -z 192 192 "${source_png}" --out "${public_dir}/icon-192.png"         >/dev/null
+sips -z 512 512 "${source_png}" --out "${public_dir}/icon-512.png"         >/dev/null
+
+cat > "${public_dir}/site.webmanifest" <<'JSON'
+{
+  "name": "Git Diff Review",
+  "short_name": "Git Diff",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#0d1117",
+  "background_color": "#0d1117",
+  "display": "standalone"
+}
+JSON
+
 echo "Generated ${build_dir}/icon.icns"
 echo "Generated ${public_dir}/favicon.png"
+echo "Generated ${public_dir}/favicon-16.png"
+echo "Generated ${public_dir}/favicon-32.png"
+echo "Generated ${public_dir}/apple-touch-icon.png"
+echo "Generated ${public_dir}/icon-192.png"
+echo "Generated ${public_dir}/icon-512.png"
+echo "Generated ${public_dir}/site.webmanifest"
