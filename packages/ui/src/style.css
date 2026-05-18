@@ -74,13 +74,15 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --text-display: 36px;
-  --text-title-lg: 26px;
-  --text-title-md: 20px;
-  --text-title-sm: 16px;
-  --text-body: 14.5px;
+  --text-display: 32px;
+  --text-title-lg: 22px;
+  --text-title-md: 17px;
+  --text-title-sm: 14px;
+  --text-body: 13px;
   --text-code: 13px;
-  --text-small: 12.5px;
+  --text-small: 12px;
+  --text-meta: 11px;
+  --text-micro: 10.5px;
   --shadow-overlay: var(--shadow-overlay-value);
 }
 
@@ -119,6 +121,16 @@
       "Liberation Mono",
       monospace
     );
+
+  /* codiff-style aliases — let raw CSS reference these names without going through @theme */
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+
+  /* diff surface typography — codiff-aligned */
+  --diffs-font-family: var(--font-code);
+  --diffs-header-font-family: var(--font-ui);
+  --diffs-font-size: 13px;
+  --diffs-line-height: 20px;
 
   /* source palette — light mode */
   --app-bg: #f8f8f6;
@@ -513,9 +525,9 @@
   }
 
   .diff-table {
-    font-family: var(--font-code);
-    font-size: 13px;
-    line-height: 22px;
+    font-family: var(--diffs-font-family);
+    font-size: var(--diffs-font-size);
+    line-height: var(--diffs-line-height);
     background: var(--code-bg);
     color: var(--foreground);
   }
@@ -945,7 +957,7 @@
     @apply bg-background text-foreground;
     font-family: var(--font-ui);
     font-size: var(--text-body);
-    line-height: 1.5;
+    line-height: 1.4;
     -webkit-font-smoothing: antialiased;
   }
 

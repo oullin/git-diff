@@ -3,7 +3,10 @@ import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import type { BundledLanguage } from "shiki";
 import { shallowRef } from "vue";
 
-const THEME_ID = "github-dark";
+import lichtTheme from "../themes/licht.json" with { type: "json" };
+import dunkelTheme from "../themes/dunkel.json" with { type: "json" };
+
+type ThemeId = "Licht" | "Dunkel";
 
 const EXTENSION_LANG: Record<string, BundledLanguage> = {
   ts: "ts",
@@ -56,16 +59,37 @@ export function languageFor(path: string): BundledLanguage | null {
 let highlighter: HighlighterCore | null = null;
 const loadedLangs = new Set<string>();
 
-/** Increments whenever a new language finishes loading, to trigger Vue re-render. */
+/** Increments whenever a new language loads OR the color scheme flips, so Vue re-renders. */
 export const highlighterRev = shallowRef(0);
+
+const currentTheme = shallowRef<ThemeId>(resolveInitialTheme());
+
+function resolveInitialTheme(): ThemeId {
+  if (typeof window === "undefined") return "Dunkel";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "Dunkel" : "Licht";
+}
+
+function watchColorScheme(): void {
+  if (typeof window === "undefined" || !window.matchMedia) return;
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  const update = (e: MediaQueryList | MediaQueryListEvent) => {
+    const next: ThemeId = e.matches ? "Dunkel" : "Licht";
+    if (next !== currentTheme.value) {
+      currentTheme.value = next;
+      highlighterRev.value += 1;
+    }
+  };
+  mql.addEventListener("change", update);
+}
 
 async function getHighlighter(): Promise<HighlighterCore> {
   if (highlighter) return highlighter;
   highlighter = await createHighlighterCore({
-    themes: [import("shiki/themes/github-dark.mjs")],
+    themes: [lichtTheme as never, dunkelTheme as never],
     langs: [],
     engine: createOnigurumaEngine(import("shiki/wasm")),
   });
+  watchColorScheme();
   return highlighter;
 }
 
@@ -85,7 +109,7 @@ export function highlightLine(text: string, lang: BundledLanguage | null): strin
   try {
     const tokens = highlighter.codeToTokensBase(text, {
       lang,
-      theme: THEME_ID,
+      theme: currentTheme.value,
       includeExplanation: false,
     });
     const row = tokens[0] ?? [];
