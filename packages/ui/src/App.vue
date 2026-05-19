@@ -20,6 +20,7 @@ import type {
   ChangedFile,
   DiffSection,
   DiffViewMode,
+  FileSearchResult,
   Repository,
   RepositoryFile,
   RepositoryState,
@@ -421,6 +422,14 @@ function threadsForFile(path: string): number {
   return threadsByPath.value.get(path) ?? 0;
 }
 
+async function openSearchResult(result: FileSearchResult) {
+  if (result.repoPath && result.repoPath !== activeRepoPath.value) {
+    await openRepo(result.repoPath);
+  }
+
+  selectFile(result.filePath);
+}
+
 function selectFile(path: string) {
   selectedPath.value = path;
   if (changedByPath.value.has(path)) {
@@ -588,18 +597,17 @@ void ACCENTS;
     />
     <TopBar
       :state="state"
-      :search-query="searchQuery"
       :current-user="currentUser"
       :user-initials="userInitials"
       :tweaks="tweaks"
       :creating-branch="creatingBranch"
       :branch-create-error="branchCreateError"
-      @update:search-query="(value) => (searchQuery = value)"
       @update:tweak="updateTweak"
       @refresh="refresh"
       @log-out="logOut"
       @switch-branch="switchBranch"
       @create-branch="createBranch"
+      @select-result="openSearchResult"
     />
 
     <main class="flex flex-1 min-h-0">

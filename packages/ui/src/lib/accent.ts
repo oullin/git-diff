@@ -78,12 +78,12 @@ export function diffBgs(
 ): DiffStyleColors {
   if (style === "punchy") {
     return {
-      addBg: "rgb(132 204 22 / 0.14)",
-      addStrong: "rgb(132 204 22 / 0.32)",
-      remBg: "rgb(231 111 81 / 0.14)",
-      remStrong: "rgb(231 111 81 / 0.34)",
-      addNum: "rgb(132 204 22 / 0.20)",
-      remNum: "rgb(231 111 81 / 0.22)",
+      addBg: "rgb(195 232 141 / 0.14)",
+      addStrong: "rgb(195 232 141 / 0.32)",
+      remBg: "rgb(255 83 112 / 0.14)",
+      remStrong: "rgb(255 83 112 / 0.34)",
+      addNum: "rgb(195 232 141 / 0.20)",
+      remNum: "rgb(255 83 112 / 0.22)",
       addBar: added,
       remBar: removed,
     };
@@ -91,9 +91,9 @@ export function diffBgs(
   if (style === "bar") {
     return {
       addBg: "transparent",
-      addStrong: "rgb(132 204 22 / 0.18)",
+      addStrong: "rgb(195 232 141 / 0.18)",
       remBg: "transparent",
-      remStrong: "rgb(231 111 81 / 0.20)",
+      remStrong: "rgb(255 83 112 / 0.20)",
       addNum: "transparent",
       remNum: "transparent",
       addBar: added,
@@ -101,13 +101,13 @@ export function diffBgs(
     };
   }
   return {
-    addBg: "rgb(132 204 22 / 0.07)",
-    addStrong: "rgb(132 204 22 / 0.22)",
-    remBg: "rgb(231 111 81 / 0.07)",
-    remStrong: "rgb(231 111 81 / 0.24)",
-    addNum: "rgb(132 204 22 / 0.14)",
-    remNum: "rgb(231 111 81 / 0.14)",
-    addBar: "rgb(132 204 22 / 0.6)",
-    remBar: "rgb(231 111 81 / 0.6)",
+    addBg: "rgb(195 232 141 / 0.07)",
+    addStrong: "rgb(195 232 141 / 0.22)",
+    remBg: "rgb(255 83 112 / 0.07)",
+    remStrong: "rgb(255 83 112 / 0.24)",
+    addNum: "rgb(195 232 141 / 0.14)",
+    remNum: "rgb(255 83 112 / 0.14)",
+    addBar: "rgb(195 232 141 / 0.55)",
+    remBar: "rgb(255 83 112 / 0.55)",
   };
 }

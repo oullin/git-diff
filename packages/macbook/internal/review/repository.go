@@ -139,7 +139,7 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 
 	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 
-	tracked, _ := listRepositoryFiles(ctx, root)
+	tracked, _ := ListRepositoryFiles(ctx, root)
 
 	state := RepositoryState{
 		Root:         root,
@@ -300,7 +300,7 @@ func (file ChangedFile) pathSectionID(kind string) string {
 	return fmt.Sprintf("%s:%s", kind, file.Path)
 }
 
-func listRepositoryFiles(ctx context.Context, root string) ([]string, error) {
+func ListRepositoryFiles(ctx context.Context, root string) ([]string, error) {
 	tracked, err := gitBytes(ctx, root, "ls-files", "-z")
 
 	if err != nil {

@@ -103,6 +103,13 @@ export interface Repository {
   lastOpenedAt?: string;
 }
 
+export interface FileSearchResult {
+  repoPath: string;
+  repoName: string;
+  filePath: string;
+  score: number;
+}
+
 export interface RepositoryCollaborator {
   userId: number;
   osUsername: string;
@@ -185,6 +192,7 @@ export interface DiffAppApi {
   unlockBranch(name: string, path?: string): Promise<{ branches: Branch[] }>;
   chooseRepository(defaultPath?: string): Promise<string | null>;
   listRepositories(): Promise<Repository[]>;
+  searchRepositoryFiles(query: string, limit?: number): Promise<FileSearchResult[]>;
   upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
   removeRepository(path: string): Promise<void>;
   listCollaborators(path: string): Promise<RepositoryCollaborator[]>;

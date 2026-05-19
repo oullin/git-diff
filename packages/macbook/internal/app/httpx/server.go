@@ -179,6 +179,7 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("POST /v1/repository/branches/unlock", s.unlockBranch)
 	mux.HandleFunc("DELETE /v1/repository/branches", s.deleteBranch)
 	mux.HandleFunc("GET /v1/repositories", s.listRepositories)
+	mux.HandleFunc("GET /v1/repositories/search-files", s.searchRepositoryFiles)
 	mux.HandleFunc("POST /v1/repositories", s.upsertRepository)
 	mux.HandleFunc("DELETE /v1/repositories", s.removeRepository)
 	mux.HandleFunc("GET /v1/repositories/collaborators", s.listCollaborators)

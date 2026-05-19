@@ -137,6 +137,8 @@ contextBridge.exposeInMainWorld("diffApp", {
   chooseRepository: (defaultPath?: string): Promise<string | null> =>
     ipcRenderer.invoke("repository:choose", defaultPath),
   listRepositories: () => ipcRenderer.invoke("repositories:list"),
+  searchRepositoryFiles: (query: string, limit?: number) =>
+    ipcRenderer.invoke("repositories:search-files", query, limit),
   upsertRepository: (request: { path: string; name?: string }) =>
     ipcRenderer.invoke("repositories:upsert", request),
   removeRepository: (path: string) => ipcRenderer.invoke("repositories:remove", path),

@@ -22,6 +22,7 @@ import type {
   RepositoryState,
   Repository,
   RepositoryCollaborator,
+  FileSearchResult,
   Branch,
   SystemStats,
   ReviewComment,
@@ -295,6 +296,22 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
 
   listRepositories(): Promise<{ repositories: Repository[] }> {
     return this.request<{ repositories: Repository[] }>("GET", "/v1/repositories");
+  }
+
+  searchRepositoryFiles(request: {
+    query: string;
+    limit?: number;
+  }): Promise<{ results: FileSearchResult[] }> {
+    const params = new URLSearchParams({ q: request.query });
+
+    if (typeof request.limit === "number") {
+      params.set("limit", String(request.limit));
+    }
+
+    return this.request<{ results: FileSearchResult[] }>(
+      "GET",
+      `/v1/repositories/search-files?${params.toString()}`,
+    );
   }
 
   upsertRepository(request: { path: string; name?: string }): Promise<Repository> {

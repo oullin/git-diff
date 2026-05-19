@@ -230,6 +230,13 @@ export interface Repository {
   lastOpenedAt?: string;
 }
 
+export interface FileSearchResult {
+  repoPath: string;
+  repoName: string;
+  filePath: string;
+  score: number;
+}
+
 export interface RepositoryCollaborator {
   userId: number;
   osUsername: string;
@@ -342,6 +349,10 @@ export interface WorkflowBridgeClient {
   }): Promise<ReviewComment>;
   deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void>;
   listRepositories(): Promise<{ repositories: Repository[] }>;
+  searchRepositoryFiles(request: {
+    query: string;
+    limit?: number;
+  }): Promise<{ results: FileSearchResult[] }>;
   upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
   removeRepository(request: { path: string }): Promise<void>;
   listOpVaults(): Promise<{ vaults: OpVault[] }>;

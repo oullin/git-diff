@@ -149,6 +149,12 @@ export function registerIpcHandlers(deps: IpcDeps) {
     return response.repositories ?? [];
   });
 
+  ipcMain.handle("repositories:search-files", async (_event, query: string, limit?: number) => {
+    const response = await (await client()).searchRepositoryFiles({ query, limit });
+
+    return response.results ?? [];
+  });
+
   ipcMain.handle("repositories:upsert", async (_event, request: { path: string; name?: string }) =>
     (await client()).upsertRepository(request),
   );

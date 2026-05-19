@@ -125,6 +125,23 @@ class HttpWorkflowBridgeClient {
       name: request.name,
     });
   }
+  deleteBranch(request) {
+    const params = new URLSearchParams({ name: request.name });
+    if (request.path) params.set("path", request.path);
+    return this.request("DELETE", `/v1/repository/branches?${params.toString()}`);
+  }
+  lockBranch(request) {
+    return this.request("POST", "/v1/repository/branches/lock", {
+      path: request.path,
+      name: request.name,
+    });
+  }
+  unlockBranch(request) {
+    return this.request("POST", "/v1/repository/branches/unlock", {
+      path: request.path,
+      name: request.name,
+    });
+  }
   getSystemStats() {
     return this.request("GET", "/v1/system/stats");
   }
@@ -172,6 +189,13 @@ class HttpWorkflowBridgeClient {
   listRepositories() {
     return this.request("GET", "/v1/repositories");
   }
+  searchRepositoryFiles(request) {
+    const params = new URLSearchParams({ q: request.query });
+    if (typeof request.limit === "number") {
+      params.set("limit", String(request.limit));
+    }
+    return this.request("GET", `/v1/repositories/search-files?${params.toString()}`);
+  }
   upsertRepository(request) {
     return this.request("POST", "/v1/repositories", {
       path: request.path,
@@ -180,6 +204,26 @@ class HttpWorkflowBridgeClient {
   }
   removeRepository(request) {
     return this.request("DELETE", `/v1/repositories?path=${encodeURIComponent(request.path)}`);
+  }
+  listCollaborators(request) {
+    return this.request(
+      "GET",
+      `/v1/repositories/collaborators?path=${encodeURIComponent(request.path)}`,
+    );
+  }
+  addCollaborator(request) {
+    return this.request("POST", "/v1/repositories/collaborators", {
+      path: request.path,
+      userId: request.userId,
+      role: request.role,
+    });
+  }
+  removeCollaborator(request) {
+    const params = new URLSearchParams({
+      path: request.path,
+      userId: String(request.userId),
+    });
+    return this.request("DELETE", `/v1/repositories/collaborators?${params.toString()}`);
   }
   listOpVaults() {
     return this.request("GET", "/v1/onepassword/vaults");

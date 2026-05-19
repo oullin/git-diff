@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import {
   Check,
   ChevronDown,
   GitBranch,
+  Loader2,
   LogOut,
   Plus,
   RefreshCw,
@@ -17,7 +18,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@ui/popover";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@ui/command";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@ui/popover";
 import {
   Dialog,
   DialogBody,
@@ -30,11 +32,10 @@ import DiffStat from "./DiffStat.vue";
 import Kbd from "./Kbd.vue";
 import TweaksPanel from "./TweaksPanel.vue";
 import type { Tweaks } from "@composables/useTweaks";
-import type { AuthUser, RepositoryState } from "@api";
+import type { AuthUser, FileSearchResult, RepositoryState } from "@api";
 
 const props = defineProps<{
   state: RepositoryState | null;
-  searchQuery: string;
   currentUser: AuthUser | null;
   userInitials: string;
   tweaks: Tweaks;
@@ -43,12 +44,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  "update:searchQuery": [value: string];
   "update:tweak": [key: keyof Tweaks, value: Tweaks[keyof Tweaks]];
   refresh: [];
   "log-out": [];
   "switch-branch": [branch: string];
   "create-branch": [name: string];
+  "select-result": [result: FileSearchResult];
 }>();
 
 const branches = ref<string[]>([]);
@@ -59,9 +60,91 @@ const createOpen = ref(false);
 const createName = ref("");
 const createInputRef = ref<HTMLInputElement | null>(null);
 
-function onSearchInput(event: Event) {
-  emit("update:searchQuery", (event.target as HTMLInputElement).value);
+const searchQuery = ref("");
+const searchResults = ref<FileSearchResult[]>([]);
+const searchLoading = ref(false);
+const searchError = ref("");
+const searchOpen = computed(() => searchQuery.value.trim().length > 0);
+
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+let searchToken = 0;
+
+function basename(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash >= 0 ? path.slice(slash + 1) : path;
 }
+
+function dirname(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash >= 0 ? path.slice(0, slash) : "";
+}
+
+async function runSearch(query: string) {
+  const trimmed = query.trim();
+
+  if (!trimmed) {
+    searchResults.value = [];
+    searchLoading.value = false;
+    searchError.value = "";
+    return;
+  }
+
+  const token = ++searchToken;
+  searchLoading.value = true;
+  searchError.value = "";
+
+  try {
+    const results = await window.diffApp.searchRepositoryFiles(trimmed, 50);
+    if (token !== searchToken) {
+      return;
+    }
+    searchResults.value = results;
+  } catch (cause) {
+    if (token !== searchToken) {
+      return;
+    }
+    searchError.value = cause instanceof Error ? cause.message : String(cause);
+    searchResults.value = [];
+  } finally {
+    if (token === searchToken) {
+      searchLoading.value = false;
+    }
+  }
+}
+
+function onSearchInput(value: string) {
+  searchQuery.value = value;
+
+  if (searchDebounce) {
+    clearTimeout(searchDebounce);
+  }
+
+  if (!value.trim()) {
+    searchToken++;
+    searchResults.value = [];
+    searchLoading.value = false;
+    searchError.value = "";
+    return;
+  }
+
+  searchDebounce = setTimeout(() => {
+    void runSearch(value);
+  }, 150);
+}
+
+function onSelectResult(result: FileSearchResult) {
+  emit("select-result", result);
+  searchQuery.value = "";
+  searchResults.value = [];
+  searchError.value = "";
+  searchToken++;
+}
+
+onBeforeUnmount(() => {
+  if (searchDebounce) {
+    clearTimeout(searchDebounce);
+  }
+});
 
 async function onBranchMenuOpen(open: boolean) {
   if (!open || !props.state) {
@@ -234,36 +317,80 @@ watch(
       <DiffStat v-if="state" :add="state.additions" :del="state.deletions" />
     </div>
 
-    <div class="flex-1" />
-
     <div
-      class="flex items-center"
-      :style="{
-        gap: '6px',
-        height: '32px',
-        padding: '0 10px',
-        borderRadius: '8px',
-        background: 'var(--gd-panel-2)',
-        border: '1px solid var(--gd-border)',
-        width: '240px',
-      }"
-    >
-      <Search :size="13" :style="{ color: 'var(--gd-text-3)' }" />
-      <input
-        :value="searchQuery"
-        placeholder="Go to file or line…"
-        :style="{
-          flex: 1,
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          color: 'var(--gd-text)',
-          fontSize: '13.5px',
-        }"
-        @input="onSearchInput"
-      />
-      <Kbd>⌘P</Kbd>
-    </div>
+      :style="{ width: '1px', height: '22px', background: 'var(--gd-border)', margin: '0 6px' }"
+    />
+
+    <Popover :open="searchOpen">
+      <PopoverAnchor as-child>
+        <Command
+          :model-value="undefined"
+          class="flex flex-row items-center"
+          :style="{
+            flex: 1,
+            minWidth: 0,
+            gap: '6px',
+            height: '32px',
+            padding: '0 10px',
+            borderRadius: '8px',
+            background: 'var(--gd-panel-2)',
+            border: '1px solid var(--gd-border)',
+          }"
+          @update:model-value="(value: any) => value && onSelectResult(value as FileSearchResult)"
+        >
+          <Search :size="13" :style="{ color: 'var(--gd-text-3)', flexShrink: 0 }" />
+          <CommandInput
+            :model-value="searchQuery"
+            placeholder="Search files across all repos…"
+            :style="{
+              flex: 1,
+              minWidth: 0,
+              background: 'transparent',
+              color: 'var(--gd-text)',
+              fontSize: '13.5px',
+            }"
+            @update:model-value="onSearchInput"
+          />
+          <Loader2
+            v-if="searchLoading"
+            :size="13"
+            class="animate-spin"
+            :style="{ color: 'var(--gd-text-3)', flexShrink: 0 }"
+          />
+          <Kbd>⌘P</Kbd>
+
+          <PopoverContent
+            align="start"
+            :side-offset="6"
+            class="p-0 w-[var(--reka-popover-trigger-width)] max-w-[640px]"
+            @open-auto-focus="(event: Event) => event.preventDefault()"
+          >
+            <CommandList class="max-h-[360px]">
+              <CommandEmpty v-if="searchError">{{ searchError }}</CommandEmpty>
+              <CommandEmpty v-else-if="!searchLoading && searchResults.length === 0">
+                No matching files
+              </CommandEmpty>
+              <CommandItem
+                v-for="result in searchResults"
+                :key="`${result.repoPath}::${result.filePath}`"
+                :value="result"
+                class="flex items-center gap-2"
+              >
+                <span class="font-mono text-sm truncate">{{ basename(result.filePath) }}</span>
+                <span
+                  v-if="dirname(result.filePath)"
+                  class="font-mono text-xs text-muted-foreground truncate"
+                  >{{ dirname(result.filePath) }}</span
+                >
+                <span class="ml-auto pl-2 text-xs text-muted-foreground shrink-0">
+                  {{ result.repoName }}
+                </span>
+              </CommandItem>
+            </CommandList>
+          </PopoverContent>
+        </Command>
+      </PopoverAnchor>
+    </Popover>
 
     <button
       type="button"

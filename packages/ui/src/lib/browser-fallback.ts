@@ -85,6 +85,7 @@ export function installBrowserFallback() {
     unlockBranch: async () => ({ branches: [] }),
     chooseRepository: async () => state.root,
     listRepositories: async () => repositories,
+    searchRepositoryFiles: async () => [],
     upsertRepository: async ({ path, name }) => {
       const existing = repositories.find((repo) => repo.path === path);
       const now = new Date().toISOString();
