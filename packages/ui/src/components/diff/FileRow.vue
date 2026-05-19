@@ -30,9 +30,14 @@ const dir = computed(() => parts.value.slice(0, -1).join("/"));
       padding: '8px 8px 8px 10px',
       margin: '1px 4px',
       borderRadius: '7px',
-      background: selected ? 'var(--gd-hover)' : 'transparent',
+      background: selected
+        ? 'linear-gradient(180deg, rgb(132 204 22 / 0.06), rgb(132 204 22 / 0.02)), var(--gd-panel-3, var(--gd-hover))'
+        : 'transparent',
       border: '1px solid',
-      borderColor: selected ? 'var(--gd-border-strong)' : 'transparent',
+      borderColor: selected ? 'transparent' : 'transparent',
+      boxShadow: selected
+        ? '0 0 0 1px rgb(132 204 22 / 0.22) inset, 0 1px 0 var(--gd-edge-hi-2) inset, 0 4px 12px -8px rgb(132 204 22 / 0.25)'
+        : 'none',
     }"
     @click="emit('select')"
   >
@@ -44,8 +49,9 @@ const dir = computed(() => parts.value.slice(0, -1).join("/"));
         top: '6px',
         bottom: '6px',
         width: '2px',
-        background: 'var(--gd-accent)',
+        background: 'var(--gd-added)',
         borderRadius: '2px',
+        boxShadow: '0 0 8px rgb(132 204 22 / 0.6)',
       }"
     />
     <StatusBadge :status="file.status" />

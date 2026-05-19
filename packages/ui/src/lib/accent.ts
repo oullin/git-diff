@@ -9,6 +9,13 @@ export interface Accent {
 }
 
 export const ACCENTS: Record<UIAccent, Accent> = {
+  copper: {
+    key: "copper",
+    name: "Copper",
+    hex: "#d97757",
+    strong: "#b85a3f",
+    soft: "rgb(217 119 87 / 0.14)",
+  },
   indigo: {
     key: "indigo",
     name: "Indigo",
@@ -50,7 +57,7 @@ export function resolveAccent(value: string | undefined): Accent {
   if (value && value in ACCENTS) {
     return ACCENTS[value as UIAccent];
   }
-  return ACCENTS.indigo;
+  return ACCENTS.copper;
 }
 
 export type DiffStyleColors = {
@@ -71,12 +78,12 @@ export function diffBgs(
 ): DiffStyleColors {
   if (style === "punchy") {
     return {
-      addBg: "rgb(74 222 128 / 0.14)",
-      addStrong: "rgb(74 222 128 / 0.32)",
-      remBg: "rgb(248 113 113 / 0.14)",
-      remStrong: "rgb(248 113 113 / 0.34)",
-      addNum: "rgb(74 222 128 / 0.20)",
-      remNum: "rgb(248 113 113 / 0.22)",
+      addBg: "rgb(132 204 22 / 0.14)",
+      addStrong: "rgb(132 204 22 / 0.32)",
+      remBg: "rgb(231 111 81 / 0.14)",
+      remStrong: "rgb(231 111 81 / 0.34)",
+      addNum: "rgb(132 204 22 / 0.20)",
+      remNum: "rgb(231 111 81 / 0.22)",
       addBar: added,
       remBar: removed,
     };
@@ -84,9 +91,9 @@ export function diffBgs(
   if (style === "bar") {
     return {
       addBg: "transparent",
-      addStrong: "rgb(74 222 128 / 0.18)",
+      addStrong: "rgb(132 204 22 / 0.18)",
       remBg: "transparent",
-      remStrong: "rgb(248 113 113 / 0.20)",
+      remStrong: "rgb(231 111 81 / 0.20)",
       addNum: "transparent",
       remNum: "transparent",
       addBar: added,
@@ -94,13 +101,13 @@ export function diffBgs(
     };
   }
   return {
-    addBg: "rgb(74 222 128 / 0.06)",
-    addStrong: "rgb(74 222 128 / 0.22)",
-    remBg: "rgb(248 113 113 / 0.07)",
-    remStrong: "rgb(248 113 113 / 0.24)",
-    addNum: "rgb(74 222 128 / 0.10)",
-    remNum: "rgb(248 113 113 / 0.12)",
-    addBar: "rgb(74 222 128 / 0.6)",
-    remBar: "rgb(248 113 113 / 0.6)",
+    addBg: "rgb(132 204 22 / 0.07)",
+    addStrong: "rgb(132 204 22 / 0.22)",
+    remBg: "rgb(231 111 81 / 0.07)",
+    remStrong: "rgb(231 111 81 / 0.24)",
+    addNum: "rgb(132 204 22 / 0.14)",
+    remNum: "rgb(231 111 81 / 0.14)",
+    addBar: "rgb(132 204 22 / 0.6)",
+    remBar: "rgb(231 111 81 / 0.6)",
   };
 }

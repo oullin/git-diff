@@ -18,7 +18,7 @@ export interface Tweaks {
 }
 
 export const TWEAK_DEFAULTS: Tweaks = {
-  accent: "indigo",
+  accent: "copper",
   viewMode: "split",
   diffStyle: "soft",
   density: "comfortable",
@@ -44,7 +44,7 @@ export function useTweaks(prefs: ComputedRef<Record<string, string>>): ComputedR
     return {
       accent: oneOf(
         p[PREF_KEYS.uiAccent],
-        ["indigo", "emerald", "amber", "rose"] as const,
+        ["copper", "indigo", "emerald", "amber", "rose"] as const,
         TWEAK_DEFAULTS.accent,
       ),
       viewMode: oneOf(

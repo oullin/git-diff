@@ -148,7 +148,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
       fontFamily: 'var(--font-mono)',
       fontSize: '13.5px',
       lineHeight: `${lineH}px`,
-      background: 'var(--gd-bg)',
+      background: 'var(--gd-bg-code, var(--gd-bg))',
     }"
   >
     <section v-for="section in file.sections" :key="section.id">
@@ -163,11 +163,12 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                   :style="{
                     gap: '10px',
                     padding: '8px 16px',
-                    background: 'var(--gd-panel)',
+                    background: 'var(--gd-bg-gutter, var(--gd-panel))',
                     color: 'var(--gd-text-3)',
                     fontSize: '13px',
-                    borderTop: '1px solid var(--gd-border)',
-                    borderBottom: '1px solid var(--gd-border)',
+                    borderTop: '1px solid var(--gd-border-soft)',
+                    borderBottom: '1px solid var(--gd-border-soft)',
+                    boxShadow: '0 1px 0 var(--gd-edge-hi-2) inset',
                   }"
                 >
                   <ChevronDown :size="12" />
@@ -462,11 +463,12 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                 :style="{
                   gap: '10px',
                   padding: '8px 16px',
-                  background: 'var(--gd-panel)',
+                  background: 'var(--gd-bg-gutter, var(--gd-panel))',
                   color: 'var(--gd-text-3)',
                   fontSize: '13px',
-                  borderTop: '1px solid var(--gd-border)',
-                  borderBottom: '1px solid var(--gd-border)',
+                  borderTop: '1px solid var(--gd-border-soft)',
+                  borderBottom: '1px solid var(--gd-border-soft)',
+                  boxShadow: '0 1px 0 var(--gd-edge-hi-2) inset',
                 }"
               >
                 <ChevronDown :size="12" />

@@ -164,7 +164,7 @@ export const PREF_KEYS = {
 
 export type DiffHunkStyle = "soft" | "punchy" | "bar";
 export type DiffDensity = "comfortable" | "compact";
-export type UIAccent = "indigo" | "emerald" | "amber" | "rose";
+export type UIAccent = "copper" | "indigo" | "emerald" | "amber" | "rose";
 
 export const VIEWED_KEY_PREFIX = "file.viewed.";
 

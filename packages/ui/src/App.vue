@@ -573,7 +573,10 @@ void ACCENTS;
   <div
     v-else
     class="flex h-screen flex-col overflow-hidden"
-    :style="{ background: 'var(--gd-bg-canvas)', color: 'var(--gd-text)' }"
+    :style="{
+      background: 'var(--gd-bloom), var(--gd-bg)',
+      color: 'var(--gd-text)',
+    }"
   >
     <TitleBar
       :state="state"
@@ -675,11 +678,8 @@ void ACCENTS;
           @open-review-panel="reviewPanelOpen = true"
         />
 
-        <section
-          class="flex flex-col flex-1 min-w-0 relative"
-          :style="{ background: 'var(--gd-bg)' }"
-        >
-          <div class="flex-1 overflow-auto min-h-0">
+        <section class="flex flex-col flex-1 min-w-0 relative">
+          <div class="flex-1 overflow-auto min-h-0" style="padding: 16px 18px 24px">
             <FileContentViewer
               v-if="selectedPath && !selectedIsChanged"
               :file="selectedRepoFile"
@@ -696,7 +696,18 @@ void ACCENTS;
               </div>
             </template>
             <template v-else>
-              <article v-for="file in files" :id="fileElementID(file.path)" :key="file.path">
+              <article
+                v-for="file in files"
+                :id="fileElementID(file.path)"
+                :key="file.path"
+                :style="{
+                  background: 'var(--gd-panel)',
+                  borderRadius: '12px',
+                  boxShadow: 'var(--gd-shadow-card)',
+                  overflow: 'clip',
+                  marginBottom: '18px',
+                }"
+              >
                 <FileHeader
                   :file="file"
                   :collapsed="!!collapsed[file.path]"

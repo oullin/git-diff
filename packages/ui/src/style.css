@@ -344,31 +344,80 @@
     --skill-bg: rgb(188 140 255 / 0.16);
     --skill-border: rgb(188 140 255 / 0.4);
 
-    /* Design-bundle tokens (dark variant — matches gitdiff/project/index.html) */
-    --gd-bg-canvas: #050507;
-    --gd-bg: #0a0a0c;
-    --gd-panel: #0f0f12;
-    --gd-panel-2: #131317;
-    --gd-panel-3: #181820;
-    --gd-hover: #1c1c24;
-    --gd-border: #1d1d23;
-    --gd-border-strong: #2a2a33;
-    --gd-border-soft: #16161b;
-    --gd-text: #eaeaef;
-    --gd-text-2: #a8a8b3;
-    --gd-text-3: #6e6e7a;
-    --gd-text-muted: #4a4a55;
-    --gd-added: #4ade80;
-    --gd-removed: #f87171;
-    --gd-warn: #fbbf24;
-    --gd-shadow-lg: 0 24px 64px -12px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.04);
+    /* Design-bundle tokens (dark variant — Carbon: warm dark, paper-and-leather) */
+    --gd-bg-canvas: #0b0907;
+    --gd-bg: #14110d;
+    --gd-bg-rail: #100d0a;
+    --gd-bg-input: #16120e;
+    --gd-bg-code: #181410;
+    --gd-bg-gutter: #110e0a;
+    --gd-panel: #1a1611;
+    --gd-panel-2: #221c16;
+    --gd-panel-3: #1f1a14;
+    --gd-hover: #221d17;
+    --gd-border: #2a241c;
+    --gd-border-strong: #3a3025;
+    --gd-border-soft: #221c15;
+    --gd-text: #f5ecdc;
+    --gd-text-2: #c6b89e;
+    --gd-text-3: #8e8067;
+    --gd-text-muted: #6a5d48;
+    --gd-added: #84cc16;
+    --gd-removed: #e76f51;
+    --gd-warn: #f5b341;
+    --gd-shadow-lg: 0 24px 64px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 210 160 / 0.04);
 
-    --gd-accent: #818cf8;
-    --gd-accent-strong: #6366f1;
-    --gd-accent-soft: rgb(129 140 248 / 0.14);
+    /* Carbon edge-lighting + atmosphere */
+    --gd-edge-hi: rgb(255 210 160 / 0.06);
+    --gd-edge-hi-2: rgb(255 210 160 / 0.03);
+    --gd-edge-lo: rgb(0 0 0 / 0.6);
+    --gd-shadow-card:
+      0 1px 0 var(--gd-edge-hi) inset, 0 24px 48px -28px rgb(0 0 0 / 0.7), 0 2px 0 rgb(0 0 0 / 0.4);
+    --gd-shadow-panel:
+      0 1px 0 var(--gd-edge-hi) inset, 0 -1px 0 rgb(0 0 0 / 0.4) inset,
+      0 12px 32px -16px rgb(0 0 0 / 0.7);
+    --gd-bloom:
+      radial-gradient(1200px 600px at 70% -10%, rgb(217 119 87 / 0.12), transparent 60%),
+      radial-gradient(900px 500px at 10% -20%, rgb(245 179 65 / 0.05), transparent 60%);
 
-    --gd-word-add-bg: rgb(74 222 128 / 0.22);
-    --gd-word-rem-bg: rgb(248 113 113 / 0.22);
+    /* Diff bar + gutter line tints (Carbon lime/terracotta) */
+    --gd-green-bar: rgb(132 204 22 / 0.6);
+    --gd-red-bar: rgb(231 111 81 / 0.6);
+    --gd-green-line: rgb(132 204 22 / 0.14);
+    --gd-red-line: rgb(231 111 81 / 0.14);
+
+    --gd-accent: #d97757;
+    --gd-accent-strong: #b85a3f;
+    --gd-accent-soft: rgb(217 119 87 / 0.14);
+
+    --gd-word-add-bg: rgb(132 204 22 / 0.22);
+    --gd-word-rem-bg: rgb(231 111 81 / 0.22);
+  }
+
+  /* Carbon-tinted scrollbars across the app (dark mode only) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--gd-border-strong);
+    border: 2px solid transparent;
+    border-radius: 99px;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--gd-text-muted);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  * {
+    scrollbar-color: var(--gd-border-strong) transparent;
+    scrollbar-width: thin;
   }
 }
 
