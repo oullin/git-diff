@@ -6,8 +6,6 @@ import { diffBgs, type DiffStyleColors } from "@lib/accent";
 import { parsePatch, splitPatch, type PatchLine, type SplitRow } from "@lib/patch";
 import { computeWordHi, type Range } from "@lib/wordHi";
 import CommentThread from "./CommentThread.vue";
-import Kbd from "./Kbd.vue";
-import DiffStat from "./DiffStat.vue";
 import type { ChangedFile, DiffHunkStyle, DiffSection, DiffViewMode, ReviewComment } from "@api";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 
@@ -579,23 +577,5 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
         </div>
       </div>
     </section>
-
-    <div
-      class="flex items-center justify-center"
-      :style="{
-        gap: '10px',
-        padding: '24px 16px',
-        borderTop: '1px solid var(--gd-border)',
-        color: 'var(--gd-text-3)',
-        fontSize: '12px',
-      }"
-    >
-      <div :style="{ flex: 1, height: '1px', background: 'var(--gd-border)', maxWidth: '200px' }" />
-      <span>End of diff · </span>
-      <DiffStat :add="file.additions" :del="file.deletions" />
-      <span :style="{ color: 'var(--gd-text-muted)' }">·</span>
-      <span>Press <Kbd>J</Kbd> for next file</span>
-      <div :style="{ flex: 1, height: '1px', background: 'var(--gd-border)', maxWidth: '200px' }" />
-    </div>
   </div>
 </template>
