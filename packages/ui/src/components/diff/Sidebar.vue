@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { AlertCircle, Check, MessageSquare, Search } from "lucide-vue-next";
+import { AlertCircle, Check, MessageSquare, Search, X } from "lucide-vue-next";
 import FileRow from "./FileRow.vue";
 import Kbd from "./Kbd.vue";
 import SegGroup from "./SegGroup.vue";
@@ -37,12 +37,21 @@ const filteredFiles = computed(() => {
   return q ? props.files.filter((f) => f.path.toLowerCase().includes(q)) : props.files;
 });
 
+const filteredAllPaths = computed(() => {
+  const q = props.searchQuery.trim().toLowerCase();
+  return q ? props.allPaths.filter((path) => path.toLowerCase().includes(q)) : props.allPaths;
+});
+
 const progressPct = computed(() =>
   totalCount.value === 0 ? 0 : (viewedCount.value / totalCount.value) * 100,
 );
 
 function onSearchInput(event: Event) {
   emit("update:searchQuery", (event.target as HTMLInputElement).value);
+}
+
+function clearSearch() {
+  emit("update:searchQuery", "");
 }
 </script>
 
@@ -85,6 +94,27 @@ function onSearchInput(event: Event) {
           }"
           @input="onSearchInput"
         />
+        <button
+          v-if="searchQuery"
+          type="button"
+          aria-label="Clear filter"
+          :style="{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '18px',
+            height: '18px',
+            borderRadius: '4px',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--gd-text-3)',
+            cursor: 'pointer',
+            padding: 0,
+          }"
+          @click="clearSearch"
+        >
+          <X :size="12" />
+        </button>
       </div>
       <div class="flex items-center justify-between" :style="{ marginTop: '10px' }">
         <div :style="{ fontSize: '11.5px', color: 'var(--gd-text-3)', fontWeight: 500 }">
@@ -122,57 +152,56 @@ function onSearchInput(event: Event) {
       </div>
     </div>
 
-    <ScrollArea class="min-h-0 flex-1">
-      <div :style="{ padding: '6px 6px 12px' }">
+    <div
+      :style="{
+        padding: '8px 10px 4px',
+        fontSize: '11px',
+        fontWeight: 600,
+        letterSpacing: '0.4px',
+        textTransform: 'uppercase',
+        color: 'var(--gd-text-muted)',
+      }"
+    >
+      Workspace
+    </div>
+    <ScrollArea v-if="scope === 'changed'" class="min-h-0 flex-1">
+      <div :style="{ padding: '0 6px 12px' }">
+        <FileRow
+          v-for="file in filteredFiles"
+          :key="file.path"
+          :file="file"
+          :selected="selectedPath === file.path"
+          :viewed="isViewed(file)"
+          :threads="threadsForFile(file.path)"
+          @select="emit('select', file.path)"
+          @toggle-viewed="emit('toggle-viewed', file)"
+        />
         <div
-          :style="{
-            padding: '8px 10px 4px',
-            fontSize: '11px',
-            fontWeight: 600,
-            letterSpacing: '0.4px',
-            textTransform: 'uppercase',
-            color: 'var(--gd-text-muted)',
-          }"
+          v-if="filteredFiles.length === 0"
+          :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
         >
-          Workspace
+          No changed files match the filter.
         </div>
-        <template v-if="scope === 'changed'">
-          <FileRow
-            v-for="file in filteredFiles"
-            :key="file.path"
-            :file="file"
-            :selected="selectedPath === file.path"
-            :viewed="isViewed(file)"
-            :threads="threadsForFile(file.path)"
-            @select="emit('select', file.path)"
-            @toggle-viewed="emit('toggle-viewed', file)"
-          />
-          <div
-            v-if="filteredFiles.length === 0"
-            :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
-          >
-            No changed files match the filter.
-          </div>
-        </template>
-        <template v-else>
-          <RepoFileTree
-            v-if="allPaths.length > 0"
-            :paths="allPaths"
-            :selected-path="selectedPath"
-            :changed-paths="changedPathsSet"
-            initial-expansion="closed"
-            class="p-2"
-            @select="(path) => emit('select', path)"
-          />
-          <div
-            v-else
-            :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
-          >
-            No tracked files yet.
-          </div>
-        </template>
       </div>
     </ScrollArea>
+    <div v-else class="flex min-h-0 flex-1 flex-col" :style="{ padding: '0 6px 12px' }">
+      <RepoFileTree
+        v-if="filteredAllPaths.length > 0"
+        :paths="filteredAllPaths"
+        :selected-path="selectedPath"
+        :changed-paths="changedPathsSet"
+        :initial-expansion="searchQuery.trim() ? 'open' : 'closed'"
+        :expand-all-on-reset="!!searchQuery.trim()"
+        class="min-h-0 flex-1 p-2"
+        @select="(path) => emit('select', path)"
+      />
+      <div
+        v-else
+        :style="{ padding: '12px 10px', fontSize: '12px', color: 'var(--gd-text-muted)' }"
+      >
+        {{ allPaths.length === 0 ? "No tracked files yet." : "No files match the filter." }}
+      </div>
+    </div>
 
     <div
       :style="{

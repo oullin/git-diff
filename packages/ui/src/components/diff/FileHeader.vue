@@ -29,8 +29,9 @@ const hasUnstaged = computed(() =>
       gap: '10px',
       padding: '10px 16px',
       height: '52px',
-      background:
-        'linear-gradient(180deg, rgb(255 255 255 / 0.025), rgb(255 255 255 / 0) 40%), var(--gd-panel-2)',
+      backgroundColor: 'var(--gd-panel-2)',
+      backgroundImage:
+        'linear-gradient(180deg, rgb(255 255 255 / 0.025), rgb(255 255 255 / 0) 40%)',
       borderBottom: '1px solid var(--gd-border)',
       boxShadow: '0 1px 0 var(--gd-edge-hi) inset',
     }"

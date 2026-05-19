@@ -8,12 +8,26 @@ type Props = {
   selectedPath?: string;
   changedPaths?: ReadonlySet<string>;
   initialExpansion?: "open" | "closed";
+  expandAllOnReset?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
   changedPaths: () => new Set<string>(),
   initialExpansion: "open",
+  expandAllOnReset: false,
 });
+
+function ancestorDirs(paths: readonly string[]): string[] {
+  const set = new Set<string>();
+  for (const path of paths) {
+    let idx = path.indexOf("/");
+    while (idx !== -1) {
+      set.add(path.slice(0, idx));
+      idx = path.indexOf("/", idx + 1);
+    }
+  }
+  return Array.from(set);
+}
 const emit = defineEmits<{ select: [path: string] }>();
 
 const mountEl = ref<HTMLDivElement | null>(null);
@@ -65,7 +79,10 @@ watch(
   () => props.paths,
   (next) => {
     if (!tree) return;
-    tree.resetPaths([...next]);
+    const options = props.expandAllOnReset
+      ? { initialExpandedPaths: ancestorDirs(next) }
+      : undefined;
+    tree.resetPaths([...next], options);
     if (mountEl.value) {
       applyChangedDecorations(mountEl.value, props.changedPaths);
     }
