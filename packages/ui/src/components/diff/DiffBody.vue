@@ -1,30 +1,53 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { ChevronDown, ChevronUp, Plus } from "lucide-vue-next";
 import { highlighterRev, highlightLine, languageFor } from "@lib/highlight";
 import { diffBgs, type DiffStyleColors } from "@lib/accent";
 import { parsePatch, splitPatch, type PatchLine, type SplitRow } from "@lib/patch";
 import { computeWordHi, type Range } from "@lib/wordHi";
 import CommentThread from "./CommentThread.vue";
+import SplitHandle from "./SplitHandle.vue";
 import type { ChangedFile, DiffHunkStyle, DiffSection, DiffViewMode, ReviewComment } from "@api";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 
-const props = defineProps<{
-  file: ChangedFile;
-  viewMode: DiffViewMode;
-  diffStyle: DiffHunkStyle;
-  density: "comfortable" | "compact";
-  wordHighlight: boolean;
-  hideWhitespace: boolean;
-  comments: ReviewComment[];
-  replyFeatures: RichTextFeatures;
-}>();
+const props = withDefaults(
+  defineProps<{
+    file: ChangedFile;
+    viewMode: DiffViewMode;
+    diffStyle: DiffHunkStyle;
+    density: "comfortable" | "compact";
+    wordHighlight: boolean;
+    hideWhitespace: boolean;
+    comments: ReviewComment[];
+    replyFeatures: RichTextFeatures;
+    splitRatio?: number;
+  }>(),
+  { splitRatio: 0.5 },
+);
 
 const emit = defineEmits<{
   "add-comment": [section: DiffSection, line: PatchLine];
   "delete-comment": [comment: ReviewComment];
   "reply-comment": [parent: ReviewComment, bodyHtml: string];
+  "update:splitRatio": [value: number];
 }>();
+
+const wrapperStyle = computed(() => {
+  const left = Math.min(80, Math.max(20, props.splitRatio * 100));
+  const right = 100 - left;
+  return {
+    minWidth: props.viewMode === "split" ? "1800px" : "1200px",
+    position: "relative" as const,
+    "--gd-split-cols": `${left.toFixed(2)}% ${right.toFixed(2)}%`,
+  };
+});
+
+const sectionRefs = ref<Record<string, HTMLElement | null>>({});
+function setSectionRef(id: string) {
+  return (el: unknown) => {
+    sectionRefs.value[id] = el instanceof HTMLElement ? el : null;
+  };
+}
 
 const lineH = computed(() => (props.density === "compact" ? 22 : 24));
 const colors = computed<DiffStyleColors>(() => diffBgs(props.diffStyle));
@@ -153,7 +176,13 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
   >
     <section v-for="section in file.sections" :key="section.id">
       <div :style="{ overflowX: 'auto', overflowY: 'visible' }">
-        <div :style="{ minWidth: viewMode === 'split' ? '1800px' : '1200px' }">
+        <div :ref="setSectionRef(section.id)" :style="wrapperStyle">
+          <SplitHandle
+            v-if="viewMode === 'split'"
+            :ratio="splitRatio"
+            :container-el="sectionRefs[section.id] ?? null"
+            @update:ratio="(value) => emit('update:splitRatio', value)"
+          />
           <template v-if="viewMode === 'split'">
             <template v-for="row in splitPatch(section, hideWhitespace)" :key="row.id">
               <template v-if="row.kind === 'meta'">
@@ -222,9 +251,17 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
               <template v-else-if="row.kind === 'context'">
                 <div
                   class="gd-row relative"
-                  :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr' }"
+                  :style="{ display: 'grid', gridTemplateColumns: 'var(--gd-split-cols, 1fr 1fr)' }"
                 >
-                  <div class="flex" :style="{ background: 'transparent', minHeight: `${lineH}px` }">
+                  <div
+                    class="flex"
+                    :style="{
+                      background: 'transparent',
+                      minHeight: `${lineH}px`,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                    }"
+                  >
                     <div
                       :style="{
                         width: '56px',
@@ -264,6 +301,8 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                       background: 'transparent',
                       borderLeft: '1px solid var(--gd-border-soft)',
                       minHeight: `${lineH}px`,
+                      minWidth: 0,
+                      overflow: 'hidden',
                     }"
                   >
                     <div
@@ -320,13 +359,15 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
               <template v-else>
                 <div
                   class="gd-row relative"
-                  :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr' }"
+                  :style="{ display: 'grid', gridTemplateColumns: 'var(--gd-split-cols, 1fr 1fr)' }"
                 >
                   <div
                     class="flex"
                     :style="{
                       background: bgFor(renderPair(row).left.kind),
                       minHeight: `${lineH}px`,
+                      minWidth: 0,
+                      overflow: 'hidden',
                     }"
                   >
                     <div
@@ -381,6 +422,8 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                       background: bgFor(renderPair(row).right.kind),
                       borderLeft: '1px solid var(--gd-border-soft)',
                       minHeight: `${lineH}px`,
+                      minWidth: 0,
+                      overflow: 'hidden',
                     }"
                   >
                     <div

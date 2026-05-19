@@ -60,6 +60,7 @@ const hideWhitespace = computed(() => prefValues.value[PREF_KEYS.diffHideWhitesp
 const lastRepoRoot = computed(() => prefValues.value[PREF_KEYS.lastRepoRoot] ?? "");
 
 const repositories = ref<Repository[]>([]);
+const repositoriesLoading = ref(false);
 const activeRepoPath = ref<string>("");
 const reviews = ref<ReviewSession[]>([]);
 const activeReview = ref<ReviewDetail | null>(null);
@@ -68,6 +69,7 @@ const searchQuery = ref("");
 const loading = ref(false);
 const error = ref("");
 const collapsed = ref<Record<string, boolean>>({});
+const splitRatios = ref<Record<string, number>>({});
 const reviewPanelOpen = ref(false);
 const commentTarget = ref<{
   file: ChangedFile;
@@ -226,7 +228,7 @@ async function bootstrapAuth() {
 async function enterApp() {
   authMode.value = "ready";
   prefValues.value = (await window.diffApp.getUIPreferences()).values;
-  repositories.value = await window.diffApp.listRepositories();
+  await refreshRepositoryList();
   const lastRoot = lastRepoRoot.value;
   const initial =
     repositories.value.find((repo) => repo.path === lastRoot)?.path ??
@@ -356,7 +358,12 @@ async function addRepository() {
 }
 
 async function refreshRepositoryList() {
-  repositories.value = await window.diffApp.listRepositories();
+  repositoriesLoading.value = true;
+  try {
+    repositories.value = await window.diffApp.listRepositories();
+  } finally {
+    repositoriesLoading.value = false;
+  }
 }
 
 async function removeRepository(path: string) {
@@ -590,10 +597,12 @@ void ACCENTS;
     <TitleBar
       :state="state"
       :repositories="repositories"
+      :repositories-loading="repositoriesLoading"
       :active-repo-path="activeRepoPath"
       @select-repo="openRepo"
       @add-repo="addRepository"
       @remove-repo="removeRepository"
+      @refresh-repos="refreshRepositoryList"
     />
     <TopBar
       :state="state"
@@ -734,9 +743,11 @@ void ACCENTS;
                   :hide-whitespace="hideWhitespace"
                   :comments="reviewComments"
                   :reply-features="commentFeatures"
+                  :split-ratio="splitRatios[file.path] ?? 0.5"
                   @add-comment="(section, line) => openCommentForLine(file, section, line)"
                   @delete-comment="deleteComment"
                   @reply-comment="replyToComment"
+                  @update:split-ratio="(value: number) => (splitRatios[file.path] = value)"
                 />
               </article>
             </template>
