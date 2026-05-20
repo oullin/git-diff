@@ -35,6 +35,22 @@ the repo so we can cut over without a flag day.
 4. Verify a signed/notarized DMG builds locally with `pnpm make:mac` and
    that `pnpm publish` uploads to GitHub Releases under `oullin/git-diff`.
 
+## Bundled Go API binary
+
+The macOS app ships with the Go API binary embedded as a Forge
+`extraResource`. The pipeline is:
+
+1. `go build` produces `packages/api/dist/api`.
+2. `forge.config.cjs` lists that path under `packagerConfig.extraResource`,
+   which copies it into `Git Diff Review.app/Contents/Resources/api`.
+3. At runtime, `packages/ui/electron/bridge.ts` resolves the binary via
+   `join(process.resourcesPath, "api")` when `app.isPackaged` is true,
+   and falls back to `go run ./cmd` in development.
+
+The binary must be built before `electron-forge package` runs; otherwise
+the packaged app launches without a working bridge. The release workflow
+in `.github/workflows/release.yml` (planned) sequences this correctly.
+
 ## Auto-update wiring
 
 When we land Forge:
