@@ -1,5 +1,15 @@
-import { requestJson } from "#bridge/http.js";
-import { runWorkflowStream } from "#bridge/sse.js";
+import * as authClient from "#bridge/clients/auth.js";
+import * as branchClient from "#bridge/clients/branches.js";
+import * as opClient from "#bridge/clients/op.js";
+import * as pendingCommentClient from "#bridge/clients/pending-comments.js";
+import * as pullRequestClient from "#bridge/clients/pull-requests.js";
+import * as repositoriesClient from "#bridge/clients/repositories.js";
+import * as repositoryClient from "#bridge/clients/repository.js";
+import * as reviewClient from "#bridge/clients/reviews.js";
+import * as settingsClient from "#bridge/clients/settings.js";
+import * as systemClient from "#bridge/clients/system.js";
+import * as walkthroughClient from "#bridge/clients/walkthrough.js";
+import * as workflowClient from "#bridge/clients/workflows.js";
 export function unixTarget(socketPath) {
     return { socketPath };
 }
@@ -24,6 +34,10 @@ export function waitForReady(client, timeoutMs = 10000) {
         attempt();
     });
 }
+// HttpWorkflowBridgeClient is a thin dispatcher: every method delegates to a
+// per-domain function under ./clients/. SRP lives in those modules; this class
+// exists only to satisfy the flat WorkflowBridgeClient interface used by the
+// renderer/electron IPC layer until the facade migration (phase 12).
 class HttpWorkflowBridgeClient {
     socketPath;
     constructor(target) {
@@ -31,264 +45,168 @@ class HttpWorkflowBridgeClient {
     }
     close() { }
     healthz() {
-        return this.request("GET", "/v1/healthz");
-    }
-    listWorkflows() {
-        return this.request("GET", "/v1/workflows");
-    }
-    listRuns(request = {}) {
-        const query = typeof request.limit === "number" ? `?limit=${request.limit}` : "";
-        return this.request("GET", `/v1/runs${query}`);
-    }
-    runLog(request) {
-        return this.request("GET", `/v1/runs/${encodeURIComponent(request.runId)}/log`);
-    }
-    listTemplateFiles() {
-        return this.request("GET", "/v1/template-files");
-    }
-    readTemplateFile(request) {
-        return this.request("GET", `/v1/template-files/content?path=${encodeURIComponent(request.path)}`);
-    }
-    saveTemplateFile(request) {
-        return this.request("PUT", "/v1/template-files/content", {
-            path: request.path,
-            content: request.content,
-        });
-    }
-    getSettings() {
-        return this.request("GET", "/v1/settings");
-    }
-    validateSettings(request) {
-        return this.request("POST", "/v1/settings/validate", {
-            settings: request.settings,
-        });
-    }
-    getUIPreferences() {
-        return this.request("GET", "/v1/preferences");
-    }
-    saveUIPreferences(values) {
-        return this.request("POST", "/v1/preferences", { values });
-    }
-    getAuthState() {
-        return this.request("GET", "/v1/auth/state");
-    }
-    authSetup(request) {
-        return this.request("POST", "/v1/auth/setup", {
-            password: request.password,
-        });
-    }
-    authLogin(request) {
-        return this.request("POST", "/v1/auth/login", {
-            password: request.password,
-            remember: request.remember,
-        });
-    }
-    authResume(request) {
-        return this.request("POST", "/v1/auth/resume", { token: request.token });
-    }
-    authLogout() {
-        return this.request("POST", "/v1/auth/logout");
-    }
-    authWipe(request) {
-        return this.request("POST", "/v1/auth/wipe", { osUsername: request.osUsername ?? "" });
-    }
-    repositoryState(request) {
-        const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
-        return this.request("GET", `/v1/repository/state${query}`);
-    }
-    openRepository(request) {
-        return this.request("POST", "/v1/repository/open", { path: request.path });
-    }
-    refreshRepository(request) {
-        return this.request("POST", "/v1/repository/refresh", { path: request.path });
-    }
-    readCommit(request) {
-        const parts = [`sha=${encodeURIComponent(request.sha)}`];
-        if (request.path) {
-            parts.push(`path=${encodeURIComponent(request.path)}`);
-        }
-        return this.request("GET", `/v1/repository/commit?${parts.join("&")}`);
-    }
-    listCommits(request) {
-        const parts = [];
-        if (request.path) {
-            parts.push(`path=${encodeURIComponent(request.path)}`);
-        }
-        if (request.limit) {
-            parts.push(`limit=${request.limit}`);
-        }
-        const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-        return this.request("GET", `/v1/repository/log${query}`);
-    }
-    generateWalkthrough(request) {
-        return this.request("POST", "/v1/walkthrough", {
-            path: request.path ?? "",
-            kind: request.kind ?? "working",
-            sha: request.sha ?? "",
-            refresh: request.refresh ?? false,
-        });
-    }
-    listPullRequests(request) {
-        const parts = [];
-        if (request.path)
-            parts.push(`path=${encodeURIComponent(request.path)}`);
-        if (request.limit)
-            parts.push(`limit=${request.limit}`);
-        const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-        return this.request("GET", `/v1/repository/pull-requests${query}`);
-    }
-    readPullRequest(request) {
-        const parts = [`number=${request.number}`];
-        if (request.path)
-            parts.push(`path=${encodeURIComponent(request.path)}`);
-        return this.request("GET", `/v1/repository/pull-request?${parts.join("&")}`);
-    }
-    listPendingComments(request) {
-        const parts = [];
-        if (request.path)
-            parts.push(`path=${encodeURIComponent(request.path)}`);
-        if (request.kind)
-            parts.push(`kind=${request.kind}`);
-        if (request.sha)
-            parts.push(`sha=${encodeURIComponent(request.sha)}`);
-        const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-        return this.request("GET", `/v1/pending-comments${query}`);
-    }
-    createPendingComment(request) {
-        return this.request("POST", "/v1/pending-comments", request);
-    }
-    updatePendingComment(request) {
-        return this.request("PATCH", `/v1/pending-comments/${encodeURIComponent(request.id)}`, {
-            bodyHtml: request.bodyHtml,
-        });
-    }
-    deletePendingComment(request) {
-        return this.request("DELETE", `/v1/pending-comments/${encodeURIComponent(request.id)}`);
-    }
-    promotePendingComments(request) {
-        return this.request("POST", "/v1/pending-comments/promote", request);
-    }
-    readRepositoryFile(request) {
-        const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
-        return this.request("GET", `/v1/repository/file${query}`);
-    }
-    listBranches(request) {
-        const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
-        return this.request("GET", `/v1/repository/branches${query}`);
-    }
-    checkoutBranch(request) {
-        return this.request("POST", "/v1/repository/checkout", {
-            path: request.path,
-            branch: request.branch,
-        });
-    }
-    createBranch(request) {
-        return this.request("POST", "/v1/repository/branches/create", {
-            path: request.path,
-            name: request.name,
-        });
-    }
-    deleteBranch(request) {
-        const params = new URLSearchParams({ name: request.name });
-        if (request.path)
-            params.set("path", request.path);
-        return this.request("DELETE", `/v1/repository/branches?${params.toString()}`);
-    }
-    lockBranch(request) {
-        return this.request("POST", "/v1/repository/branches/lock", {
-            path: request.path,
-            name: request.name,
-        });
-    }
-    unlockBranch(request) {
-        return this.request("POST", "/v1/repository/branches/unlock", {
-            path: request.path,
-            name: request.name,
-        });
+        return systemClient.healthz(this.socketPath);
     }
     getSystemStats() {
-        return this.request("GET", "/v1/system/stats");
+        return systemClient.getSystemStats(this.socketPath);
     }
-    createReview(request) {
-        return this.request("POST", "/v1/reviews", request);
+    listWorkflows() {
+        return workflowClient.listWorkflows(this.socketPath);
     }
-    listReviews(request = {}) {
-        const query = typeof request.limit === "number" ? `?limit=${request.limit}` : "";
-        return this.request("GET", `/v1/reviews${query}`);
+    listRuns(request) {
+        return workflowClient.listRuns(this.socketPath, request);
     }
-    reviewDetail(request) {
-        return this.request("GET", `/v1/reviews/${encodeURIComponent(request.id)}`);
+    runLog(request) {
+        return workflowClient.runLog(this.socketPath, request);
     }
-    addReviewEvent(request) {
-        return this.request("POST", `/v1/reviews/${encodeURIComponent(request.reviewId)}/events`, {
-            type: request.type,
-            filePath: request.filePath,
-            message: request.message,
-            metadata: request.metadata,
-        });
+    listTemplateFiles() {
+        return workflowClient.listTemplateFiles(this.socketPath);
     }
-    createReviewComment(request) {
-        return this.request("POST", `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments`, {
-            filePath: request.filePath,
-            diffSection: request.diffSection,
-            side: request.side,
-            lineNumber: request.lineNumber,
-            authorLabel: request.authorLabel,
-            bodyHtml: request.bodyHtml,
-        });
+    readTemplateFile(request) {
+        return workflowClient.readTemplateFile(this.socketPath, request);
     }
-    updateReviewComment(request) {
-        return this.request("PATCH", `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`, { bodyHtml: request.bodyHtml });
-    }
-    deleteReviewComment(request) {
-        return this.request("DELETE", `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`);
-    }
-    listRepositories() {
-        return this.request("GET", "/v1/repositories");
-    }
-    searchRepositoryFiles(request) {
-        const params = new URLSearchParams({ q: request.query });
-        if (typeof request.limit === "number") {
-            params.set("limit", String(request.limit));
-        }
-        return this.request("GET", `/v1/repositories/search-files?${params.toString()}`);
-    }
-    upsertRepository(request) {
-        return this.request("POST", "/v1/repositories", {
-            path: request.path,
-            name: request.name ?? "",
-        });
-    }
-    removeRepository(request) {
-        return this.request("DELETE", `/v1/repositories?path=${encodeURIComponent(request.path)}`);
-    }
-    listCollaborators(request) {
-        return this.request("GET", `/v1/repositories/collaborators?path=${encodeURIComponent(request.path)}`);
-    }
-    addCollaborator(request) {
-        return this.request("POST", "/v1/repositories/collaborators", {
-            path: request.path,
-            userId: request.userId,
-            role: request.role,
-        });
-    }
-    removeCollaborator(request) {
-        const params = new URLSearchParams({
-            path: request.path,
-            userId: String(request.userId),
-        });
-        return this.request("DELETE", `/v1/repositories/collaborators?${params.toString()}`);
-    }
-    listOpVaults() {
-        return this.request("GET", "/v1/onepassword/vaults");
-    }
-    listOpItems(request) {
-        return this.request("GET", `/v1/onepassword/items?vault=${encodeURIComponent(request.vault)}`);
+    saveTemplateFile(request) {
+        return workflowClient.saveTemplateFile(this.socketPath, request);
     }
     runWorkflow(request) {
-        return runWorkflowStream(this.socketPath, request);
+        return workflowClient.runWorkflow(this.socketPath, request);
     }
-    request(method, path, body) {
-        return requestJson(this.socketPath, method, path, body);
+    getSettings() {
+        return settingsClient.getSettings(this.socketPath);
+    }
+    validateSettings(request) {
+        return settingsClient.validateSettings(this.socketPath, request);
+    }
+    getUIPreferences() {
+        return settingsClient.getUIPreferences(this.socketPath);
+    }
+    saveUIPreferences(values) {
+        return settingsClient.saveUIPreferences(this.socketPath, values);
+    }
+    getAuthState() {
+        return authClient.getAuthState(this.socketPath);
+    }
+    authSetup(request) {
+        return authClient.authSetup(this.socketPath, request);
+    }
+    authLogin(request) {
+        return authClient.authLogin(this.socketPath, request);
+    }
+    authResume(request) {
+        return authClient.authResume(this.socketPath, request);
+    }
+    authLogout() {
+        return authClient.authLogout(this.socketPath);
+    }
+    authWipe(request) {
+        return authClient.authWipe(this.socketPath, request);
+    }
+    repositoryState(request) {
+        return repositoryClient.repositoryState(this.socketPath, request);
+    }
+    openRepository(request) {
+        return repositoryClient.openRepository(this.socketPath, request);
+    }
+    refreshRepository(request) {
+        return repositoryClient.refreshRepository(this.socketPath, request);
+    }
+    readCommit(request) {
+        return repositoryClient.readCommit(this.socketPath, request);
+    }
+    listCommits(request) {
+        return repositoryClient.listCommits(this.socketPath, request);
+    }
+    readRepositoryFile(request) {
+        return repositoryClient.readRepositoryFile(this.socketPath, request);
+    }
+    generateWalkthrough(request) {
+        return walkthroughClient.generateWalkthrough(this.socketPath, request);
+    }
+    listPullRequests(request) {
+        return pullRequestClient.listPullRequests(this.socketPath, request);
+    }
+    readPullRequest(request) {
+        return pullRequestClient.readPullRequest(this.socketPath, request);
+    }
+    listPendingComments(request) {
+        return pendingCommentClient.listPendingComments(this.socketPath, request);
+    }
+    createPendingComment(request) {
+        return pendingCommentClient.createPendingComment(this.socketPath, request);
+    }
+    updatePendingComment(request) {
+        return pendingCommentClient.updatePendingComment(this.socketPath, request);
+    }
+    deletePendingComment(request) {
+        return pendingCommentClient.deletePendingComment(this.socketPath, request);
+    }
+    promotePendingComments(request) {
+        return pendingCommentClient.promotePendingComments(this.socketPath, request);
+    }
+    listBranches(request) {
+        return branchClient.listBranches(this.socketPath, request);
+    }
+    checkoutBranch(request) {
+        return branchClient.checkoutBranch(this.socketPath, request);
+    }
+    createBranch(request) {
+        return branchClient.createBranch(this.socketPath, request);
+    }
+    deleteBranch(request) {
+        return branchClient.deleteBranch(this.socketPath, request);
+    }
+    lockBranch(request) {
+        return branchClient.lockBranch(this.socketPath, request);
+    }
+    unlockBranch(request) {
+        return branchClient.unlockBranch(this.socketPath, request);
+    }
+    createReview(request) {
+        return reviewClient.createReview(this.socketPath, request);
+    }
+    listReviews(request) {
+        return reviewClient.listReviews(this.socketPath, request);
+    }
+    reviewDetail(request) {
+        return reviewClient.reviewDetail(this.socketPath, request);
+    }
+    addReviewEvent(request) {
+        return reviewClient.addReviewEvent(this.socketPath, request);
+    }
+    createReviewComment(request) {
+        return reviewClient.createReviewComment(this.socketPath, request);
+    }
+    updateReviewComment(request) {
+        return reviewClient.updateReviewComment(this.socketPath, request);
+    }
+    deleteReviewComment(request) {
+        return reviewClient.deleteReviewComment(this.socketPath, request);
+    }
+    listRepositories() {
+        return repositoriesClient.listRepositories(this.socketPath);
+    }
+    searchRepositoryFiles(request) {
+        return repositoriesClient.searchRepositoryFiles(this.socketPath, request);
+    }
+    upsertRepository(request) {
+        return repositoriesClient.upsertRepository(this.socketPath, request);
+    }
+    removeRepository(request) {
+        return repositoriesClient.removeRepository(this.socketPath, request);
+    }
+    listCollaborators(request) {
+        return repositoriesClient.listCollaborators(this.socketPath, request);
+    }
+    addCollaborator(request) {
+        return repositoriesClient.addCollaborator(this.socketPath, request);
+    }
+    removeCollaborator(request) {
+        return repositoriesClient.removeCollaborator(this.socketPath, request);
+    }
+    listOpVaults() {
+        return opClient.listOpVaults(this.socketPath);
+    }
+    listOpItems(request) {
+        return opClient.listOpItems(this.socketPath, request);
     }
 }

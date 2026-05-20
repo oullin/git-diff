@@ -29,15 +29,23 @@ import type {
   WalkthroughRecord,
   Workflow,
 } from "@git-diff/contracts";
-import { requestJson } from "#bridge/http.js";
-import { runWorkflowStream } from "#bridge/sse.js";
 import type {
   UnixTarget,
   WorkflowBridgeClient,
   WorkflowRunStream,
 } from "#bridge/client-types.js";
-
-type ListRunsRequest = { limit?: number };
+import * as authClient from "#bridge/clients/auth.js";
+import * as branchClient from "#bridge/clients/branches.js";
+import * as opClient from "#bridge/clients/op.js";
+import * as pendingCommentClient from "#bridge/clients/pending-comments.js";
+import * as pullRequestClient from "#bridge/clients/pull-requests.js";
+import * as repositoriesClient from "#bridge/clients/repositories.js";
+import * as repositoryClient from "#bridge/clients/repository.js";
+import * as reviewClient from "#bridge/clients/reviews.js";
+import * as settingsClient from "#bridge/clients/settings.js";
+import * as systemClient from "#bridge/clients/system.js";
+import * as walkthroughClient from "#bridge/clients/walkthrough.js";
+import * as workflowClient from "#bridge/clients/workflows.js";
 
 export function unixTarget(socketPath: string): UnixTarget {
   return { socketPath };
@@ -70,6 +78,10 @@ export function waitForReady(client: WorkflowBridgeClient, timeoutMs = 10000): P
   });
 }
 
+// HttpWorkflowBridgeClient is a thin dispatcher: every method delegates to a
+// per-domain function under ./clients/. SRP lives in those modules; this class
+// exists only to satisfy the flat WorkflowBridgeClient interface used by the
+// renderer/electron IPC layer until the facade migration (phase 12).
 class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
   private readonly socketPath: string;
 
@@ -80,119 +92,103 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
   close(): void {}
 
   healthz(): Promise<void> {
-    return this.request<void>("GET", "/v1/healthz");
+    return systemClient.healthz(this.socketPath);
+  }
+
+  getSystemStats(): Promise<SystemStats> {
+    return systemClient.getSystemStats(this.socketPath);
   }
 
   listWorkflows(): Promise<{ workflows: Workflow[] }> {
-    return this.request<{ workflows: Workflow[] }>("GET", "/v1/workflows");
+    return workflowClient.listWorkflows(this.socketPath);
   }
 
-  listRuns(request: ListRunsRequest = {}): Promise<{ runs: RunSummary[] }> {
-    const query = typeof request.limit === "number" ? `?limit=${request.limit}` : "";
-
-    return this.request<{ runs: RunSummary[] }>("GET", `/v1/runs${query}`);
+  listRuns(request: { limit: number }): Promise<{ runs: RunSummary[] }> {
+    return workflowClient.listRuns(this.socketPath, request);
   }
 
   runLog(request: { runId: string }): Promise<RunLog> {
-    return this.request<RunLog>("GET", `/v1/runs/${encodeURIComponent(request.runId)}/log`);
+    return workflowClient.runLog(this.socketPath, request);
   }
 
   listTemplateFiles(): Promise<{ files: TemplateFileSummary[] }> {
-    return this.request<{ files: TemplateFileSummary[] }>("GET", "/v1/template-files");
+    return workflowClient.listTemplateFiles(this.socketPath);
   }
 
   readTemplateFile(request: { path: string }): Promise<TemplateFileContent> {
-    return this.request<TemplateFileContent>(
-      "GET",
-      `/v1/template-files/content?path=${encodeURIComponent(request.path)}`,
-    );
+    return workflowClient.readTemplateFile(this.socketPath, request);
   }
 
   saveTemplateFile(request: { path: string; content: string }): Promise<TemplateFileContent> {
-    return this.request<TemplateFileContent>("PUT", "/v1/template-files/content", {
-      path: request.path,
-      content: request.content,
-    });
+    return workflowClient.saveTemplateFile(this.socketPath, request);
+  }
+
+  runWorkflow(request: RunWorkflowRequest): WorkflowRunStream {
+    return workflowClient.runWorkflow(this.socketPath, request);
   }
 
   getSettings(): Promise<SettingsResponse> {
-    return this.request<SettingsResponse>("GET", "/v1/settings");
+    return settingsClient.getSettings(this.socketPath);
   }
 
   validateSettings(request: { settings: RuntimeSettings }): Promise<SettingsResponse> {
-    return this.request<SettingsResponse>("POST", "/v1/settings/validate", {
-      settings: request.settings,
-    });
+    return settingsClient.validateSettings(this.socketPath, request);
   }
 
   getUIPreferences(): Promise<UIPreferencesResponse> {
-    return this.request<UIPreferencesResponse>("GET", "/v1/preferences");
+    return settingsClient.getUIPreferences(this.socketPath);
   }
 
   saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse> {
-    return this.request<UIPreferencesResponse>("POST", "/v1/preferences", { values });
+    return settingsClient.saveUIPreferences(this.socketPath, values);
   }
 
   getAuthState(): Promise<AuthStateResponse> {
-    return this.request<AuthStateResponse>("GET", "/v1/auth/state");
+    return authClient.getAuthState(this.socketPath);
   }
 
   authSetup(request: { password: string }): Promise<AuthLoginResponse> {
-    return this.request<AuthLoginResponse>("POST", "/v1/auth/setup", {
-      password: request.password,
-    });
+    return authClient.authSetup(this.socketPath, request);
   }
 
   authLogin(request: { password: string; remember: boolean }): Promise<AuthLoginResponse> {
-    return this.request<AuthLoginResponse>("POST", "/v1/auth/login", {
-      password: request.password,
-      remember: request.remember,
-    });
+    return authClient.authLogin(this.socketPath, request);
   }
 
   authResume(request: { token: string }): Promise<{ user: AuthUser }> {
-    return this.request<{ user: AuthUser }>("POST", "/v1/auth/resume", { token: request.token });
+    return authClient.authResume(this.socketPath, request);
   }
 
   authLogout(): Promise<void> {
-    return this.request<void>("POST", "/v1/auth/logout");
+    return authClient.authLogout(this.socketPath);
   }
 
   authWipe(request: { osUsername?: string }): Promise<void> {
-    return this.request<void>("POST", "/v1/auth/wipe", { osUsername: request.osUsername ?? "" });
+    return authClient.authWipe(this.socketPath, request);
   }
 
   repositoryState(request: { path?: string }): Promise<RepositoryState> {
-    const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
-    return this.request<RepositoryState>("GET", `/v1/repository/state${query}`);
+    return repositoryClient.repositoryState(this.socketPath, request);
   }
 
   openRepository(request: { path: string }): Promise<RepositoryState> {
-    return this.request<RepositoryState>("POST", "/v1/repository/open", { path: request.path });
+    return repositoryClient.openRepository(this.socketPath, request);
   }
 
   refreshRepository(request: { path: string }): Promise<RepositoryState> {
-    return this.request<RepositoryState>("POST", "/v1/repository/refresh", { path: request.path });
+    return repositoryClient.refreshRepository(this.socketPath, request);
   }
 
   readCommit(request: { path?: string; sha: string }): Promise<RepositoryState> {
-    const parts = [`sha=${encodeURIComponent(request.sha)}`];
-    if (request.path) {
-      parts.push(`path=${encodeURIComponent(request.path)}`);
-    }
-    return this.request<RepositoryState>("GET", `/v1/repository/commit?${parts.join("&")}`);
+    return repositoryClient.readCommit(this.socketPath, request);
   }
 
   listCommits(request: { path?: string; limit?: number }): Promise<{ commits: CommitSummary[] }> {
-    const parts: string[] = [];
-    if (request.path) {
-      parts.push(`path=${encodeURIComponent(request.path)}`);
-    }
-    if (request.limit) {
-      parts.push(`limit=${request.limit}`);
-    }
-    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-    return this.request<{ commits: CommitSummary[] }>("GET", `/v1/repository/log${query}`);
+    return repositoryClient.listCommits(this.socketPath, request);
+  }
+
+  readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {
+    return repositoryClient.readRepositoryFile(this.socketPath, request);
   }
 
   generateWalkthrough(request: {
@@ -201,31 +197,18 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     sha?: string;
     refresh?: boolean;
   }): Promise<WalkthroughRecord> {
-    return this.request<WalkthroughRecord>("POST", "/v1/walkthrough", {
-      path: request.path ?? "",
-      kind: request.kind ?? "working",
-      sha: request.sha ?? "",
-      refresh: request.refresh ?? false,
-    });
+    return walkthroughClient.generateWalkthrough(this.socketPath, request);
   }
 
-  listPullRequests(request: { path?: string; limit?: number }): Promise<{
-    pullRequests: PullRequestSummary[];
-  }> {
-    const parts: string[] = [];
-    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
-    if (request.limit) parts.push(`limit=${request.limit}`);
-    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-    return this.request<{ pullRequests: PullRequestSummary[] }>(
-      "GET",
-      `/v1/repository/pull-requests${query}`,
-    );
+  listPullRequests(request: {
+    path?: string;
+    limit?: number;
+  }): Promise<{ pullRequests: PullRequestSummary[] }> {
+    return pullRequestClient.listPullRequests(this.socketPath, request);
   }
 
   readPullRequest(request: { path?: string; number: number }): Promise<RepositoryState> {
-    const parts = [`number=${request.number}`];
-    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
-    return this.request<RepositoryState>("GET", `/v1/repository/pull-request?${parts.join("&")}`);
+    return pullRequestClient.readPullRequest(this.socketPath, request);
   }
 
   listPendingComments(request: {
@@ -233,12 +216,7 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     kind?: "working" | "commit";
     sha?: string;
   }): Promise<{ comments: PendingComment[] }> {
-    const parts: string[] = [];
-    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
-    if (request.kind) parts.push(`kind=${request.kind}`);
-    if (request.sha) parts.push(`sha=${encodeURIComponent(request.sha)}`);
-    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-    return this.request<{ comments: PendingComment[] }>("GET", `/v1/pending-comments${query}`);
+    return pendingCommentClient.listPendingComments(this.socketPath, request);
   }
 
   createPendingComment(request: {
@@ -252,89 +230,55 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     authorLabel: string;
     bodyHtml: string;
   }): Promise<PendingComment> {
-    return this.request<PendingComment>("POST", "/v1/pending-comments", request);
+    return pendingCommentClient.createPendingComment(this.socketPath, request);
   }
 
   updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment> {
-    return this.request<PendingComment>(
-      "PATCH",
-      `/v1/pending-comments/${encodeURIComponent(request.id)}`,
-      {
-        bodyHtml: request.bodyHtml,
-      },
-    );
+    return pendingCommentClient.updatePendingComment(this.socketPath, request);
   }
 
   deletePendingComment(request: { id: string }): Promise<void> {
-    return this.request<void>("DELETE", `/v1/pending-comments/${encodeURIComponent(request.id)}`);
+    return pendingCommentClient.deletePendingComment(this.socketPath, request);
   }
 
   promotePendingComments(request: { reviewId: string }): Promise<{ promoted: number }> {
-    return this.request<{ promoted: number }>("POST", "/v1/pending-comments/promote", request);
-  }
-
-  readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {
-    const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
-    return this.request<RepositoryFile>("GET", `/v1/repository/file${query}`);
+    return pendingCommentClient.promotePendingComments(this.socketPath, request);
   }
 
   listBranches(request: { path?: string }): Promise<{ branches: string[]; records?: Branch[] }> {
-    const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
-    return this.request<{ branches: string[]; records?: Branch[] }>(
-      "GET",
-      `/v1/repository/branches${query}`,
-    );
+    return branchClient.listBranches(this.socketPath, request);
   }
 
   checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState> {
-    return this.request<RepositoryState>("POST", "/v1/repository/checkout", {
-      path: request.path,
-      branch: request.branch,
-    });
+    return branchClient.checkoutBranch(this.socketPath, request);
   }
 
   createBranch(request: { path: string; name: string }): Promise<RepositoryState> {
-    return this.request<RepositoryState>("POST", "/v1/repository/branches/create", {
-      path: request.path,
-      name: request.name,
-    });
+    return branchClient.createBranch(this.socketPath, request);
   }
 
   deleteBranch(request: { path?: string; name: string }): Promise<void> {
-    const params = new URLSearchParams({ name: request.name });
-    if (request.path) params.set("path", request.path);
-    return this.request<void>("DELETE", `/v1/repository/branches?${params.toString()}`);
+    return branchClient.deleteBranch(this.socketPath, request);
   }
 
   lockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }> {
-    return this.request<{ branches: Branch[] }>("POST", "/v1/repository/branches/lock", {
-      path: request.path,
-      name: request.name,
-    });
+    return branchClient.lockBranch(this.socketPath, request);
   }
 
   unlockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }> {
-    return this.request<{ branches: Branch[] }>("POST", "/v1/repository/branches/unlock", {
-      path: request.path,
-      name: request.name,
-    });
-  }
-
-  getSystemStats(): Promise<SystemStats> {
-    return this.request<SystemStats>("GET", "/v1/system/stats");
+    return branchClient.unlockBranch(this.socketPath, request);
   }
 
   createReview(request: Partial<ReviewSession>): Promise<ReviewSession> {
-    return this.request<ReviewSession>("POST", "/v1/reviews", request as Record<string, unknown>);
+    return reviewClient.createReview(this.socketPath, request);
   }
 
-  listReviews(request: { limit?: number } = {}): Promise<{ reviews: ReviewSession[] }> {
-    const query = typeof request.limit === "number" ? `?limit=${request.limit}` : "";
-    return this.request<{ reviews: ReviewSession[] }>("GET", `/v1/reviews${query}`);
+  listReviews(request: { limit?: number }): Promise<{ reviews: ReviewSession[] }> {
+    return reviewClient.listReviews(this.socketPath, request);
   }
 
   reviewDetail(request: { id: string }): Promise<ReviewDetail> {
-    return this.request<ReviewDetail>("GET", `/v1/reviews/${encodeURIComponent(request.id)}`);
+    return reviewClient.reviewDetail(this.socketPath, request);
   }
 
   addReviewEvent(request: {
@@ -344,16 +288,7 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     message?: string;
     metadata?: string;
   }): Promise<ReviewEvent> {
-    return this.request<ReviewEvent>(
-      "POST",
-      `/v1/reviews/${encodeURIComponent(request.reviewId)}/events`,
-      {
-        type: request.type,
-        filePath: request.filePath,
-        message: request.message,
-        metadata: request.metadata,
-      },
-    );
+    return reviewClient.addReviewEvent(this.socketPath, request);
   }
 
   createReviewComment(request: {
@@ -365,18 +300,7 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     authorLabel: string;
     bodyHtml: string;
   }): Promise<ReviewComment> {
-    return this.request<ReviewComment>(
-      "POST",
-      `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments`,
-      {
-        filePath: request.filePath,
-        diffSection: request.diffSection,
-        side: request.side,
-        lineNumber: request.lineNumber,
-        authorLabel: request.authorLabel,
-        bodyHtml: request.bodyHtml,
-      },
-    );
+    return reviewClient.createReviewComment(this.socketPath, request);
   }
 
   updateReviewComment(request: {
@@ -384,61 +308,36 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     commentId: string;
     bodyHtml: string;
   }): Promise<ReviewComment> {
-    return this.request<ReviewComment>(
-      "PATCH",
-      `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
-      { bodyHtml: request.bodyHtml },
-    );
+    return reviewClient.updateReviewComment(this.socketPath, request);
   }
 
   deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void> {
-    return this.request<void>(
-      "DELETE",
-      `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
-    );
+    return reviewClient.deleteReviewComment(this.socketPath, request);
   }
 
   listRepositories(): Promise<{ repositories: Repository[] }> {
-    return this.request<{ repositories: Repository[] }>("GET", "/v1/repositories");
+    return repositoriesClient.listRepositories(this.socketPath);
   }
 
   searchRepositoryFiles(request: {
     query: string;
     limit?: number;
   }): Promise<{ results: FileSearchResult[] }> {
-    const params = new URLSearchParams({ q: request.query });
-
-    if (typeof request.limit === "number") {
-      params.set("limit", String(request.limit));
-    }
-
-    return this.request<{ results: FileSearchResult[] }>(
-      "GET",
-      `/v1/repositories/search-files?${params.toString()}`,
-    );
+    return repositoriesClient.searchRepositoryFiles(this.socketPath, request);
   }
 
   upsertRepository(request: { path: string; name?: string }): Promise<Repository> {
-    return this.request<Repository>("POST", "/v1/repositories", {
-      path: request.path,
-      name: request.name ?? "",
-    });
+    return repositoriesClient.upsertRepository(this.socketPath, request);
   }
 
   removeRepository(request: { path: string }): Promise<void> {
-    return this.request<void>(
-      "DELETE",
-      `/v1/repositories?path=${encodeURIComponent(request.path)}`,
-    );
+    return repositoriesClient.removeRepository(this.socketPath, request);
   }
 
   listCollaborators(request: {
     path: string;
   }): Promise<{ collaborators: RepositoryCollaborator[] }> {
-    return this.request<{ collaborators: RepositoryCollaborator[] }>(
-      "GET",
-      `/v1/repositories/collaborators?path=${encodeURIComponent(request.path)}`,
-    );
+    return repositoriesClient.listCollaborators(this.socketPath, request);
   }
 
   addCollaborator(request: {
@@ -446,41 +345,18 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     userId: number;
     role: "write" | "read";
   }): Promise<RepositoryCollaborator> {
-    return this.request<RepositoryCollaborator>("POST", "/v1/repositories/collaborators", {
-      path: request.path,
-      userId: request.userId,
-      role: request.role,
-    });
+    return repositoriesClient.addCollaborator(this.socketPath, request);
   }
 
   removeCollaborator(request: { path: string; userId: number }): Promise<void> {
-    const params = new URLSearchParams({
-      path: request.path,
-      userId: String(request.userId),
-    });
-    return this.request<void>("DELETE", `/v1/repositories/collaborators?${params.toString()}`);
+    return repositoriesClient.removeCollaborator(this.socketPath, request);
   }
 
   listOpVaults(): Promise<{ vaults: OpVault[] }> {
-    return this.request<{ vaults: OpVault[] }>("GET", "/v1/onepassword/vaults");
+    return opClient.listOpVaults(this.socketPath);
   }
 
   listOpItems(request: { vault: string }): Promise<{ items: OpItem[] }> {
-    return this.request<{ items: OpItem[] }>(
-      "GET",
-      `/v1/onepassword/items?vault=${encodeURIComponent(request.vault)}`,
-    );
-  }
-
-  runWorkflow(request: RunWorkflowRequest): WorkflowRunStream {
-    return runWorkflowStream(this.socketPath, request);
-  }
-
-  private request<Response>(
-    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
-    path: string,
-    body?: Record<string, unknown>,
-  ): Promise<Response> {
-    return requestJson<Response>(this.socketPath, method, path, body);
+    return opClient.listOpItems(this.socketPath, request);
   }
 }
