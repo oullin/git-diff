@@ -57,6 +57,8 @@ import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth.store";
+import { useRepoStore } from "@/stores/repo.store";
+import { useReviewsStore } from "@/stores/reviews.store";
 import { parseBridgeError } from "@lib/bridgeError";
 
 
@@ -69,7 +71,28 @@ const commentFeatures: RichTextFeatures = {
   tables: false,
 };
 
-const state = ref<RepositoryState | null>(null);
+const authStore = useAuthStore();
+const {
+  mode: authMode,
+  osUsername: authOSUsername,
+  currentUser,
+} = storeToRefs(authStore);
+
+const repoStore = useRepoStore();
+const {
+  state,
+  activeRepoPath,
+  loading,
+  error,
+} = storeToRefs(repoStore);
+
+const reviewsStore = useReviewsStore();
+const {
+  items: reviews,
+  active: activeReview,
+  summaryDraft,
+} = storeToRefs(reviewsStore);
+
 const {
   values: prefValues,
   load: loadPreferences,
@@ -80,12 +103,6 @@ const {
     error.value = cause instanceof Error ? cause.message : String(cause);
   },
 });
-const authStore = useAuthStore();
-const {
-  mode: authMode,
-  osUsername: authOSUsername,
-  currentUser,
-} = storeToRefs(authStore);
 
 const prefs = computed(() => prefValues.value);
 const tweaks = useTweaks(prefs);
@@ -101,13 +118,8 @@ const {
   refresh: refreshRepositoryList,
   remove: removeRepositoryFromList,
 } = useRepositoryList();
-const activeRepoPath = ref<string>("");
-const reviews = ref<ReviewSession[]>([]);
-const activeReview = ref<ReviewDetail | null>(null);
 const selectedPath = ref("");
 const searchQuery = ref("");
-const loading = ref(false);
-const error = ref("");
 const { collapsed, splitRatios, toggleCollapsed, setSplitRatio } = useDiffLayout();
 const reviewPanelOpen = ref(false);
 const {
@@ -118,8 +130,6 @@ const {
   cancel: cancelCommentDraft,
   close: closeCommentDraft,
 } = useCommentDraft();
-const summaryDraft = ref("");
-
 const {
   file: selectedRepoFile,
   loading: selectedFileLoading,
