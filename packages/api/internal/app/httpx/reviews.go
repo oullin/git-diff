@@ -74,6 +74,51 @@ func (s Server) repositoryRefresh(w http.ResponseWriter, r *http.Request) {
 	s.repositoryOpen(w, r)
 }
 
+func (s Server) repositoryCommit(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	sha := r.URL.Query().Get("sha")
+
+	if path == "" {
+		path = s.Repo
+	}
+
+	if sha == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("sha is required"))
+
+		return
+	}
+
+	state, err := review.ReadCommitState(r.Context(), path, sha)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, state)
+}
+
+func (s Server) repositoryLog(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+
+	if path == "" {
+		path = s.Repo
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	commits, err := review.ListCommitLog(r.Context(), path, limit)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"commits": commits})
+}
+
 func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 

@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS review_sessions (
   additions INTEGER NOT NULL DEFAULT 0,
   deletions INTEGER NOT NULL DEFAULT 0,
   started_at TEXT NOT NULL,
-  completed_at TEXT
+  completed_at TEXT,
+  context_kind TEXT NOT NULL DEFAULT 'working',
+  context_sha TEXT
 );
 
 CREATE TABLE IF NOT EXISTS review_events (

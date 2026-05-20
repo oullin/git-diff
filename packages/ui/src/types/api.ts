@@ -1,9 +1,11 @@
 export type GitFileStatus = "added" | "deleted" | "modified" | "renamed" | "untracked";
 export type DiffViewMode = "split" | "unified";
+export type DiffSectionKind = "staged" | "unstaged" | "untracked" | "commit";
+export type RepositoryMode = "working" | "commit";
 
 export interface DiffSection {
   id: string;
-  kind: "staged" | "unstaged" | "untracked";
+  kind: DiffSectionKind;
   patch: string;
   binary: boolean;
 }
@@ -22,14 +24,25 @@ export interface ChangedFile {
 export interface RepositoryState {
   root: string;
   launchPath: string;
+  mode: RepositoryMode;
   branch: string;
   headSha: string;
+  commitSha?: string;
   generatedAt: string;
   files: ChangedFile[];
   // Every file under the repo root that is tracked or untracked-not-ignored. Ignored files excluded.
   trackedFiles?: string[];
   additions: number;
   deletions: number;
+}
+
+export interface CommitSummary {
+  sha: string;
+  shortSha: string;
+  author: string;
+  email: string;
+  date: string;
+  subject: string;
 }
 
 export interface RepositoryFile {
@@ -61,6 +74,8 @@ export interface ReviewSession {
   deletions: number;
   startedAt: string;
   completedAt?: string;
+  contextKind: RepositoryMode;
+  contextSha?: string;
 }
 
 export interface ReviewEvent {
@@ -183,6 +198,8 @@ export interface DiffAppApi {
   repositoryState(path?: string): Promise<RepositoryState>;
   openRepository(path: string): Promise<RepositoryState>;
   refreshRepository(path: string): Promise<RepositoryState>;
+  readCommit(sha: string, path?: string): Promise<RepositoryState>;
+  listCommits(path?: string, limit?: number): Promise<{ commits: CommitSummary[] }>;
   readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
   listBranches(path?: string): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(path: string, branch: string): Promise<RepositoryState>;

@@ -121,6 +121,9 @@ contextBridge.exposeInMainWorld("diffApp", {
   repositoryState: (path?: string) => ipcRenderer.invoke("repository:state", path),
   openRepository: (path: string) => ipcRenderer.invoke("repository:open", path),
   refreshRepository: (path: string) => ipcRenderer.invoke("repository:refresh", path),
+  readCommit: (sha: string, path?: string) => ipcRenderer.invoke("repository:commit", sha, path),
+  listCommits: (path?: string, limit?: number) =>
+    ipcRenderer.invoke("repository:log", path, limit),
   readRepositoryFile: (root: string, path: string) =>
     ipcRenderer.invoke("repository:file:read", root, path),
   listBranches: (path?: string) => ipcRenderer.invoke("repository:branches", path),

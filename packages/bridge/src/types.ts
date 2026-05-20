@@ -128,9 +128,11 @@ export interface AuthLoginResponse {
 
 export type GitFileStatus = "added" | "deleted" | "modified" | "renamed" | "untracked";
 
+export type DiffSectionKind = "staged" | "unstaged" | "untracked" | "commit";
+
 export interface DiffSection {
   id: string;
-  kind: "staged" | "unstaged" | "untracked";
+  kind: DiffSectionKind;
   patch: string;
   binary: boolean;
 }
@@ -146,17 +148,30 @@ export interface ChangedFile {
   sections: DiffSection[];
 }
 
+export type RepositoryMode = "working" | "commit";
+
 export interface RepositoryState {
   root: string;
   launchPath: string;
+  mode: RepositoryMode;
   branch: string;
   headSha: string;
+  commitSha?: string;
   generatedAt: string;
   files: ChangedFile[];
   // Every file under the repo root that is tracked or untracked-not-ignored. Ignored files excluded.
   trackedFiles?: string[];
   additions: number;
   deletions: number;
+}
+
+export interface CommitSummary {
+  sha: string;
+  shortSha: string;
+  author: string;
+  email: string;
+  date: string;
+  subject: string;
 }
 
 export interface RepositoryFile {
@@ -188,6 +203,8 @@ export interface ReviewSession {
   deletions: number;
   startedAt: string;
   completedAt?: string;
+  contextKind: RepositoryMode;
+  contextSha?: string;
 }
 
 export interface ReviewEvent {
@@ -306,6 +323,8 @@ export interface WorkflowBridgeClient {
   repositoryState(request: { path?: string }): Promise<RepositoryState>;
   openRepository(request: { path: string }): Promise<RepositoryState>;
   refreshRepository(request: { path: string }): Promise<RepositoryState>;
+  readCommit(request: { path?: string; sha: string }): Promise<RepositoryState>;
+  listCommits(request: { path?: string; limit?: number }): Promise<{ commits: CommitSummary[] }>;
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
   listBranches(request: { path?: string }): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState>;

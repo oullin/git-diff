@@ -76,6 +76,8 @@ type ReviewSessionStart struct {
 	FilesChanged int    `json:"filesChanged"`
 	Additions    int    `json:"additions"`
 	Deletions    int    `json:"deletions"`
+	ContextKind  string `json:"contextKind"`
+	ContextSHA   string `json:"contextSha"`
 }
 
 type ReviewSession struct {
@@ -92,6 +94,8 @@ type ReviewSession struct {
 	Deletions    int    `json:"deletions"`
 	StartedAt    string `json:"startedAt"`
 	CompletedAt  string `json:"completedAt,omitempty"`
+	ContextKind  string `json:"contextKind"`
+	ContextSHA   string `json:"contextSha,omitempty"`
 }
 
 type ReviewEventInput struct {
@@ -230,6 +234,10 @@ func (s *Store) Init(ctx context.Context) error {
 		return fmt.Errorf("drop legacy provisioning tables: %w", err)
 	}
 
+	if err := s.addReviewSessionContextColumns(ctx); err != nil {
+		return fmt.Errorf("add review_sessions context columns: %w", err)
+	}
+
 	if _, err := s.db.ExecContext(ctx, string(schema)); err == nil {
 		return nil
 	}
@@ -240,6 +248,64 @@ func (s *Store) Init(ctx context.Context) error {
 
 	if _, err := s.db.ExecContext(ctx, string(schema)); err != nil {
 		return fmt.Errorf("initialize sqlite schema after reset: %w", err)
+	}
+
+	return nil
+}
+
+// addReviewSessionContextColumns is a one-shot migration that brings legacy
+// databases up to the current schema by attaching the context_kind and
+// context_sha columns to review_sessions. CREATE TABLE IF NOT EXISTS in
+// schema.sql is a no-op for existing tables, so we need explicit ALTERs.
+func (s *Store) addReviewSessionContextColumns(ctx context.Context) error {
+	rows, err := s.db.QueryContext(ctx, "PRAGMA table_info(review_sessions)")
+
+	if err != nil {
+		// Table does not exist yet — the schema apply below will create it
+		// with the columns already in place.
+		return nil
+	}
+
+	defer rows.Close()
+
+	have := map[string]bool{}
+
+	for rows.Next() {
+		var (
+			cid       int
+			name      string
+			ctype     string
+			notnull   int
+			dfltValue sql.NullString
+			pk        int
+		)
+
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
+			return fmt.Errorf("scan column row: %w", err)
+		}
+
+		have[name] = true
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate column rows: %w", err)
+	}
+
+	if len(have) == 0 {
+		// Table not present — nothing to migrate.
+		return nil
+	}
+
+	if !have["context_kind"] {
+		if _, err := s.db.ExecContext(ctx, "ALTER TABLE review_sessions ADD COLUMN context_kind TEXT NOT NULL DEFAULT 'working'"); err != nil {
+			return fmt.Errorf("add context_kind: %w", err)
+		}
+	}
+
+	if !have["context_sha"] {
+		if _, err := s.db.ExecContext(ctx, "ALTER TABLE review_sessions ADD COLUMN context_sha TEXT"); err != nil {
+			return fmt.Errorf("add context_sha: %w", err)
+		}
 	}
 
 	return nil
@@ -595,12 +661,18 @@ func (s *Store) CreateReview(ctx context.Context, userID int64, review ReviewSes
 		title = "Local review"
 	}
 
+	contextKind := review.ContextKind
+
+	if contextKind == "" {
+		contextKind = "working"
+	}
+
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO review_sessions (
 			id, repo_root, user_id, branch, head_sha, status, title, summary,
-			files_changed, additions, deletions, started_at
-		) VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?)
-	`, review.ID, review.RepoRoot, userID, review.Branch, review.HeadSHA, title, review.Summary, review.FilesChanged, review.Additions, review.Deletions, now)
+			files_changed, additions, deletions, started_at, context_kind, context_sha
+		) VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?)
+	`, review.ID, review.RepoRoot, userID, review.Branch, review.HeadSHA, title, review.Summary, review.FilesChanged, review.Additions, review.Deletions, now, contextKind, nullString(review.ContextSHA))
 
 	if err != nil {
 		return ReviewSession{}, err
@@ -626,6 +698,8 @@ func (s *Store) CreateReview(ctx context.Context, userID int64, review ReviewSes
 		Additions:    review.Additions,
 		Deletions:    review.Deletions,
 		StartedAt:    now,
+		ContextKind:  contextKind,
+		ContextSHA:   review.ContextSHA,
 	}, nil
 }
 
@@ -640,7 +714,8 @@ func (s *Store) ListReviews(ctx context.Context, userID int64, limit int64) ([]R
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
-			files_changed, additions, deletions, started_at, completed_at
+			files_changed, additions, deletions, started_at, completed_at,
+			context_kind, context_sha
 		FROM review_sessions
 		WHERE user_id = ?
 		ORDER BY started_at DESC
@@ -671,7 +746,8 @@ func (s *Store) ListReviews(ctx context.Context, userID int64, limit int64) ([]R
 func (s *Store) ReviewDetail(ctx context.Context, id string) (ReviewDetail, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
-			files_changed, additions, deletions, started_at, completed_at
+			files_changed, additions, deletions, started_at, completed_at,
+			context_kind, context_sha
 		FROM review_sessions
 		WHERE id = ?
 	`, id)
@@ -998,7 +1074,10 @@ var ErrRepositoryNotOwned = errors.New("repository not found or not owned by use
 func scanReview(row scanner) (ReviewSession, error) {
 	var review ReviewSession
 
-	var completedAt sql.NullString
+	var (
+		completedAt sql.NullString
+		contextSHA  sql.NullString
+	)
 
 	if err := row.Scan(
 		&review.ID,
@@ -1014,11 +1093,14 @@ func scanReview(row scanner) (ReviewSession, error) {
 		&review.Deletions,
 		&review.StartedAt,
 		&completedAt,
+		&review.ContextKind,
+		&contextSHA,
 	); err != nil {
 		return ReviewSession{}, err
 	}
 
 	review.CompletedAt = fromNull(completedAt)
+	review.ContextSHA = fromNull(contextSHA)
 
 	return review, nil
 }

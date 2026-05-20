@@ -40,8 +40,10 @@ type ChangedFile struct {
 type RepositoryState struct {
 	Root        string        `json:"root"`
 	LaunchPath  string        `json:"launchPath"`
+	Mode        string        `json:"mode"`
 	Branch      string        `json:"branch"`
 	HeadSHA     string        `json:"headSha"`
+	CommitSHA   string        `json:"commitSha,omitempty"`
 	GeneratedAt string        `json:"generatedAt"`
 	Files       []ChangedFile `json:"files"`
 	// TrackedFiles contains every file under the repo root that is either tracked or
@@ -49,6 +51,22 @@ type RepositoryState struct {
 	TrackedFiles []string `json:"trackedFiles"`
 	Additions    int      `json:"additions"`
 	Deletions    int      `json:"deletions"`
+}
+
+// RepositoryMode values describe which slice of repository history a
+// RepositoryState was built from.
+const (
+	RepositoryModeWorking = "working"
+	RepositoryModeCommit  = "commit"
+)
+
+type CommitSummary struct {
+	SHA      string `json:"sha"`
+	ShortSHA string `json:"shortSha"`
+	Author   string `json:"author"`
+	Email    string `json:"email"`
+	Date     string `json:"date"`
+	Subject  string `json:"subject"`
 }
 
 type RepositoryFile struct {
@@ -144,6 +162,7 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 	state := RepositoryState{
 		Root:         root,
 		LaunchPath:   launchPath,
+		Mode:         RepositoryModeWorking,
 		Branch:       strings.TrimSpace(branch),
 		HeadSHA:      strings.TrimSpace(head),
 		GeneratedAt:  time.Now().UTC().Format(time.RFC3339Nano),
@@ -157,6 +176,221 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 	}
 
 	return state, nil
+}
+
+// ReadCommitState returns a RepositoryState for a single commit. The diff is
+// computed against the commit's first parent (or against the empty tree for
+// the root commit). The shape mirrors ReadRepositoryState so the UI can render
+// either mode through the same DiffBody pipeline.
+func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositoryState, error) {
+	if strings.TrimSpace(sha) == "" {
+		return RepositoryState{}, errors.New("commit sha is required")
+	}
+
+	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+
+	if err != nil {
+		return RepositoryState{}, fmt.Errorf("resolve git root: %w", err)
+	}
+
+	root = strings.TrimSpace(root)
+
+	resolved, err := gitOutput(ctx, root, "rev-parse", "--verify", sha+"^{commit}")
+
+	if err != nil {
+		return RepositoryState{}, fmt.Errorf("verify commit: %w", err)
+	}
+
+	resolved = strings.TrimSpace(resolved)
+	short, _ := gitOutput(ctx, root, "rev-parse", "--short", resolved)
+	short = strings.TrimSpace(short)
+
+	nameStatusRaw, err := gitBytes(ctx, root, "diff-tree", "--no-commit-id", "--name-status", "-z", "-r", "--find-renames", "--root", resolved)
+
+	if err != nil {
+		return RepositoryState{}, fmt.Errorf("list commit files: %w", err)
+	}
+
+	entries := parseDiffTreeNameStatus(nameStatusRaw)
+	files := make([]ChangedFile, 0, len(entries))
+
+	for _, entry := range entries {
+		patch, binary := commitFilePatch(ctx, root, resolved, entry.path, entry.old)
+
+		section := DiffSection{
+			ID:     fmt.Sprintf("commit:%s:%s", resolved, entry.path),
+			Kind:   "commit",
+			Patch:  patch,
+			Binary: binary,
+		}
+
+		file := ChangedFile{
+			Path:     entry.path,
+			OldPath:  entry.old,
+			Status:   entry.status,
+			Binary:   binary,
+			Sections: []DiffSection{section},
+		}
+
+		file.Additions, file.Deletions = countPatchLines(patch)
+		file.Fingerprint = fingerprint(file)
+		files = append(files, file)
+	}
+
+	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+
+	tracked, _ := ListRepositoryFiles(ctx, root)
+
+	state := RepositoryState{
+		Root:         root,
+		LaunchPath:   launchPath,
+		Mode:         RepositoryModeCommit,
+		Branch:       short,
+		HeadSHA:      resolved,
+		CommitSHA:    resolved,
+		GeneratedAt:  time.Now().UTC().Format(time.RFC3339Nano),
+		Files:        files,
+		TrackedFiles: tracked,
+	}
+
+	for _, file := range files {
+		state.Additions += file.Additions
+		state.Deletions += file.Deletions
+	}
+
+	return state, nil
+}
+
+type commitDiffEntry struct {
+	status GitFileStatus
+	path   string
+	old    string
+}
+
+// parseDiffTreeNameStatus decodes the output of
+// `git diff-tree --name-status -z -r --find-renames <sha>`. Each record is one
+// or two NUL-terminated fields: a status letter followed by one path (or two
+// paths for renames/copies).
+func parseDiffTreeNameStatus(raw []byte) []commitDiffEntry {
+	parts := bytes.Split(raw, []byte{0})
+	entries := []commitDiffEntry{}
+
+	for i := 0; i < len(parts); i++ {
+		field := string(parts[i])
+
+		if field == "" {
+			continue
+		}
+
+		status := field[0]
+		entry := commitDiffEntry{}
+
+		switch status {
+		case 'A':
+			entry.status = StatusAdded
+		case 'D':
+			entry.status = StatusDeleted
+		case 'R', 'C':
+			entry.status = StatusRenamed
+		default:
+			entry.status = StatusModified
+		}
+
+		if status == 'R' || status == 'C' {
+			if i+2 >= len(parts) {
+				return entries
+			}
+
+			entry.old = string(parts[i+1])
+			entry.path = string(parts[i+2])
+			i += 2
+		} else {
+			if i+1 >= len(parts) {
+				return entries
+			}
+
+			entry.path = string(parts[i+1])
+			i++
+		}
+
+		if entry.path == "" {
+			continue
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries
+}
+
+func commitFilePatch(ctx context.Context, root, sha, path, oldPath string) (string, bool) {
+	args := []string{"show", "--binary", "--find-renames", "--format=", "-m", "--first-parent", sha, "--"}
+
+	if oldPath != "" {
+		args = append(args, oldPath)
+	}
+
+	args = append(args, path)
+	patch, err := gitOutput(ctx, root, args...)
+
+	if err != nil {
+		return "", false
+	}
+
+	return patch, isBinaryPatch(patch)
+}
+
+// ListCommitLog returns the most recent commits in the repository for use as
+// a picker. The slice is ordered newest-first.
+func ListCommitLog(ctx context.Context, launchPath string, limit int) ([]CommitSummary, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+
+	if err != nil {
+		return nil, fmt.Errorf("resolve git root: %w", err)
+	}
+
+	root = strings.TrimSpace(root)
+
+	const sep = "\x1f"
+	const recordSep = "\x1e"
+	format := "%H" + sep + "%h" + sep + "%an" + sep + "%ae" + sep + "%aI" + sep + "%s" + recordSep
+
+	raw, err := gitOutput(ctx, root, "log", "--pretty=format:"+format, "-n", strconv.Itoa(limit))
+
+	if err != nil {
+		return nil, fmt.Errorf("read git log: %w", err)
+	}
+
+	commits := []CommitSummary{}
+
+	for _, record := range strings.Split(raw, recordSep) {
+		record = strings.TrimSpace(record)
+
+		if record == "" {
+			continue
+		}
+
+		parts := strings.SplitN(record, sep, 6)
+
+		if len(parts) < 6 {
+			continue
+		}
+
+		commits = append(commits, CommitSummary{
+			SHA:      parts[0],
+			ShortSHA: parts[1],
+			Author:   parts[2],
+			Email:    parts[3],
+			Date:     parts[4],
+			Subject:  parts[5],
+		})
+	}
+
+	return commits, nil
 }
 
 func parseStatus(raw []byte) []statusEntry {

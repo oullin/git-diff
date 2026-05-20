@@ -7,6 +7,7 @@ import FileContentViewer from "@entry/components/FileContentViewer.vue";
 import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
 import Sidebar from "@entry/components/diff/Sidebar.vue";
+import CommitPicker from "@entry/components/commits/CommitPicker.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
@@ -19,6 +20,7 @@ import type {
   AuthLoginResponse,
   AuthUser,
   ChangedFile,
+  CommitSummary,
   DiffSection,
   DiffViewMode,
   FileSearchResult,
@@ -87,6 +89,9 @@ const selectedRepoFile = ref<RepositoryFile | null>(null);
 const selectedFileLoading = ref(false);
 const selectedFileError = ref("");
 const repoScope = ref<"changed" | "all">("changed");
+const commits = ref<CommitSummary[]>([]);
+const commitsLoading = ref(false);
+const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "working");
 
 const files = computed(() => state.value?.files ?? []);
 const changedByPath = computed(() => {
@@ -315,7 +320,12 @@ async function refresh() {
   }
   loading.value = true;
   try {
-    state.value = await window.diffApp.refreshRepository(state.value.root);
+    const current = state.value;
+    if (current.mode === "commit" && current.commitSha) {
+      state.value = await window.diffApp.readCommit(current.commitSha, current.root);
+    } else {
+      state.value = await window.diffApp.refreshRepository(current.root);
+    }
     if (!state.value.files.some((file) => file.path === selectedPath.value)) {
       selectedPath.value = state.value.files[0]?.path ?? "";
     }
@@ -324,6 +334,39 @@ async function refresh() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadCommits(limit = 100) {
+  if (!state.value) return;
+  commitsLoading.value = true;
+  try {
+    const response = await window.diffApp.listCommits(state.value.root, limit);
+    commits.value = response.commits;
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  } finally {
+    commitsLoading.value = false;
+  }
+}
+
+async function openCommit(sha: string) {
+  if (!state.value) return;
+  loading.value = true;
+  error.value = "";
+  try {
+    state.value = await window.diffApp.readCommit(sha, state.value.root);
+    selectedPath.value = state.value.files[0]?.path ?? "";
+    activeReview.value = null;
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function returnToWorkingTree() {
+  if (!state.value) return;
+  await openRepo(state.value.root);
 }
 
 const creatingBranch = ref(false);
@@ -394,15 +437,21 @@ async function removeRepository(path: string) {
 
 async function startReview() {
   if (!state.value) return;
+  const ctx = state.value;
   const review = await window.diffApp.createReview({
-    repoRoot: state.value.root,
-    branch: state.value.branch,
-    headSha: state.value.headSha,
-    title: `Review ${state.value.branch || state.value.headSha || "local changes"}`,
+    repoRoot: ctx.root,
+    branch: ctx.branch,
+    headSha: ctx.headSha,
+    title:
+      ctx.mode === "commit"
+        ? `Review commit ${ctx.branch || ctx.commitSha?.slice(0, 7) || ctx.headSha}`
+        : `Review ${ctx.branch || ctx.headSha || "local changes"}`,
     summary: sanitizeHtml(summaryDraft.value),
-    filesChanged: state.value.files.length,
-    additions: state.value.additions,
-    deletions: state.value.deletions,
+    filesChanged: ctx.files.length,
+    additions: ctx.additions,
+    deletions: ctx.deletions,
+    contextKind: ctx.mode,
+    contextSha: ctx.commitSha,
   });
   activeReview.value = await window.diffApp.reviewDetail(review.id);
   reviews.value = [review, ...reviews.value.filter((item) => item.id !== review.id)];
@@ -635,6 +684,24 @@ void ACCENTS;
       @create-branch="createBranch"
       @select-result="openSearchResult"
     />
+
+    <div
+      v-if="state"
+      class="flex flex-wrap items-center gap-2 border-b border-border bg-background/70 px-4 py-1.5 text-xs"
+    >
+      <CommitPicker
+        :commits="commits"
+        :loading="commitsLoading"
+        :active-sha="state.commitSha"
+        :mode="repoMode"
+        @open="loadCommits()"
+        @select="openCommit"
+        @back="returnToWorkingTree"
+      />
+      <span v-if="repoMode === 'commit' && state.commitSha" class="font-mono text-muted-foreground">
+        commit {{ state.branch || state.commitSha.slice(0, 7) }}
+      </span>
+    </div>
 
     <main class="flex flex-1 min-h-0">
       <template v-if="!activeRepoPath || loading || error || !state">

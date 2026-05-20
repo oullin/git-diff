@@ -48,6 +48,14 @@ export function registerIpcHandlers(deps: IpcDeps) {
     (await client()).refreshRepository({ path }),
   );
 
+  ipcMain.handle("repository:commit", async (_event, sha: string, path?: string) =>
+    (await client()).readCommit({ path, sha }),
+  );
+
+  ipcMain.handle("repository:log", async (_event, path?: string, limit?: number) =>
+    (await client()).listCommits({ path, limit }),
+  );
+
   ipcMain.handle("repository:file:read", async (_event, root: string, path: string) =>
     (await client()).readRepositoryFile({ root, path }),
   );

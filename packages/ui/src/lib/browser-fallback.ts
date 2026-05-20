@@ -40,6 +40,7 @@ export function installBrowserFallback() {
   const state: RepositoryState = {
     root: "/Users/local/project",
     launchPath: "/Users/local/project",
+    mode: "working",
     branch: "feature/local-review",
     headSha: "abc1234",
     generatedAt: new Date().toISOString(),
@@ -70,6 +71,24 @@ export function installBrowserFallback() {
     repositoryState: async () => state,
     openRepository: async () => state,
     refreshRepository: async () => ({ ...state, generatedAt: new Date().toISOString() }),
+    readCommit: async (sha: string) => ({
+      ...state,
+      mode: "commit",
+      commitSha: sha,
+      generatedAt: new Date().toISOString(),
+    }),
+    listCommits: async () => ({
+      commits: [
+        {
+          sha: "abc1234abc1234abc1234abc1234abc1234abc12",
+          shortSha: "abc1234",
+          author: fallbackUser.displayName,
+          email: `${fallbackUser.osUsername}@example.com`,
+          date: new Date().toISOString(),
+          subject: "Demo commit",
+        },
+      ],
+    }),
     readRepositoryFile: async (_root: string, path: string) => ({
       path,
       content: `// ${path}\n// Preview not available in browser fallback.\n`,
@@ -131,6 +150,8 @@ export function installBrowserFallback() {
         additions: request.additions ?? state.additions,
         deletions: request.deletions ?? state.deletions,
         startedAt: new Date().toISOString(),
+        contextKind: request.contextKind ?? "working",
+        contextSha: request.contextSha,
       };
       reviews = [{ review, events: [], comments: [] }, ...reviews];
       return review;

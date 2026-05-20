@@ -24,6 +24,7 @@ import type {
   RepositoryCollaborator,
   FileSearchResult,
   Branch,
+  CommitSummary,
   SystemStats,
   ReviewComment,
   ReviewDetail,
@@ -167,6 +168,26 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
 
   refreshRepository(request: { path: string }): Promise<RepositoryState> {
     return this.request<RepositoryState>("POST", "/v1/repository/refresh", { path: request.path });
+  }
+
+  readCommit(request: { path?: string; sha: string }): Promise<RepositoryState> {
+    const parts = [`sha=${encodeURIComponent(request.sha)}`];
+    if (request.path) {
+      parts.push(`path=${encodeURIComponent(request.path)}`);
+    }
+    return this.request<RepositoryState>("GET", `/v1/repository/commit?${parts.join("&")}`);
+  }
+
+  listCommits(request: { path?: string; limit?: number }): Promise<{ commits: CommitSummary[] }> {
+    const parts: string[] = [];
+    if (request.path) {
+      parts.push(`path=${encodeURIComponent(request.path)}`);
+    }
+    if (request.limit) {
+      parts.push(`limit=${request.limit}`);
+    }
+    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+    return this.request<{ commits: CommitSummary[] }>("GET", `/v1/repository/log${query}`);
   }
 
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {
