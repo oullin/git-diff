@@ -88,6 +88,9 @@ function applyJsonErrorPayload(error, raw) {
       if (typeof parsed.code === "string") {
         error.code = parsed.code;
       }
+      if (Array.isArray(parsed.files) && parsed.files.every((entry) => typeof entry === "string")) {
+        error.files = parsed.files;
+      }
     }
   } catch {
     // Fall through with the generic error message.

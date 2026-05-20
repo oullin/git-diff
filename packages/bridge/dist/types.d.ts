@@ -170,6 +170,21 @@ export interface PullRequestSummary {
   headRef: string;
   url: string;
 }
+export interface PendingComment {
+  id: string;
+  userId: number;
+  repoRoot: string;
+  contextKind: RepositoryMode;
+  contextSha?: string;
+  filePath: string;
+  diffSection: string;
+  side: string;
+  lineNumber: number;
+  authorLabel: string;
+  bodyHtml: string;
+  createdAt: string;
+  updatedAt: string;
+}
 export interface RepositoryFile {
   path: string;
   content: string;
@@ -324,6 +339,25 @@ export interface WorkflowBridgeClient {
     pullRequests: PullRequestSummary[];
   }>;
   readPullRequest(request: { path?: string; number: number }): Promise<RepositoryState>;
+  listPendingComments(request: { path?: string; kind?: RepositoryMode; sha?: string }): Promise<{
+    comments: PendingComment[];
+  }>;
+  createPendingComment(request: {
+    repoRoot: string;
+    contextKind: RepositoryMode;
+    contextSha?: string;
+    filePath: string;
+    diffSection: string;
+    side: string;
+    lineNumber: number;
+    authorLabel: string;
+    bodyHtml: string;
+  }): Promise<PendingComment>;
+  updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment>;
+  deletePendingComment(request: { id: string }): Promise<void>;
+  promotePendingComments(request: { reviewId: string }): Promise<{
+    promoted: number;
+  }>;
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
   listBranches(request: { path?: string }): Promise<{
     branches: string[];

@@ -8,11 +8,13 @@ export type JsonBody = Record<string, unknown>;
 export interface BridgeError extends Error {
   statusCode?: number;
   code?: string;
+  files?: string[];
 }
 
 interface JsonErrorPayload {
   error?: unknown;
   code?: unknown;
+  files?: unknown;
 }
 
 export function requestJson<Response>(
@@ -125,6 +127,10 @@ function applyJsonErrorPayload(error: BridgeError, raw: string): void {
 
       if (typeof parsed.code === "string") {
         error.code = parsed.code;
+      }
+
+      if (Array.isArray(parsed.files) && parsed.files.every((entry) => typeof entry === "string")) {
+        error.files = parsed.files as string[];
       }
     }
   } catch {

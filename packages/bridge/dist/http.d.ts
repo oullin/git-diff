@@ -4,6 +4,7 @@ export type JsonBody = Record<string, unknown>;
 export interface BridgeError extends Error {
   statusCode?: number;
   code?: string;
+  files?: string[];
 }
 export declare function requestJson<Response>(
   socketPath: string,

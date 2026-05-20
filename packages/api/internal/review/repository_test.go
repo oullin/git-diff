@@ -2,6 +2,7 @@ package review
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,6 +134,70 @@ func TestListCommitLog(t *testing.T) {
 
 	if commits[0].SHA == "" || commits[0].ShortSHA == "" || commits[0].Date == "" {
 		t.Fatalf("sha/short/date missing: %#v", commits[0])
+	}
+}
+
+func TestCheckoutBranchDirtyWorkingTree(t *testing.T) {
+	root := t.TempDir()
+	git(t, root, "init", "--initial-branch=main")
+	git(t, root, "config", "user.email", "review@example.com")
+	git(t, root, "config", "user.name", "Reviewer")
+	git(t, root, "config", "commit.gpgsign", "false")
+
+	writeFile(t, root, "app.txt", "old\n")
+	git(t, root, "add", "app.txt")
+	git(t, root, "commit", "-m", "initial")
+
+	git(t, root, "checkout", "-b", "other")
+	git(t, root, "checkout", "main")
+
+	writeFile(t, root, "app.txt", "old\nlocal change\n")
+
+	err := CheckoutBranch(context.Background(), root, "other")
+
+	if err == nil {
+		t.Fatal("expected dirty working tree error, got nil")
+	}
+
+	var dirty *WorkingTreeDirtyError
+
+	if !errors.As(err, &dirty) {
+		t.Fatalf("error type = %T (%v), want *WorkingTreeDirtyError", err, err)
+	}
+
+	if len(dirty.Files) != 1 || dirty.Files[0] != "app.txt" {
+		t.Fatalf("dirty files = %#v, want [app.txt]", dirty.Files)
+	}
+
+	current := strings.TrimSpace(gitOut(t, root, "branch", "--show-current"))
+
+	if current != "main" {
+		t.Fatalf("branch after failed checkout = %q, want main (working tree must be untouched)", current)
+	}
+}
+
+func TestCheckoutBranchCleanWorkingTree(t *testing.T) {
+	root := t.TempDir()
+	git(t, root, "init", "--initial-branch=main")
+	git(t, root, "config", "user.email", "review@example.com")
+	git(t, root, "config", "user.name", "Reviewer")
+	git(t, root, "config", "commit.gpgsign", "false")
+
+	writeFile(t, root, "app.txt", "hello\n")
+	git(t, root, "add", "app.txt")
+	git(t, root, "commit", "-m", "initial")
+
+	git(t, root, "checkout", "-b", "feature")
+	git(t, root, "checkout", "main")
+
+	if err := CheckoutBranch(context.Background(), root, "feature"); err != nil {
+		t.Fatalf("CheckoutBranch on clean tree failed: %v", err)
+	}
+
+	current := strings.TrimSpace(gitOut(t, root, "branch", "--show-current"))
+
+	if current != "feature" {
+		t.Fatalf("branch = %q, want feature", current)
 	}
 }
 

@@ -294,6 +294,29 @@
   --traffic-red: #ff5f57;
   --traffic-yellow: #febc2e;
   --traffic-green: #28c840;
+
+  /* Design-bundle tokens (light variant — parallel to the dark block below) */
+  --gd-bg-rail: #f4f4f3;
+  --gd-bg-input: #ffffff;
+  --gd-bg-code: #ffffff;
+  --gd-bg-gutter: #fafafa;
+
+  --gd-edge-hi: rgb(17 17 17 / 0.04);
+  --gd-edge-hi-2: rgb(17 17 17 / 0.025);
+  --gd-edge-lo: rgb(0 0 0 / 0.08);
+
+  --gd-shadow-card: 0 0 0 1px rgb(17 17 17 / 0.06) inset, 0 8px 24px -16px rgb(0 0 0 / 0.18);
+  --gd-shadow-panel: 0 0 0 1px rgb(17 17 17 / 0.06) inset, 0 12px 32px -16px rgb(0 0 0 / 0.18);
+
+  --gd-bloom:
+    radial-gradient(1200px 600px at 70% -10%, rgb(99 102 241 / 0.04), transparent 60%),
+    radial-gradient(900px 500px at 10% -20%, rgb(99 102 241 / 0.025), transparent 60%);
+
+  /* Diff bar + gutter line tints (light variant of the dark pastel pair) */
+  --gd-green-bar: rgb(31 122 68 / 0.45);
+  --gd-red-bar: rgb(184 49 47 / 0.45);
+  --gd-green-line: rgb(31 122 68 / 0.1);
+  --gd-red-line: rgb(184 49 47 / 0.1);
 }
 
 :root.dark,

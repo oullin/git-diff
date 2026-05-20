@@ -119,6 +119,35 @@ function dismissToast(id: string) {
   toasts.value = toasts.value.filter((toast) => toast.id !== id);
 }
 
+interface BridgeErrorPayload {
+  code: string;
+  files?: string[];
+  message?: string;
+}
+
+const BRIDGE_ERROR_PREFIX = "__BRIDGE_ERROR__";
+
+function parseBridgeError(cause: unknown): BridgeErrorPayload | null {
+  if (!(cause instanceof Error)) return null;
+  const idx = cause.message.indexOf(BRIDGE_ERROR_PREFIX);
+  if (idx < 0) return null;
+  try {
+    const parsed = JSON.parse(cause.message.slice(idx + BRIDGE_ERROR_PREFIX.length));
+    if (parsed && typeof parsed.code === "string") {
+      return {
+        code: parsed.code,
+        files: Array.isArray(parsed.files)
+          ? parsed.files.filter((f: unknown) => typeof f === "string")
+          : undefined,
+        message: typeof parsed.message === "string" ? parsed.message : undefined,
+      };
+    }
+  } catch {
+    // not a structured bridge error
+  }
+  return null;
+}
+
 const walkthrough = ref<WalkthroughRecord | null>(null);
 const walkthroughLoading = ref(false);
 const walkthroughError = ref("");
@@ -539,7 +568,24 @@ async function switchBranch(branch: string) {
       selectedPath.value = state.value.files[0]?.path ?? "";
     }
   } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
+    const structured = parseBridgeError(cause);
+    if (structured?.code === "working_tree_dirty") {
+      const files = structured.files ?? [];
+      showToast(
+        {
+          tone: "error",
+          wide: true,
+          title: "Commit or stash your changes before switching branches",
+          description:
+            files.length > 0
+              ? `${files.length} file${files.length === 1 ? "" : "s"} would be overwritten by checkout: ${files.join(", ")}`
+              : undefined,
+        },
+        0,
+      );
+      return;
+    }
+    error.value = structured?.message ?? (cause instanceof Error ? cause.message : String(cause));
   } finally {
     loading.value = false;
   }

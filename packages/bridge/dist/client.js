@@ -143,6 +143,28 @@ class HttpWorkflowBridgeClient {
     if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
     return this.request("GET", `/v1/repository/pull-request?${parts.join("&")}`);
   }
+  listPendingComments(request) {
+    const parts = [];
+    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    if (request.kind) parts.push(`kind=${request.kind}`);
+    if (request.sha) parts.push(`sha=${encodeURIComponent(request.sha)}`);
+    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+    return this.request("GET", `/v1/pending-comments${query}`);
+  }
+  createPendingComment(request) {
+    return this.request("POST", "/v1/pending-comments", request);
+  }
+  updatePendingComment(request) {
+    return this.request("PATCH", `/v1/pending-comments/${encodeURIComponent(request.id)}`, {
+      bodyHtml: request.bodyHtml,
+    });
+  }
+  deletePendingComment(request) {
+    return this.request("DELETE", `/v1/pending-comments/${encodeURIComponent(request.id)}`);
+  }
+  promotePendingComments(request) {
+    return this.request("POST", "/v1/pending-comments/promote", request);
+  }
   readRepositoryFile(request) {
     const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
     return this.request("GET", `/v1/repository/file${query}`);

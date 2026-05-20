@@ -92,6 +92,20 @@ type commitDiffEntry struct {
 	old    string
 }
 
+// parseDiffTreeNameStatus decodes the output of
+// `git diff-tree --name-status -z -r --find-renames <sha>`. Each record is one
+// or two NUL-terminated fields: a status letter followed by one path (or two
+// paths for renames/copies).
+
+// ListCommitLog returns the most recent commits in the repository for use as
+// a picker. The slice is ordered newest-first.
+
+// WorkingTreeDirtyError signals that a checkout was refused because the
+// working tree has uncommitted changes that would be overwritten.
+type WorkingTreeDirtyError struct {
+	Files []string
+}
+
 const (
 	RepositoryModeWorking = "working"
 	RepositoryModeCommit  = "commit"
@@ -269,10 +283,6 @@ func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositorySta
 	return state, nil
 }
 
-// parseDiffTreeNameStatus decodes the output of
-// `git diff-tree --name-status -z -r --find-renames <sha>`. Each record is one
-// or two NUL-terminated fields: a status letter followed by one path (or two
-// paths for renames/copies).
 func parseDiffTreeNameStatus(raw []byte) []commitDiffEntry {
 	parts := bytes.Split(raw, []byte{0})
 	entries := []commitDiffEntry{}
@@ -342,8 +352,6 @@ func commitFilePatch(ctx context.Context, root, sha, path, oldPath string) (stri
 	return patch, isBinaryPatch(patch)
 }
 
-// ListCommitLog returns the most recent commits in the repository for use as
-// a picker. The slice is ordered newest-first.
 func ListCommitLog(ctx context.Context, launchPath string, limit int) ([]CommitSummary, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
@@ -696,6 +704,10 @@ func ListBranches(ctx context.Context, launchPath string) ([]string, error) {
 	return branches, nil
 }
 
+func (e *WorkingTreeDirtyError) Error() string {
+	return "working tree has uncommitted changes"
+}
+
 func CheckoutBranch(ctx context.Context, launchPath string, branch string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
@@ -709,11 +721,39 @@ func CheckoutBranch(ctx context.Context, launchPath string, branch string) error
 
 	root = strings.TrimSpace(root)
 
+	statusRaw, err := gitBytes(ctx, root, "status", "--porcelain=v1", "-z")
+
+	if err != nil {
+		return fmt.Errorf("read git status: %w", err)
+	}
+
+	if dirty := dirtyPaths(parseStatus(statusRaw)); len(dirty) > 0 {
+		return &WorkingTreeDirtyError{Files: dirty}
+	}
+
 	if _, err := gitOutput(ctx, root, "checkout", branch); err != nil {
 		return fmt.Errorf("checkout branch: %w", err)
 	}
 
 	return nil
+}
+
+func dirtyPaths(entries []statusEntry) []string {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	paths := make([]string, 0, len(entries))
+
+	for _, entry := range entries {
+		if entry.path == "" {
+			continue
+		}
+
+		paths = append(paths, entry.path)
+	}
+
+	return paths
 }
 
 func DeleteBranch(ctx context.Context, launchPath string, name string) error {

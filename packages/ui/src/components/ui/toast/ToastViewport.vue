@@ -10,6 +10,7 @@ export interface ToastItem {
   title: string;
   description?: string;
   tone?: ToastTone;
+  wide?: boolean;
 }
 
 const props = defineProps<{
@@ -46,7 +47,12 @@ function iconClass(tone: ToastTone = "info") {
   <div
     v-if="toasts.length"
     data-testid="toast-viewport"
-    :class="cn('pointer-events-none fixed right-4 bottom-4 z-50 grid w-80 gap-2', props.class)"
+    :class="
+      cn(
+        'pointer-events-none fixed right-4 bottom-4 z-50 grid justify-items-end gap-2',
+        props.class,
+      )
+    "
   >
     <div
       v-for="toast in toasts"
@@ -54,6 +60,7 @@ function iconClass(tone: ToastTone = "info") {
       :class="
         cn(
           'pointer-events-auto rounded-md border bg-popover p-3 text-popover-foreground shadow-overlay',
+          toast.wide ? 'w-[32rem]' : 'w-80',
           toneClass(toast.tone),
         )
       "

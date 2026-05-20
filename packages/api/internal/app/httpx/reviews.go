@@ -263,6 +263,18 @@ func (s Server) repositoryCheckout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := review.CheckoutBranch(r.Context(), body.Path, body.Branch); err != nil {
+		var dirty *review.WorkingTreeDirtyError
+
+		if errors.As(err, &dirty) {
+			writeJSON(w, http.StatusConflict, map[string]any{
+				"error": dirty.Error(),
+				"code":  "working_tree_dirty",
+				"files": dirty.Files,
+			})
+
+			return
+		}
+
 		writeError(w, http.StatusBadRequest, err)
 
 		return

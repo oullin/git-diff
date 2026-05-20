@@ -64,7 +64,7 @@ function clearSearch() {
       background:
         'linear-gradient(180deg, rgb(255 255 255 / 0.012), transparent 220px), var(--gd-bg-rail, var(--gd-panel))',
       borderRight: '1px solid var(--gd-border)',
-      boxShadow: '1px 0 0 var(--gd-edge-hi-2) inset, inset -8px 0 16px -16px rgb(0 0 0 / 0.6)',
+      boxShadow: '1px 0 0 var(--gd-edge-hi-2) inset, inset -8px 0 16px -16px var(--gd-edge-lo)',
       minHeight: 0,
     }"
   >
