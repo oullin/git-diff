@@ -1,8 +1,4 @@
-import type {
-  FileSearchResult,
-  Repository,
-  RepositoryCollaborator,
-} from "@git-diff/contracts";
+import type { FileSearchResult, Repository, RepositoryCollaborator } from "@git-diff/contracts";
 import { requestJson } from "#bridge/http.js";
 
 export function listRepositories(socketPath: string): Promise<{ repositories: Repository[] }> {
@@ -59,16 +55,11 @@ export function addCollaborator(
   socketPath: string,
   request: { path: string; userId: number; role: "write" | "read" },
 ): Promise<RepositoryCollaborator> {
-  return requestJson<RepositoryCollaborator>(
-    socketPath,
-    "POST",
-    "/v1/repositories/collaborators",
-    {
-      path: request.path,
-      userId: request.userId,
-      role: request.role,
-    },
-  );
+  return requestJson<RepositoryCollaborator>(socketPath, "POST", "/v1/repositories/collaborators", {
+    path: request.path,
+    userId: request.userId,
+    role: request.role,
+  });
 }
 
 export function removeCollaborator(

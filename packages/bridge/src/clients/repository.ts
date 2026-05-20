@@ -54,11 +54,7 @@ export function listCommits(
     parts.push(`limit=${request.limit}`);
   }
   const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-  return requestJson<{ commits: CommitSummary[] }>(
-    socketPath,
-    "GET",
-    `/v1/repository/log${query}`,
-  );
+  return requestJson<{ commits: CommitSummary[] }>(socketPath, "GET", `/v1/repository/log${query}`);
 }
 
 export function readRepositoryFile(

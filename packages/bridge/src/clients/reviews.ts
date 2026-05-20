@@ -1,9 +1,4 @@
-import type {
-  ReviewComment,
-  ReviewDetail,
-  ReviewEvent,
-  ReviewSession,
-} from "@git-diff/contracts";
+import type { ReviewComment, ReviewDetail, ReviewEvent, ReviewSession } from "@git-diff/contracts";
 import { requestJson } from "#bridge/http.js";
 
 export function createReview(
@@ -26,10 +21,7 @@ export function listReviews(
   return requestJson<{ reviews: ReviewSession[] }>(socketPath, "GET", `/v1/reviews${query}`);
 }
 
-export function reviewDetail(
-  socketPath: string,
-  request: { id: string },
-): Promise<ReviewDetail> {
+export function reviewDetail(socketPath: string, request: { id: string }): Promise<ReviewDetail> {
   return requestJson<ReviewDetail>(
     socketPath,
     "GET",

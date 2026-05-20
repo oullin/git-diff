@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 const projectDir = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
-  cacheDir: resolve(projectDir, "../../storage/.cache/vite/ui-electron"),
+  cacheDir: resolve(projectDir, "../../.turbo/vite/ui-electron"),
   resolve: {
     alias: [
       {

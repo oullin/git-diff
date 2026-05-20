@@ -1,8 +1,4 @@
-import type {
-  RuntimeSettings,
-  SettingsResponse,
-  UIPreferencesResponse,
-} from "@git-diff/contracts";
+import type { RuntimeSettings, SettingsResponse, UIPreferencesResponse } from "@git-diff/contracts";
 import { requestJson } from "#bridge/http.js";
 
 export function getSettings(socketPath: string): Promise<SettingsResponse> {

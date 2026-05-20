@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
   base: "./",
   plugins: [vue(), tailwindcss()],
-  cacheDir: resolve(__dirname, "../../storage/.cache/vite/ui"),
+  cacheDir: resolve(__dirname, "../../.turbo/vite/ui"),
   resolve: {
     alias: {
       "@entry": resolve(__dirname, "./src"),

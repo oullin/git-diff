@@ -30,9 +30,7 @@ export function runLog(socketPath: string, request: { runId: string }): Promise<
   );
 }
 
-export function listTemplateFiles(
-  socketPath: string,
-): Promise<{ files: TemplateFileSummary[] }> {
+export function listTemplateFiles(socketPath: string): Promise<{ files: TemplateFileSummary[] }> {
   return requestJson<{ files: TemplateFileSummary[] }>(socketPath, "GET", "/v1/template-files");
 }
 

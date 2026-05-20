@@ -46,10 +46,7 @@ export function updatePendingComment(
   );
 }
 
-export function deletePendingComment(
-  socketPath: string,
-  request: { id: string },
-): Promise<void> {
+export function deletePendingComment(socketPath: string, request: { id: string }): Promise<void> {
   return requestJson<void>(
     socketPath,
     "DELETE",

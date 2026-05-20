@@ -39,11 +39,7 @@ export function deleteBranch(
 ): Promise<void> {
   const params = new URLSearchParams({ name: request.name });
   if (request.path) params.set("path", request.path);
-  return requestJson<void>(
-    socketPath,
-    "DELETE",
-    `/v1/repository/branches?${params.toString()}`,
-  );
+  return requestJson<void>(socketPath, "DELETE", `/v1/repository/branches?${params.toString()}`);
 }
 
 export function lockBranch(
@@ -60,13 +56,8 @@ export function unlockBranch(
   socketPath: string,
   request: { path?: string; name: string },
 ): Promise<{ branches: Branch[] }> {
-  return requestJson<{ branches: Branch[] }>(
-    socketPath,
-    "POST",
-    "/v1/repository/branches/unlock",
-    {
-      path: request.path,
-      name: request.name,
-    },
-  );
+  return requestJson<{ branches: Branch[] }>(socketPath, "POST", "/v1/repository/branches/unlock", {
+    path: request.path,
+    name: request.name,
+  });
 }

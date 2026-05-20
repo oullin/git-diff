@@ -29,11 +29,7 @@ import type {
   WalkthroughRecord,
   Workflow,
 } from "@git-diff/contracts";
-import type {
-  UnixTarget,
-  WorkflowBridgeClient,
-  WorkflowRunStream,
-} from "#bridge/client-types.js";
+import type { UnixTarget, WorkflowBridgeClient, WorkflowRunStream } from "#bridge/client-types.js";
 import * as authClient from "#bridge/clients/auth.js";
 import * as branchClient from "#bridge/clients/branches.js";
 import * as opClient from "#bridge/clients/op.js";
