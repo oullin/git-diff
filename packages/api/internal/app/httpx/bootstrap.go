@@ -59,6 +59,7 @@ func Serve(args []string, cfg ServeConfig) int {
 	})
 	reviewSvc := service.NewReviewService(store)
 	pendingCommentSvc := service.NewPendingCommentService(store)
+	repositorySvc := service.NewRepositoryService(store)
 
 	appServer := Server{
 		Home:     cfg.Home,
@@ -71,6 +72,7 @@ func Serve(args []string, cfg ServeConfig) int {
 		AuthService:           authSvc,
 		ReviewService:         reviewSvc,
 		PendingCommentService: pendingCommentSvc,
+		RepositoryService:     repositorySvc,
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{

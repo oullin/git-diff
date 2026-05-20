@@ -6,18 +6,26 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
-func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
+func writeCollaboratorError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrAuthenticationRequired):
+		writeError(w, http.StatusUnauthorized, err)
+	case errors.Is(err, service.ErrRepositoryPathRequired):
+		writeError(w, http.StatusBadRequest, err)
+	case errors.Is(err, storage.ErrRepositoryNotOwned):
+		writeError(w, http.StatusForbidden, err)
+	case errors.Is(err, storage.ErrRepositoryNotFound):
+		writeError(w, http.StatusNotFound, err)
+	default:
+		writeError(w, http.StatusBadRequest, err)
 	}
+}
 
+func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
 
 	if path == "" {
@@ -26,17 +34,11 @@ func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	collaborators, err := store.ListRepositoryCollaborators(r.Context(), userID, path)
+	collaborators, err := s.RepositoryService.ListCollaborators(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		path,
+	)
 
 	if err != nil {
 		writeCollaboratorError(w, err)
@@ -48,14 +50,6 @@ func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) addCollaborator(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	var body struct {
 		Path   string `json:"path"`
 		UserID int64  `json:"userId"`
@@ -68,17 +62,13 @@ func (s Server) addCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	collaborator, err := store.GrantRepositoryAccess(r.Context(), userID, body.Path, body.UserID, body.Role)
+	collaborator, err := s.RepositoryService.GrantCollaborator(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		body.Path,
+		body.UserID,
+		body.Role,
+	)
 
 	if err != nil {
 		writeCollaboratorError(w, err)
@@ -90,14 +80,6 @@ func (s Server) addCollaborator(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) removeCollaborator(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	path := r.URL.Query().Get("path")
 	target := r.URL.Query().Get("userId")
 
@@ -115,32 +97,16 @@ func (s Server) removeCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	if err := store.RevokeRepositoryAccess(r.Context(), userID, path, targetID); err != nil {
+	if err := s.RepositoryService.RevokeCollaborator(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		path,
+		targetID,
+	); err != nil {
 		writeCollaboratorError(w, err)
 
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func writeCollaboratorError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, storage.ErrRepositoryNotOwned):
-		writeError(w, http.StatusForbidden, err)
-	case errors.Is(err, storage.ErrRepositoryNotFound):
-		writeError(w, http.StatusNotFound, err)
-	default:
-		writeError(w, http.StatusBadRequest, err)
-	}
 }

@@ -5,32 +5,28 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
+func (s Server) handleRepositoryError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrAuthenticationRequired):
+		writeError(w, http.StatusUnauthorized, err)
+	case errors.Is(err, service.ErrRepositoryPathRequired):
+		writeError(w, http.StatusBadRequest, err)
+	case errors.Is(err, storage.ErrRepositoryNotOwned):
+		writeError(w, http.StatusForbidden, err)
+	default:
+		writeError(w, http.StatusInternalServerError, err)
+	}
+}
+
 func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
+	repos, err := s.RepositoryService.List(r.Context(), s.Auth.CurrentUserID())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	repos, err := store.ListRepositoriesForUser(r.Context(), userID)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		s.handleRepositoryError(w, err)
 
 		return
 	}
@@ -39,14 +35,6 @@ func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	var body struct {
 		Path string `json:"path"`
 		Name string `json:"name"`
@@ -58,19 +46,20 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
+	repo, err := s.RepositoryService.Upsert(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		body.Path,
+		body.Name,
+	)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		if errors.Is(err, service.ErrAuthenticationRequired) {
+			writeError(w, http.StatusUnauthorized, err)
 
-		return
-	}
+			return
+		}
 
-	defer closeStore()
-
-	repo, err := store.UpsertRepository(r.Context(), userID, body.Path, body.Name)
-
-	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
 
 		return
@@ -80,40 +69,14 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) removeRepository(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
-	path := r.URL.Query().Get("path")
-
-	if path == "" {
-		writeError(w, http.StatusBadRequest, errors.New("path query parameter is required"))
-
-		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
+	err := s.RepositoryService.Remove(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		r.URL.Query().Get("path"),
+	)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	if err := store.RemoveRepository(r.Context(), userID, path); err != nil {
-		if errors.Is(err, storage.ErrRepositoryNotOwned) {
-			writeError(w, http.StatusForbidden, err)
-
-			return
-		}
-
-		writeError(w, http.StatusInternalServerError, err)
+		s.handleRepositoryError(w, err)
 
 		return
 	}
