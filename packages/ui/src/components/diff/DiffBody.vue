@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import { ChevronDown, ChevronUp, Plus } from "lucide-vue-next";
 import { highlighterRev, highlightLine, languageFor } from "@lib/highlight";
 import { diffBgs, type DiffStyleColors } from "@lib/accent";
@@ -49,35 +49,6 @@ function setSectionRef(id: string) {
     sectionRefs.value[id] = el instanceof HTMLElement ? el : null;
   };
 }
-
-function onDocumentWheel(e: WheelEvent): void {
-  if (e.deltaX !== 0 || e.deltaY === 0) return;
-  const path = e.composedPath();
-  let scroller: HTMLElement | null = null;
-  for (const node of path) {
-    if (!(node instanceof HTMLElement)) continue;
-    if (node.dataset.diffScroller === "true") {
-      scroller = node;
-      break;
-    }
-  }
-  if (!scroller) return;
-  const max = scroller.scrollWidth - scroller.clientWidth;
-  if (max <= 0) return;
-  const goingRight = e.deltaY > 0;
-  if (goingRight && scroller.scrollLeft >= max) return;
-  if (!goingRight && scroller.scrollLeft <= 0) return;
-  e.preventDefault();
-  scroller.scrollLeft += e.deltaY;
-}
-
-onMounted(() => {
-  document.addEventListener("wheel", onDocumentWheel, { passive: false, capture: true });
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("wheel", onDocumentWheel, { capture: true });
-});
 
 const lineH = computed(() => (props.density === "compact" ? 22 : 24));
 const colors = computed<DiffStyleColors>(() => diffBgs(props.diffStyle));

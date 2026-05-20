@@ -31,7 +31,6 @@ function onPointerMove(event: PointerEvent): void {
 }
 
 function endDrag(): void {
-  if (!dragging.value) return;
   dragging.value = false;
   document.removeEventListener("pointermove", onPointerMove);
   document.removeEventListener("pointerup", endDrag);

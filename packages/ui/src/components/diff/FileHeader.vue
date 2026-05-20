@@ -13,7 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   "toggle-collapsed": [];
   "toggle-viewed": [];
-  copy: [];
+  copy: [path: string];
 }>();
 
 const parts = computed(() => props.file.path.split("/"));
@@ -106,7 +106,7 @@ const hasUnstaged = computed(() =>
         cursor: 'pointer',
       }"
       title="Copy path"
-      @click="emit('copy')"
+      @click="emit('copy', file.path)"
     >
       <Copy :size="14" />
     </button>

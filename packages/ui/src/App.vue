@@ -444,6 +444,10 @@ async function openSearchResult(result: FileSearchResult) {
   selectFile(result.filePath);
 }
 
+function toggleCollapsed(path: string) {
+  collapsed.value[path] = !collapsed.value[path];
+}
+
 function selectFile(path: string) {
   selectedPath.value = path;
   if (changedByPath.value.has(path)) {
@@ -573,8 +577,7 @@ function fileElementID(path: string): string {
   return `file-${path.replace(/[^a-z0-9_-]/gi, "-")}`;
 }
 
-function copyPath() {
-  const path = selectedFile.value?.path;
+function copyPath(path: string) {
   if (path) void navigator.clipboard.writeText(path);
 }
 
@@ -743,7 +746,7 @@ void ACCENTS;
                   :file="file"
                   :collapsed="!!collapsed[file.path]"
                   :viewed="isViewed(file)"
-                  @toggle-collapsed="collapsed[file.path] = !collapsed[file.path]"
+                  @toggle-collapsed="toggleCollapsed(file.path)"
                   @toggle-viewed="toggleViewed(file)"
                   @copy="copyPath"
                 />
