@@ -33,6 +33,7 @@ import Kbd from "./Kbd.vue";
 import TweaksPanel from "./TweaksPanel.vue";
 import type { Tweaks } from "@composables/useTweaks";
 import { useFileSearch } from "@composables/useFileSearch";
+import { useBranches } from "@composables/useBranches";
 import type { AuthUser, FileSearchResult, RepositoryState } from "@git-diff/contracts";
 
 const props = defineProps<{
@@ -53,9 +54,12 @@ const emit = defineEmits<{
   "select-result": [result: FileSearchResult];
 }>();
 
-const branches = ref<string[]>([]);
-const branchesLoading = ref(false);
-const branchesError = ref("");
+const {
+  items: branches,
+  loading: branchesLoading,
+  error: branchesError,
+  load: loadBranches,
+} = useBranches();
 
 const createOpen = ref(false);
 const createName = ref("");
@@ -95,17 +99,7 @@ async function onBranchMenuOpen(open: boolean) {
     return;
   }
 
-  branchesLoading.value = true;
-  branchesError.value = "";
-
-  try {
-    const result = await window.diffApp.listBranches(props.state.root);
-    branches.value = result.branches;
-  } catch (cause) {
-    branchesError.value = cause instanceof Error ? cause.message : String(cause);
-  } finally {
-    branchesLoading.value = false;
-  }
+  await loadBranches(props.state.root);
 }
 
 function openCreateDialog() {
