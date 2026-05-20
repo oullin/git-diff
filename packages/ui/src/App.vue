@@ -48,6 +48,7 @@ import {
   useDiffNavigation,
   useKeyboardShortcuts,
 } from "@composables/useDiffNavigation";
+import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
 
@@ -110,35 +111,6 @@ const pullRequestsLoading = ref(false);
 const activePullRequest = ref<PullRequestSummary | null>(null);
 
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
-
-interface BridgeErrorPayload {
-  code: string;
-  files?: string[];
-  message?: string;
-}
-
-const BRIDGE_ERROR_PREFIX = "__BRIDGE_ERROR__";
-
-function parseBridgeError(cause: unknown): BridgeErrorPayload | null {
-  if (!(cause instanceof Error)) return null;
-  const idx = cause.message.indexOf(BRIDGE_ERROR_PREFIX);
-  if (idx < 0) return null;
-  try {
-    const parsed = JSON.parse(cause.message.slice(idx + BRIDGE_ERROR_PREFIX.length));
-    if (parsed && typeof parsed.code === "string") {
-      return {
-        code: parsed.code,
-        files: Array.isArray(parsed.files)
-          ? parsed.files.filter((f: unknown) => typeof f === "string")
-          : undefined,
-        message: typeof parsed.message === "string" ? parsed.message : undefined,
-      };
-    }
-  } catch {
-    // not a structured bridge error
-  }
-  return null;
-}
 
 const walkthrough = ref<WalkthroughRecord | null>(null);
 const walkthroughLoading = ref(false);
