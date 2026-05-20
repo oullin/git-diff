@@ -50,6 +50,7 @@ import { useWalkthrough } from "@composables/useWalkthrough";
 import { useCommits } from "@composables/useCommits";
 import { usePullRequests } from "@composables/usePullRequests";
 import { useRepositoryList } from "@composables/useRepositoryList";
+import { useCommentDraft } from "@composables/useCommentDraft";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -93,14 +94,14 @@ const error = ref("");
 const collapsed = ref<Record<string, boolean>>({});
 const splitRatios = ref<Record<string, number>>({});
 const reviewPanelOpen = ref(false);
-const commentDialogOpen = ref(false);
-const commentTarget = ref<{
-  file: ChangedFile;
-  section: DiffSection;
-  line: number;
-  side: string;
-} | null>(null);
-const commentDraft = ref("");
+const {
+  target: commentTarget,
+  draft: commentDraft,
+  open: commentDialogOpen,
+  begin: beginCommentDraft,
+  cancel: cancelCommentDraft,
+  close: closeCommentDraft,
+} = useCommentDraft();
 const summaryDraft = ref("");
 
 const selectedRepoFile = ref<RepositoryFile | null>(null);
@@ -613,14 +614,12 @@ function openCommentForLine(file: ChangedFile, section: DiffSection, line: Patch
     reviewPanelOpen.value = true;
     return;
   }
-  commentTarget.value = {
+  beginCommentDraft({
     file,
     section,
     line: lineNumber,
     side: line.newLine ? "right" : "left",
-  };
-  commentDraft.value = "";
-  commentDialogOpen.value = true;
+  });
 }
 
 async function saveComment() {
@@ -659,9 +658,7 @@ async function saveComment() {
     await loadPendingComments();
   }
 
-  commentTarget.value = null;
-  commentDraft.value = "";
-  commentDialogOpen.value = false;
+  closeCommentDraft();
 }
 
 const pendingComments = ref<import("@git-diff/contracts").PendingComment[]>([]);
@@ -681,9 +678,7 @@ async function loadPendingComments() {
 }
 
 function cancelComment() {
-  commentTarget.value = null;
-  commentDraft.value = "";
-  commentDialogOpen.value = false;
+  cancelCommentDraft();
 }
 
 async function deleteComment(comment: ReviewComment) {
