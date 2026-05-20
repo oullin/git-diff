@@ -92,6 +92,17 @@ export function installBrowserFallback() {
         },
       ],
     }),
+    generateWalkthrough: async () => ({
+      repoRoot: state.root,
+      contextKind: "working",
+      fingerprint: "demo",
+      modelId: "demo",
+      order: state.files.map((file) => file.path),
+      notes: Object.fromEntries(state.files.map((file) => [file.path, "demo note"])),
+      summary: "Demo walkthrough — Anthropic API not reachable in browser fallback.",
+      generatedAt: new Date().toISOString(),
+      stale: false,
+    }),
     readRepositoryFile: async (_root: string, path: string) => ({
       path,
       content: `// ${path}\n// Preview not available in browser fallback.\n`,

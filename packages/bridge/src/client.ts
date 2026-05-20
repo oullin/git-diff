@@ -26,6 +26,7 @@ import type {
   Branch,
   CommitSummary,
   SystemStats,
+  WalkthroughRecord,
   ReviewComment,
   ReviewDetail,
   ReviewEvent,
@@ -188,6 +189,20 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     }
     const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
     return this.request<{ commits: CommitSummary[] }>("GET", `/v1/repository/log${query}`);
+  }
+
+  generateWalkthrough(request: {
+    path?: string;
+    kind?: "working" | "commit";
+    sha?: string;
+    refresh?: boolean;
+  }): Promise<WalkthroughRecord> {
+    return this.request<WalkthroughRecord>("POST", "/v1/walkthrough", {
+      path: request.path ?? "",
+      kind: request.kind ?? "working",
+      sha: request.sha ?? "",
+      refresh: request.refresh ?? false,
+    });
   }
 
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {

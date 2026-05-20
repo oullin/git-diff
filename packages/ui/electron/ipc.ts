@@ -67,6 +67,14 @@ export function registerIpcHandlers(deps: IpcDeps) {
     (await client()).listCommits({ path, limit }),
   );
 
+  ipcMain.handle(
+    "walkthrough:generate",
+    async (
+      _event,
+      request: { path?: string; kind?: "working" | "commit"; sha?: string; refresh?: boolean },
+    ) => (await client()).generateWalkthrough(request),
+  );
+
   ipcMain.handle("repository:file:read", async (_event, root: string, path: string) =>
     (await client()).readRepositoryFile({ root, path }),
   );

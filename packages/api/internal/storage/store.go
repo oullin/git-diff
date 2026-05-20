@@ -8,6 +8,7 @@ import (
 	"embed"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,6 +31,8 @@ const (
 	PrefKeyPanelLeftWidth     = "panel.left.width"
 	PrefKeyPanelFileTreeWidth = "panel.fileTree.width"
 	PrefKeyPanelRightWidth    = "panel.right.width"
+	PrefKeyAnthropicAPIKey    = "llm.anthropicApiKey"
+	PrefKeyAnthropicModel     = "llm.anthropicModel"
 )
 
 var ErrSessionNotFound = errors.New("session not found")
@@ -173,6 +176,36 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
+// addReviewSessionContextColumns is a one-shot migration that brings legacy
+// databases up to the current schema by attaching the context_kind and
+// context_sha columns to review_sessions. CREATE TABLE IF NOT EXISTS in
+// schema.sql is a no-op for existing tables, so we need explicit ALTERs.
+
+// Table does not exist yet — the schema apply below will create it
+// with the columns already in place.
+
+// Table not present — nothing to migrate.
+
+// dropLegacyProvisioningTables removes tables that used to back the macOS
+// provisioning engine. They are no longer part of the schema; this lets
+// existing user databases shed them on first launch after the upgrade.
+
+// WalkthroughRecord is the cached output of an LLM walkthrough for a specific
+// (repo, context) pair. Fingerprint is the deterministic state hash; if it
+// drifts from what the latest RepositoryState produces, the cached row is
+// considered stale and should be re-generated.
+type WalkthroughRecord struct {
+	RepoRoot    string            `json:"repoRoot"`
+	ContextKind string            `json:"contextKind"`
+	ContextSHA  string            `json:"contextSha,omitempty"`
+	Fingerprint string            `json:"fingerprint"`
+	ModelID     string            `json:"modelId"`
+	Order       []string          `json:"order"`
+	Notes       map[string]string `json:"notes"`
+	Summary     string            `json:"summary"`
+	GeneratedAt string            `json:"generatedAt"`
+}
+
 const (
 	RepoRoleOwner = "owner"
 	RepoRoleWrite = "write"
@@ -253,16 +286,11 @@ func (s *Store) Init(ctx context.Context) error {
 	return nil
 }
 
-// addReviewSessionContextColumns is a one-shot migration that brings legacy
-// databases up to the current schema by attaching the context_kind and
-// context_sha columns to review_sessions. CREATE TABLE IF NOT EXISTS in
-// schema.sql is a no-op for existing tables, so we need explicit ALTERs.
 func (s *Store) addReviewSessionContextColumns(ctx context.Context) error {
 	rows, err := s.db.QueryContext(ctx, "PRAGMA table_info(review_sessions)")
 
 	if err != nil {
-		// Table does not exist yet — the schema apply below will create it
-		// with the columns already in place.
+
 		return nil
 	}
 
@@ -292,7 +320,7 @@ func (s *Store) addReviewSessionContextColumns(ctx context.Context) error {
 	}
 
 	if len(have) == 0 {
-		// Table not present — nothing to migrate.
+
 		return nil
 	}
 
@@ -311,9 +339,6 @@ func (s *Store) addReviewSessionContextColumns(ctx context.Context) error {
 	return nil
 }
 
-// dropLegacyProvisioningTables removes tables that used to back the macOS
-// provisioning engine. They are no longer part of the schema; this lets
-// existing user databases shed them on first launch after the upgrade.
 func (s *Store) dropLegacyProvisioningTables(ctx context.Context) error {
 	for _, table := range []string{"workflow_events", "workflow_runs"} {
 		if _, err := s.db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table); err != nil {
@@ -1070,6 +1095,79 @@ func (s *Store) RemoveRepository(ctx context.Context, userID int64, path string)
 }
 
 var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
+
+func (s *Store) GetWalkthrough(ctx context.Context, repoRoot, contextKind, contextSHA string) (WalkthroughRecord, bool, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT repo_root, context_kind, context_sha, fingerprint, model_id, order_json, notes_json, summary, generated_at
+		FROM walkthroughs
+		WHERE repo_root = ? AND context_kind = ? AND context_sha = ?
+	`, repoRoot, contextKind, contextSHA)
+
+	var (
+		record    WalkthroughRecord
+		orderJSON string
+		notesJSON string
+	)
+
+	if err := row.Scan(
+		&record.RepoRoot,
+		&record.ContextKind,
+		&record.ContextSHA,
+		&record.Fingerprint,
+		&record.ModelID,
+		&orderJSON,
+		&notesJSON,
+		&record.Summary,
+		&record.GeneratedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return WalkthroughRecord{}, false, nil
+		}
+
+		return WalkthroughRecord{}, false, err
+	}
+
+	if err := json.Unmarshal([]byte(orderJSON), &record.Order); err != nil {
+		return WalkthroughRecord{}, false, fmt.Errorf("decode walkthrough order: %w", err)
+	}
+
+	if err := json.Unmarshal([]byte(notesJSON), &record.Notes); err != nil {
+		return WalkthroughRecord{}, false, fmt.Errorf("decode walkthrough notes: %w", err)
+	}
+
+	return record, true, nil
+}
+
+func (s *Store) UpsertWalkthrough(ctx context.Context, record WalkthroughRecord) error {
+	orderJSON, err := json.Marshal(record.Order)
+
+	if err != nil {
+		return fmt.Errorf("encode walkthrough order: %w", err)
+	}
+
+	notesJSON, err := json.Marshal(record.Notes)
+
+	if err != nil {
+		return fmt.Errorf("encode walkthrough notes: %w", err)
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO walkthroughs (
+			repo_root, context_kind, context_sha, fingerprint, model_id,
+			order_json, notes_json, summary, generated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(repo_root, context_kind, context_sha) DO UPDATE SET
+			fingerprint  = excluded.fingerprint,
+			model_id     = excluded.model_id,
+			order_json   = excluded.order_json,
+			notes_json   = excluded.notes_json,
+			summary      = excluded.summary,
+			generated_at = excluded.generated_at
+	`, record.RepoRoot, record.ContextKind, record.ContextSHA, record.Fingerprint, record.ModelID,
+		string(orderJSON), string(notesJSON), record.Summary, record.GeneratedAt)
+
+	return err
+}
 
 func scanReview(row scanner) (ReviewSession, error) {
 	var review ReviewSession

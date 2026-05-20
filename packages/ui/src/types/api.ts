@@ -45,6 +45,19 @@ export interface CommitSummary {
   subject: string;
 }
 
+export interface WalkthroughRecord {
+  repoRoot: string;
+  contextKind: RepositoryMode;
+  contextSha?: string;
+  fingerprint: string;
+  modelId: string;
+  order: string[];
+  notes: Record<string, string>;
+  summary: string;
+  generatedAt: string;
+  stale?: boolean;
+}
+
 export interface RepositoryFile {
   path: string;
   content: string;
@@ -215,6 +228,12 @@ export interface DiffAppApi {
   refreshRepository(path: string): Promise<RepositoryState>;
   readCommit(sha: string, path?: string): Promise<RepositoryState>;
   listCommits(path?: string, limit?: number): Promise<{ commits: CommitSummary[] }>;
+  generateWalkthrough(request: {
+    path?: string;
+    kind?: RepositoryMode;
+    sha?: string;
+    refresh?: boolean;
+  }): Promise<WalkthroughRecord>;
   readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
   listBranches(path?: string): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(path: string, branch: string): Promise<RepositoryState>;

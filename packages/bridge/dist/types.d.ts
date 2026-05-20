@@ -149,6 +149,18 @@ export interface CommitSummary {
   date: string;
   subject: string;
 }
+export interface WalkthroughRecord {
+  repoRoot: string;
+  contextKind: RepositoryMode;
+  contextSha?: string;
+  fingerprint: string;
+  modelId: string;
+  order: string[];
+  notes: Record<string, string>;
+  summary: string;
+  generatedAt: string;
+  stale?: boolean;
+}
 export interface RepositoryFile {
   path: string;
   content: string;
@@ -293,6 +305,12 @@ export interface WorkflowBridgeClient {
   listCommits(request: { path?: string; limit?: number }): Promise<{
     commits: CommitSummary[];
   }>;
+  generateWalkthrough(request: {
+    path?: string;
+    kind?: RepositoryMode;
+    sha?: string;
+    refresh?: boolean;
+  }): Promise<WalkthroughRecord>;
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
   listBranches(request: { path?: string }): Promise<{
     branches: string[];

@@ -30,6 +30,7 @@ import type {
   ReviewComment,
   ReviewDetail,
   ReviewSession,
+  WalkthroughRecord,
 } from "@api";
 import { PREF_KEYS, viewedPrefKey } from "@api";
 import { ensureLanguage, languageFor } from "@lib/highlight";
@@ -93,6 +94,10 @@ const repoScope = ref<"changed" | "all">("changed");
 const commits = ref<CommitSummary[]>([]);
 const commitsLoading = ref(false);
 const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "working");
+
+const walkthrough = ref<WalkthroughRecord | null>(null);
+const walkthroughLoading = ref(false);
+const walkthroughError = ref("");
 
 const files = computed(() => state.value?.files ?? []);
 const changedByPath = computed(() => {
@@ -307,9 +312,7 @@ async function applyLaunchIntent() {
   }
 
   if (intent?.walkthrough) {
-    // Walkthrough wires up in Milestone 6 — for now we surface a stub so the
-    // CLI flag round-trips without silently dropping.
-    error.value = "AI walkthrough is not yet implemented (planned for Milestone 6).";
+    await generateWalkthrough();
   }
 }
 
@@ -425,6 +428,25 @@ async function openCommit(sha: string) {
 async function returnToWorkingTree() {
   if (!state.value) return;
   await openRepo(state.value.root);
+}
+
+async function generateWalkthrough(refresh = false) {
+  if (!state.value) return;
+  walkthroughLoading.value = true;
+  walkthroughError.value = "";
+  try {
+    walkthrough.value = await window.diffApp.generateWalkthrough({
+      path: state.value.root,
+      kind: state.value.mode,
+      sha: state.value.commitSha,
+      refresh,
+    });
+  } catch (cause) {
+    walkthroughError.value = cause instanceof Error ? cause.message : String(cause);
+    walkthrough.value = null;
+  } finally {
+    walkthroughLoading.value = false;
+  }
 }
 
 const creatingBranch = ref(false);
@@ -778,6 +800,20 @@ void ACCENTS;
       </span>
       <span class="flex-1" />
       <button
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+        :disabled="walkthroughLoading"
+        @click="generateWalkthrough(walkthrough != null)"
+      >
+        {{
+          walkthroughLoading
+            ? "Generating…"
+            : walkthrough
+              ? "Refresh walkthrough"
+              : "Generate walkthrough"
+        }}
+      </button>
+      <button
         v-if="activeReview"
         type="button"
         class="inline-flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
@@ -786,6 +822,29 @@ void ACCENTS;
       >
         {{ copyReviewState === "copied" ? "Copied!" : "Copy review as Markdown" }}
       </button>
+    </div>
+    <div
+      v-if="walkthroughError || walkthrough"
+      class="border-b border-border bg-background/70 px-4 py-2 text-xs"
+    >
+      <div v-if="walkthroughError" class="text-red-500">{{ walkthroughError }}</div>
+      <div v-else-if="walkthrough" class="flex flex-col gap-1">
+        <div class="font-semibold">
+          AI walkthrough
+          <span class="font-normal text-muted-foreground">— {{ walkthrough.modelId }}</span>
+        </div>
+        <div v-if="walkthrough.summary" class="text-muted-foreground">
+          {{ walkthrough.summary }}
+        </div>
+        <ol class="mt-1 list-decimal pl-5 space-y-0.5">
+          <li v-for="path in walkthrough.order" :key="path">
+            <code class="font-mono text-[11px]">{{ path }}</code>
+            <span v-if="walkthrough.notes[path]" class="ml-2 text-muted-foreground">
+              — {{ walkthrough.notes[path] }}
+            </span>
+          </li>
+        </ol>
+      </div>
     </div>
 
     <main class="flex flex-1 min-h-0">

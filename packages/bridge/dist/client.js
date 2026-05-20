@@ -123,6 +123,14 @@ class HttpWorkflowBridgeClient {
     const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
     return this.request("GET", `/v1/repository/log${query}`);
   }
+  generateWalkthrough(request) {
+    return this.request("POST", "/v1/walkthrough", {
+      path: request.path ?? "",
+      kind: request.kind ?? "working",
+      sha: request.sha ?? "",
+      refresh: request.refresh ?? false,
+    });
+  }
   readRepositoryFile(request) {
     const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
     return this.request("GET", `/v1/repository/file${query}`);
