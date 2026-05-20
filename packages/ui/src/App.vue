@@ -8,6 +8,7 @@ import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
 import Sidebar from "@entry/components/diff/Sidebar.vue";
 import CommitPicker from "@entry/components/commits/CommitPicker.vue";
+import SearchBar from "@entry/components/diff/SearchBar.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
@@ -94,6 +95,7 @@ const repoScope = ref<"changed" | "all">("changed");
 const commits = ref<CommitSummary[]>([]);
 const commitsLoading = ref(false);
 const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "working");
+const searchOpen = ref(false);
 
 const walkthrough = ref<WalkthroughRecord | null>(null);
 const walkthroughLoading = ref(false);
@@ -238,6 +240,10 @@ function onKeydown(event: KeyboardEvent) {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     event.preventDefault();
     jumpToHunk(event.key === "n" ? 1 : -1);
+  } else if ((event.key === "f" && (event.metaKey || event.ctrlKey)) || event.key === "/") {
+    if (event.key === "/" && (event.metaKey || event.ctrlKey || event.altKey)) return;
+    event.preventDefault();
+    searchOpen.value = true;
   }
 }
 
@@ -1083,5 +1089,7 @@ void ACCENTS;
       @save="saveComment"
       @cancel="cancelComment"
     />
+
+    <SearchBar :open="searchOpen" @close="searchOpen = false" />
   </div>
 </template>

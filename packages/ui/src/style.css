@@ -1036,3 +1036,13 @@
 .gd-hunk-flash {
   animation: gd-hunk-flash 350ms ease-out;
 }
+
+.gd-search-hit {
+  background: color-mix(in oklab, var(--gd-accent, gold) 35%, transparent);
+  border-radius: 2px;
+}
+
+.gd-search-hit-active {
+  background: color-mix(in oklab, var(--gd-accent, gold) 75%, transparent);
+  outline: 1px solid var(--gd-accent, gold);
+}

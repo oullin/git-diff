@@ -294,7 +294,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                           color: 'var(--gd-text-muted)',
                         }"
                         >&nbsp;</span
-                      ><code v-html="highlightHtml(row.line.text)" />
+                      ><code data-diff-line-text v-html="highlightHtml(row.line.text)" />
                     </div>
                   </div>
                   <div
@@ -337,7 +337,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                           color: 'var(--gd-text-muted)',
                         }"
                         >&nbsp;</span
-                      ><code v-html="highlightHtml(row.line.text)" />
+                      ><code data-diff-line-text v-html="highlightHtml(row.line.text)" />
                     </div>
                   </div>
                   <button
@@ -415,7 +415,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                           color: 'var(--gd-text-muted)',
                         }"
                         >{{ sign(renderPair(row).left.kind) }}</span
-                      ><code v-html="renderPair(row).left.html" />
+                      ><code data-diff-line-text v-html="renderPair(row).left.html" />
                     </div>
                   </div>
                   <div
@@ -471,7 +471,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                           color: 'var(--gd-text-muted)',
                         }"
                         >{{ sign(renderPair(row).right.kind) }}</span
-                      ><code v-html="renderPair(row).right.html" />
+                      ><code data-diff-line-text v-html="renderPair(row).right.html" />
                     </div>
                   </div>
                   <button
@@ -600,7 +600,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                       >{{
                         sign(line.type === "add" ? "add" : line.type === "del" ? "rem" : "ctx")
                       }}</span
-                    ><code v-html="highlightHtml(line.text)" />
+                    ><code data-diff-line-text v-html="highlightHtml(line.text)" />
                   </div>
                   <button
                     type="button"
