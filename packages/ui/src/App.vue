@@ -48,6 +48,7 @@ import {
 } from "@composables/useDiffNavigation";
 import { useWalkthrough } from "@composables/useWalkthrough";
 import { useCommits } from "@composables/useCommits";
+import { usePullRequests } from "@composables/usePullRequests";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -105,9 +106,21 @@ const { items: commits, loading: commitsLoading, load: loadCommits } = useCommit
 const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "working");
 const searchOpen = ref(false);
 
-const pullRequests = ref<PullRequestSummary[]>([]);
-const pullRequestsLoading = ref(false);
-const activePullRequest = ref<PullRequestSummary | null>(null);
+const {
+  items: pullRequests,
+  loading: pullRequestsLoading,
+  active: activePullRequest,
+  load: loadPullRequests,
+} = usePullRequests({
+  state,
+  onLoadError: (cause) => {
+    showToast({
+      tone: "error",
+      title: "Could not load pull requests",
+      description: cause instanceof Error ? cause.message : String(cause),
+    });
+  },
+});
 
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
 
@@ -382,24 +395,6 @@ async function returnToWorkingTree() {
   if (!state.value) return;
   activePullRequest.value = null;
   await openRepo(state.value.root);
-}
-
-async function loadPullRequests() {
-  if (!state.value) return;
-  pullRequestsLoading.value = true;
-  try {
-    const response = await window.diffApp.listPullRequests(state.value.root);
-    pullRequests.value = response.pullRequests;
-  } catch (cause) {
-    pullRequests.value = [];
-    showToast({
-      tone: "error",
-      title: "Could not load pull requests",
-      description: cause instanceof Error ? cause.message : String(cause),
-    });
-  } finally {
-    pullRequestsLoading.value = false;
-  }
 }
 
 async function openPullRequest(number: number) {
