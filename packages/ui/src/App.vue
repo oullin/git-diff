@@ -12,6 +12,7 @@ import DiffBody from "@entry/components/diff/DiffBody.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
 import StatusBar from "@entry/components/diff/StatusBar.vue";
 import ReviewPanel from "@entry/components/diff/ReviewPanel.vue";
+import AddCommentDialog from "@entry/components/diff/AddCommentDialog.vue";
 import { sanitizeHtml } from "@ui/safe-html";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 import type {
@@ -33,6 +34,7 @@ import { ensureLanguage, languageFor } from "@lib/highlight";
 import { ACCENTS, applyAccent, diffBgs, resolveAccent } from "@lib/accent";
 import type { PatchLine } from "@lib/patch";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
+import { setTheme } from "@composables/useTheme";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
 
@@ -71,6 +73,7 @@ const error = ref("");
 const collapsed = ref<Record<string, boolean>>({});
 const splitRatios = ref<Record<string, number>>({});
 const reviewPanelOpen = ref(false);
+const commentDialogOpen = ref(false);
 const commentTarget = ref<{
   file: ChangedFile;
   section: DiffSection;
@@ -149,6 +152,14 @@ watch(
   accent,
   (current) => {
     applyAccent(current);
+  },
+  { immediate: true },
+);
+
+watch(
+  () => tweaks.value.theme,
+  (choice) => {
+    setTheme(choice);
   },
   { immediate: true },
 );
@@ -383,7 +394,6 @@ async function removeRepository(path: string) {
 
 async function startReview() {
   if (!state.value) return;
-  reviewPanelOpen.value = true;
   const review = await window.diffApp.createReview({
     repoRoot: state.value.root,
     branch: state.value.branch,
@@ -397,10 +407,7 @@ async function startReview() {
   activeReview.value = await window.diffApp.reviewDetail(review.id);
   reviews.value = [review, ...reviews.value.filter((item) => item.id !== review.id)];
   summaryDraft.value = "";
-}
-
-async function selectReview(review: ReviewSession) {
-  activeReview.value = await window.diffApp.reviewDetail(review.id);
+  reviewPanelOpen.value = false;
 }
 
 async function toggleViewed(file: ChangedFile) {
@@ -488,7 +495,7 @@ function openCommentForLine(file: ChangedFile, section: DiffSection, line: Patch
     side: line.newLine ? "right" : "left",
   };
   commentDraft.value = "";
-  reviewPanelOpen.value = true;
+  commentDialogOpen.value = true;
 }
 
 async function saveComment() {
@@ -508,6 +515,13 @@ async function saveComment() {
   activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
   commentTarget.value = null;
   commentDraft.value = "";
+  commentDialogOpen.value = false;
+}
+
+function cancelComment() {
+  commentTarget.value = null;
+  commentDraft.value = "";
+  commentDialogOpen.value = false;
 }
 
 async function deleteComment(comment: ReviewComment) {
@@ -763,25 +777,12 @@ void ACCENTS;
         </section>
 
         <ReviewPanel
-          v-if="reviewPanelOpen"
-          :style="{ width: '360px', flexShrink: 0 }"
-          :reviews="reviews"
-          :active-review="activeReview"
+          :open="reviewPanelOpen"
           :summary-draft="summaryDraft"
-          :comment-draft="commentDraft"
-          :comment-draft-path="commentTarget ? commentTarget.file.path : undefined"
-          :comment-draft-line="commentTarget ? commentTarget.line : undefined"
           :features="commentFeatures"
-          @close="
-            reviewPanelOpen = false;
-            commentTarget = null;
-          "
+          @close="reviewPanelOpen = false"
           @update:summary-draft="(value) => (summaryDraft = value)"
-          @update:comment-draft="(value) => (commentDraft = value)"
-          @select-review="selectReview"
           @start-review="startReview"
-          @save-comment="saveComment"
-          @cancel-comment="commentTarget = null"
         />
       </template>
     </main>
@@ -791,6 +792,17 @@ void ACCENTS;
       :file-path="selectedFile?.path ?? ''"
       :viewed-count="files.filter((f) => isViewed(f)).length"
       :total="files.length"
+    />
+
+    <AddCommentDialog
+      :open="commentDialogOpen"
+      :file-path="commentTarget?.file.path"
+      :line-number="commentTarget?.line"
+      :model-value="commentDraft"
+      :features="commentFeatures"
+      @update:model-value="(value) => (commentDraft = value)"
+      @save="saveComment"
+      @cancel="cancelComment"
     />
   </div>
 </template>

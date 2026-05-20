@@ -20,7 +20,7 @@ export function installBrowserFallback() {
 
   let preferences: UIPreferences = {
     values: {
-      [PREF_KEYS.theme]: "dark",
+      [PREF_KEYS.theme]: "system",
       [PREF_KEYS.diffViewMode]: "split",
       [PREF_KEYS.lastRepoRoot]: "/Users/local/project",
     },

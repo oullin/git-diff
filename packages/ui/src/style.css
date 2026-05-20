@@ -4,7 +4,7 @@
 @import "@primer/primitives/dist/css/functional/typography/typography.css";
 @import "@primer/primitives/dist/css/functional/themes/dark.css";
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+@custom-variant dark (&:where(.dark, .dark *, .theme-system[data-prefers-dark], .theme-system[data-prefers-dark] *));
 
 @font-face {
   font-display: swap;
@@ -296,129 +296,128 @@
   --traffic-green: #28c840;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Material Theme — Darker variant (Mattia Astorino).
+:root.dark,
+:root.theme-system[data-prefers-dark] {
+  /* Material Theme — Darker variant (Mattia Astorino).
        Surfaces #212121 main / #1a1a1a rails / #2a2a2a hairline.
        Foreground #EEFFFF · pastel syntax · signature accent #FF9800. */
-    --app-bg: #212121;
-    --code-bg: #212121;
-    --file-bg: rgb(33 33 33 / 0.92);
-    --file-border: rgb(255 255 255 / 0.06);
-    --soft-muted: rgb(176 190 197 / 0.7);
-    --sidebar-bg: #1a1a1a;
-    --sidebar-border-soft: rgb(255 255 255 / 0.05);
-    --sidebar-text: rgb(238 255 255 / 0.78);
-    --text: #eeffff;
-    --viewed: #c3e88d;
-    --accent-blue: #82aaff;
-    --accent-blue-soft: rgb(130 170 255 / 0.18);
-    --accent-blue-ring: rgb(130 170 255 / 0.36);
-    --accent-blue-edge: rgb(130 170 255 / 0.46);
-    --danger-red: #ff5370;
-    --attention-orange: #ffcb6b;
+  --app-bg: #212121;
+  --code-bg: #212121;
+  --file-bg: rgb(33 33 33 / 0.92);
+  --file-border: rgb(255 255 255 / 0.06);
+  --soft-muted: rgb(176 190 197 / 0.7);
+  --sidebar-bg: #1a1a1a;
+  --sidebar-border-soft: rgb(255 255 255 / 0.05);
+  --sidebar-text: rgb(238 255 255 / 0.78);
+  --text: #eeffff;
+  --viewed: #c3e88d;
+  --accent-blue: #82aaff;
+  --accent-blue-soft: rgb(130 170 255 / 0.18);
+  --accent-blue-ring: rgb(130 170 255 / 0.36);
+  --accent-blue-edge: rgb(130 170 255 / 0.46);
+  --danger-red: #ff5370;
+  --attention-orange: #ffcb6b;
 
-    --codex-accent-hover: rgb(149 184 255);
-    --codex-accent-active: rgb(110 152 240);
-    --codex-border-strong: rgb(255 255 255 / 0.12);
+  --codex-accent-hover: rgb(149 184 255);
+  --codex-accent-active: rgb(110 152 240);
+  --codex-border-strong: rgb(255 255 255 / 0.12);
 
-    --primary-foreground: #1a1a1a;
-    --success-foreground: #1a1a1a;
-    --button-secondary-hover: rgb(255 255 255 / 0.06);
-    --button-secondary-active: rgb(255 255 255 / 0.1);
-    --button-destructive-hover: rgb(255 110 130);
+  --primary-foreground: #1a1a1a;
+  --success-foreground: #1a1a1a;
+  --button-secondary-hover: rgb(255 255 255 / 0.06);
+  --button-secondary-active: rgb(255 255 255 / 0.1);
+  --button-destructive-hover: rgb(255 110 130);
 
-    --shadow-overlay-value: 0 18px 58px -34px rgb(0 0 0 / 0.55);
-    --window-shadow: 0 18px 58px -34px rgb(0 0 0 / 0.55);
+  --shadow-overlay-value: 0 18px 58px -34px rgb(0 0 0 / 0.55);
+  --window-shadow: 0 18px 58px -34px rgb(0 0 0 / 0.55);
 
-    --diff-added-bg: rgb(195 232 141 / 0.12);
-    --diff-added-bg-strong: rgb(195 232 141 / 0.2);
-    --diff-added-border: rgb(195 232 141 / 0.46);
-    --diff-removed-bg: rgb(255 83 112 / 0.12);
-    --diff-removed-bg-strong: rgb(255 83 112 / 0.22);
-    --diff-removed-border: rgb(255 83 112 / 0.46);
+  --diff-added-bg: rgb(195 232 141 / 0.12);
+  --diff-added-bg-strong: rgb(195 232 141 / 0.2);
+  --diff-added-border: rgb(195 232 141 / 0.46);
+  --diff-removed-bg: rgb(255 83 112 / 0.12);
+  --diff-removed-bg-strong: rgb(255 83 112 / 0.22);
+  --diff-removed-border: rgb(255 83 112 / 0.46);
 
-    --status-attention-bg: rgb(255 203 107 / 0.14);
-    --status-attention-fg: var(--attention-orange);
-    --status-attention-border: rgb(255 203 107 / 0.4);
+  --status-attention-bg: rgb(255 203 107 / 0.14);
+  --status-attention-fg: var(--attention-orange);
+  --status-attention-border: rgb(255 203 107 / 0.4);
 
-    --codex-skill: #c792ea;
-    --skill: var(--codex-skill);
-    --skill-bg: rgb(199 146 234 / 0.16);
-    --skill-border: rgb(199 146 234 / 0.4);
+  --codex-skill: #c792ea;
+  --skill: var(--codex-skill);
+  --skill-bg: rgb(199 146 234 / 0.16);
+  --skill-border: rgb(199 146 234 / 0.4);
 
-    /* Design-bundle tokens (Material Darker — flat, pastel, signature orange) */
-    --gd-bg-canvas: #1a1a1a;
-    --gd-bg: #212121;
-    --gd-bg-rail: #1a1a1a;
-    --gd-bg-input: #1a1a1a;
-    --gd-bg-code: #212121;
-    --gd-bg-gutter: #1a1a1a;
-    --gd-panel: #212121;
-    --gd-panel-2: #2a2a2a;
-    --gd-panel-3: #1f1f1f;
-    --gd-hover: #353535;
-    --gd-border: #2a2a2a;
-    --gd-border-strong: #353535;
-    --gd-border-soft: #232323;
-    --gd-text: #eeffff;
-    --gd-text-2: #b0bec5;
-    --gd-text-3: #607d8b;
-    --gd-text-muted: #545454;
-    --gd-added: #c3e88d;
-    --gd-removed: #ff5370;
-    --gd-warn: #ffcb6b;
-    --gd-shadow-lg: 0 24px 64px -12px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.03);
+  /* Design-bundle tokens (Material Darker — flat, pastel, signature orange) */
+  --gd-bg-canvas: #1a1a1a;
+  --gd-bg: #212121;
+  --gd-bg-rail: #1a1a1a;
+  --gd-bg-input: #1a1a1a;
+  --gd-bg-code: #212121;
+  --gd-bg-gutter: #1a1a1a;
+  --gd-panel: #212121;
+  --gd-panel-2: #2a2a2a;
+  --gd-panel-3: #1f1f1f;
+  --gd-hover: #353535;
+  --gd-border: #2a2a2a;
+  --gd-border-strong: #353535;
+  --gd-border-soft: #232323;
+  --gd-text: #eeffff;
+  --gd-text-2: #b0bec5;
+  --gd-text-3: #607d8b;
+  --gd-text-muted: #545454;
+  --gd-added: #c3e88d;
+  --gd-removed: #ff5370;
+  --gd-warn: #ffcb6b;
+  --gd-shadow-lg: 0 24px 64px -12px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.03);
 
-    /* Material Darker is intentionally flat — minimal edge lighting, gentle bloom. */
-    --gd-edge-hi: rgb(255 255 255 / 0.03);
-    --gd-edge-hi-2: rgb(255 255 255 / 0.018);
-    --gd-edge-lo: rgb(0 0 0 / 0.55);
-    --gd-shadow-card: 0 0 0 1px #2a2a2a inset, 0 8px 24px -16px rgb(0 0 0 / 0.55);
-    --gd-shadow-panel: 0 0 0 1px #2a2a2a inset, 0 12px 32px -16px rgb(0 0 0 / 0.55);
-    --gd-bloom:
-      radial-gradient(1200px 600px at 70% -10%, rgb(255 152 0 / 0.06), transparent 60%),
-      radial-gradient(900px 500px at 10% -20%, rgb(199 146 234 / 0.03), transparent 60%);
+  /* Material Darker is intentionally flat — minimal edge lighting, gentle bloom. */
+  --gd-edge-hi: rgb(255 255 255 / 0.03);
+  --gd-edge-hi-2: rgb(255 255 255 / 0.018);
+  --gd-edge-lo: rgb(0 0 0 / 0.55);
+  --gd-shadow-card: 0 0 0 1px #2a2a2a inset, 0 8px 24px -16px rgb(0 0 0 / 0.55);
+  --gd-shadow-panel: 0 0 0 1px #2a2a2a inset, 0 12px 32px -16px rgb(0 0 0 / 0.55);
+  --gd-bloom:
+    radial-gradient(1200px 600px at 70% -10%, rgb(255 152 0 / 0.06), transparent 60%),
+    radial-gradient(900px 500px at 10% -20%, rgb(199 146 234 / 0.03), transparent 60%);
 
-    /* Diff bar + gutter line tints (Material pastel green/red) */
-    --gd-green-bar: rgb(195 232 141 / 0.55);
-    --gd-red-bar: rgb(255 83 112 / 0.55);
-    --gd-green-line: rgb(195 232 141 / 0.13);
-    --gd-red-line: rgb(255 83 112 / 0.13);
+  /* Diff bar + gutter line tints (Material pastel green/red) */
+  --gd-green-bar: rgb(195 232 141 / 0.55);
+  --gd-red-bar: rgb(255 83 112 / 0.55);
+  --gd-green-line: rgb(195 232 141 / 0.13);
+  --gd-red-line: rgb(255 83 112 / 0.13);
 
-    --gd-accent: #ff9800;
-    --gd-accent-strong: #e07f00;
-    --gd-accent-soft: rgb(255 152 0 / 0.14);
+  --gd-accent: #ff9800;
+  --gd-accent-strong: #e07f00;
+  --gd-accent-soft: rgb(255 152 0 / 0.14);
 
-    --gd-word-add-bg: rgb(195 232 141 / 0.22);
-    --gd-word-rem-bg: rgb(255 83 112 / 0.22);
-  }
+  --gd-word-add-bg: rgb(195 232 141 / 0.22);
+  --gd-word-rem-bg: rgb(255 83 112 / 0.22);
+}
 
-  /* Carbon-tinted scrollbars across the app (dark mode only) */
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: var(--gd-border-strong);
-    border: 2px solid transparent;
-    border-radius: 99px;
-    background-clip: padding-box;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--gd-text-muted);
-    background-clip: padding-box;
-  }
-  ::-webkit-scrollbar-corner {
-    background: transparent;
-  }
-  * {
-    scrollbar-color: var(--gd-border-strong) transparent;
-    scrollbar-width: thin;
-  }
+/* Carbon-tinted scrollbars across the app — tokens swap per theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gd-border-strong);
+  border: 2px solid transparent;
+  border-radius: 99px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gd-text-muted);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+* {
+  scrollbar-color: var(--gd-border-strong) transparent;
+  scrollbar-width: thin;
 }
 
 @layer components {

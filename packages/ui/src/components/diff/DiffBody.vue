@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ChevronDown, ChevronUp, Plus } from "lucide-vue-next";
 import { highlighterRev, highlightLine, languageFor } from "@lib/highlight";
 import { diffBgs, type DiffStyleColors } from "@lib/accent";
@@ -43,11 +43,41 @@ const wrapperStyle = computed(() => {
 });
 
 const sectionRefs = ref<Record<string, HTMLElement | null>>({});
+
 function setSectionRef(id: string) {
   return (el: unknown) => {
     sectionRefs.value[id] = el instanceof HTMLElement ? el : null;
   };
 }
+
+function onDocumentWheel(e: WheelEvent): void {
+  if (e.deltaX !== 0 || e.deltaY === 0) return;
+  const path = e.composedPath();
+  let scroller: HTMLElement | null = null;
+  for (const node of path) {
+    if (!(node instanceof HTMLElement)) continue;
+    if (node.dataset.diffScroller === "true") {
+      scroller = node;
+      break;
+    }
+  }
+  if (!scroller) return;
+  const max = scroller.scrollWidth - scroller.clientWidth;
+  if (max <= 0) return;
+  const goingRight = e.deltaY > 0;
+  if (goingRight && scroller.scrollLeft >= max) return;
+  if (!goingRight && scroller.scrollLeft <= 0) return;
+  e.preventDefault();
+  scroller.scrollLeft += e.deltaY;
+}
+
+onMounted(() => {
+  document.addEventListener("wheel", onDocumentWheel, { passive: false, capture: true });
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("wheel", onDocumentWheel, { capture: true });
+});
 
 const lineH = computed(() => (props.density === "compact" ? 22 : 24));
 const colors = computed<DiffStyleColors>(() => diffBgs(props.diffStyle));
@@ -55,11 +85,11 @@ const lang = computed(() => languageFor(props.file.path));
 
 function commentsForLine(section: DiffSection, line: PatchLine | undefined): ReviewComment[] {
   if (!line) return [];
-  const ln = line.newLine ?? line.oldLine;
-  if (ln === undefined) return [];
-  return props.comments.filter(
-    (c) => c.filePath === props.file.path && c.diffSection === section.kind && c.lineNumber === ln,
-  );
+  return props.comments.filter((c) => {
+    if (c.filePath !== props.file.path || c.diffSection !== section.kind) return false;
+    const lineNumberForSide = c.side === "left" ? line.oldLine : line.newLine;
+    return lineNumberForSide === c.lineNumber;
+  });
 }
 
 function highlightHtml(text: string): string {
@@ -175,7 +205,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
     }"
   >
     <section v-for="section in file.sections" :key="section.id">
-      <div :style="{ overflowX: 'auto', overflowY: 'visible' }">
+      <div data-diff-scroller="true" :style="{ overflowX: 'auto', overflowY: 'visible' }">
         <div :ref="setSectionRef(section.id)" :style="wrapperStyle">
           <SplitHandle
             v-if="viewMode === 'split'"

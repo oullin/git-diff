@@ -1,10 +1,11 @@
 import { createHighlighterCore, type HighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import type { BundledLanguage } from "shiki";
-import { shallowRef } from "vue";
+import { computed, shallowRef, watch } from "vue";
 
 import lichtTheme from "../themes/licht.json" with { type: "json" };
 import dunkelTheme from "../themes/dunkel.json" with { type: "json" };
+import { resolvedTheme } from "@composables/useTheme";
 
 type ThemeId = "Licht" | "Dunkel";
 
@@ -62,25 +63,11 @@ const loadedLangs = new Set<string>();
 /** Increments whenever a new language loads OR the color scheme flips, so Vue re-renders. */
 export const highlighterRev = shallowRef(0);
 
-const currentTheme = shallowRef<ThemeId>(resolveInitialTheme());
+const currentTheme = computed<ThemeId>(() => (resolvedTheme.value === "dark" ? "Dunkel" : "Licht"));
 
-function resolveInitialTheme(): ThemeId {
-  if (typeof window === "undefined") return "Dunkel";
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "Dunkel" : "Licht";
-}
-
-function watchColorScheme(): void {
-  if (typeof window === "undefined" || !window.matchMedia) return;
-  const mql = window.matchMedia("(prefers-color-scheme: dark)");
-  const update = (e: MediaQueryList | MediaQueryListEvent) => {
-    const next: ThemeId = e.matches ? "Dunkel" : "Licht";
-    if (next !== currentTheme.value) {
-      currentTheme.value = next;
-      highlighterRev.value += 1;
-    }
-  };
-  mql.addEventListener("change", update);
-}
+watch(currentTheme, () => {
+  highlighterRev.value += 1;
+});
 
 async function getHighlighter(): Promise<HighlighterCore> {
   if (highlighter) return highlighter;
@@ -89,7 +76,6 @@ async function getHighlighter(): Promise<HighlighterCore> {
     langs: [],
     engine: createOnigurumaEngine(import("shiki/wasm")),
   });
-  watchColorScheme();
   return highlighter;
 }
 
