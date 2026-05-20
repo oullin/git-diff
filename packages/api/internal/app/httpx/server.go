@@ -30,6 +30,7 @@ type Server struct {
 	RepositoryService     *service.RepositoryService
 	PreferenceService     *service.PreferenceService
 	BranchService         *service.BranchService
+	WalkthroughService    *service.WalkthroughService
 }
 
 func (s Server) healthz(w http.ResponseWriter, _ *http.Request) {

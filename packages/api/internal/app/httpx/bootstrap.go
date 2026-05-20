@@ -62,6 +62,7 @@ func Serve(args []string, cfg ServeConfig) int {
 	repositorySvc := service.NewRepositoryService(store)
 	preferenceSvc := service.NewPreferenceService(store)
 	branchSvc := service.NewBranchService(store)
+	walkthroughSvc := service.NewWalkthroughService(store)
 
 	appServer := Server{
 		Home:     cfg.Home,
@@ -77,6 +78,7 @@ func Serve(args []string, cfg ServeConfig) int {
 		RepositoryService:     repositorySvc,
 		PreferenceService:     preferenceSvc,
 		BranchService:         branchSvc,
+		WalkthroughService:    walkthroughSvc,
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{
