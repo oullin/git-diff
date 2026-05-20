@@ -54,6 +54,7 @@ import { useCommentDraft } from "@composables/useCommentDraft";
 import { usePendingComments } from "@composables/usePendingComments";
 import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
+import { useDiffLayout } from "@composables/useDiffLayout";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -103,8 +104,7 @@ const selectedPath = ref("");
 const searchQuery = ref("");
 const loading = ref(false);
 const error = ref("");
-const collapsed = ref<Record<string, boolean>>({});
-const splitRatios = ref<Record<string, number>>({});
+const { collapsed, splitRatios, toggleCollapsed, setSplitRatio } = useDiffLayout();
 const reviewPanelOpen = ref(false);
 const {
   target: commentTarget,
@@ -580,10 +580,6 @@ async function openSearchResult(result: FileSearchResult) {
   selectFile(result.filePath);
 }
 
-function toggleCollapsed(path: string) {
-  collapsed.value[path] = !collapsed.value[path];
-}
-
 function selectFile(path: string) {
   selectedPath.value = path;
   if (changedByPath.value.has(path)) {
@@ -982,7 +978,7 @@ void ACCENTS;
                   @add-comment="(section, line) => openCommentForLine(file, section, line)"
                   @delete-comment="deleteComment"
                   @reply-comment="replyToComment"
-                  @update:split-ratio="(value: number) => (splitRatios[file.path] = value)"
+                  @update:split-ratio="(value: number) => setSplitRatio(file.path, value)"
                 />
               </article>
             </template>
