@@ -51,18 +51,12 @@ func (s Server) repositoryOpen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err == nil {
-		defer closeStore()
-
-		if s.Auth != nil && s.Auth.CurrentUserID() != 0 {
-			userID := s.Auth.CurrentUserID()
-			_, _ = store.SaveUIPreferences(r.Context(), userID, map[string]string{
-				storage.PrefKeyLastRepoRoot: state.Root,
-			})
-			_, _ = store.UpsertRepository(r.Context(), userID, state.Root, "")
-		}
+	if s.Auth != nil && s.Auth.CurrentUserID() != 0 {
+		userID := s.Auth.CurrentUserID()
+		_, _ = s.PreferenceService.Save(r.Context(), userID, map[string]string{
+			storage.PrefKeyLastRepoRoot: state.Root,
+		})
+		_, _ = s.RepositoryService.Upsert(r.Context(), userID, state.Root, "")
 	}
 
 	writeJSON(w, http.StatusOK, state)
