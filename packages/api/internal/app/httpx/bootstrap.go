@@ -57,6 +57,7 @@ func Serve(args []string, cfg ServeConfig) int {
 		SessionTTL:        sessionTTL,
 		MinPasswordLength: minPasswordLength,
 	})
+	reviewSvc := service.NewReviewService(store)
 
 	appServer := Server{
 		Home:     cfg.Home,
@@ -65,8 +66,9 @@ func Serve(args []string, cfg ServeConfig) int {
 		Store: func(context.Context) (*storage.Store, func(), error) {
 			return store, func() {}, nil
 		},
-		Auth:        NewAuthState(osUsername),
-		AuthService: authSvc,
+		Auth:          NewAuthState(osUsername),
+		AuthService:   authSvc,
+		ReviewService: reviewSvc,
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{

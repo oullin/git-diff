@@ -16,17 +16,7 @@ func (s Server) createReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	comment, err := store.CreateReviewComment(r.Context(), r.PathValue("id"), randomID("comment"), input)
+	comment, err := s.ReviewService.CreateComment(r.Context(), r.PathValue("id"), input)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -48,17 +38,12 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	comment, err := store.UpdateReviewComment(r.Context(), r.PathValue("id"), r.PathValue("commentId"), input.BodyHTML)
+	comment, err := s.ReviewService.UpdateComment(
+		r.Context(),
+		r.PathValue("id"),
+		r.PathValue("commentId"),
+		input.BodyHTML,
+	)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -70,17 +55,11 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deleteReviewComment(w http.ResponseWriter, r *http.Request) {
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	if err := store.DeleteReviewComment(r.Context(), r.PathValue("id"), r.PathValue("commentId")); err != nil {
+	if err := s.ReviewService.DeleteComment(
+		r.Context(),
+		r.PathValue("id"),
+		r.PathValue("commentId"),
+	); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 
 		return
