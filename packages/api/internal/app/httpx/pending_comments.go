@@ -1,48 +1,43 @@
 package httpx
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
-func (s Server) listPendingComments(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
+func (s Server) handlePendingCommentError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrAuthenticationRequired):
+		writeError(w, http.StatusUnauthorized, err)
+	case errors.Is(err, service.ErrInvalidCommentInput),
+		errors.Is(err, service.ErrReviewIDRequired):
+		writeError(w, http.StatusBadRequest, err)
+	default:
+		writeError(w, http.StatusInternalServerError, err)
 	}
+}
 
+func (s Server) listPendingComments(w http.ResponseWriter, r *http.Request) {
 	repoRoot := r.URL.Query().Get("path")
 
 	if repoRoot == "" {
 		repoRoot = s.Repo
 	}
 
-	kind := r.URL.Query().Get("kind")
-	sha := r.URL.Query().Get("sha")
-
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	comments, err := store.ListPendingComments(r.Context(), userID, repoRoot, kind, sha)
+	comments, err := s.PendingCommentService.List(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		repoRoot,
+		r.URL.Query().Get("kind"),
+		r.URL.Query().Get("sha"),
+	)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		s.handlePendingCommentError(w, err)
 
 		return
 	}
@@ -51,14 +46,6 @@ func (s Server) listPendingComments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	var input storage.PendingCommentInput
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -67,31 +54,15 @@ func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(input.RepoRoot) == "" {
-		input.RepoRoot = s.Repo
-	}
-
-	if strings.TrimSpace(input.FilePath) == "" || strings.TrimSpace(input.DiffSection) == "" {
-		writeError(w, http.StatusBadRequest, errors.New("filePath and diffSection are required"))
-
-		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
+	comment, err := s.PendingCommentService.Create(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		s.Repo,
+		input,
+	)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	id := "pending-" + randID(8)
-	comment, err := store.CreatePendingComment(r.Context(), userID, id, input)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		s.handlePendingCommentError(w, err)
 
 		return
 	}
@@ -100,16 +71,6 @@ func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
-	id := r.PathValue("id")
-
 	var body struct {
 		BodyHTML string `json:"bodyHtml"`
 	}
@@ -120,19 +81,20 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
+	comment, err := s.PendingCommentService.Update(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		r.PathValue("id"),
+		body.BodyHTML,
+	)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		if errors.Is(err, service.ErrAuthenticationRequired) {
+			writeError(w, http.StatusUnauthorized, err)
 
-		return
-	}
+			return
+		}
 
-	defer closeStore()
-
-	comment, err := store.UpdatePendingComment(r.Context(), userID, id, body.BodyHTML)
-
-	if err != nil {
 		writeError(w, http.StatusNotFound, err)
 
 		return
@@ -142,27 +104,12 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
-	id := r.PathValue("id")
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	if err := store.DeletePendingComment(r.Context(), userID, id); err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+	if err := s.PendingCommentService.Delete(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		r.PathValue("id"),
+	); err != nil {
+		s.handlePendingCommentError(w, err)
 
 		return
 	}
@@ -171,14 +118,6 @@ func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) promotePendingComments(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	var body struct {
 		ReviewID string `json:"reviewId"`
 	}
@@ -189,39 +128,17 @@ func (s Server) promotePendingComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(body.ReviewID) == "" {
-		writeError(w, http.StatusBadRequest, errors.New("reviewId is required"))
-
-		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
+	promoted, err := s.PendingCommentService.Promote(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		body.ReviewID,
+	)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	promoted, err := store.PromotePendingComments(r.Context(), userID, body.ReviewID)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		s.handlePendingCommentError(w, err)
 
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"promoted": promoted})
-}
-
-func randID(n int) string {
-	buf := make([]byte, n)
-
-	if _, err := rand.Read(buf); err != nil {
-		return "0"
-	}
-
-	return hex.EncodeToString(buf)
 }

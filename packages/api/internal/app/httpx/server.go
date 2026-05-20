@@ -19,13 +19,14 @@ type ServeConfig struct {
 }
 
 type Server struct {
-	Home          string
-	Repo          string
-	Settings      setting.RuntimeSettings
-	Store         StoreFactory
-	Auth          *AuthState
-	AuthService   *service.AuthService
-	ReviewService *service.ReviewService
+	Home                  string
+	Repo                  string
+	Settings              setting.RuntimeSettings
+	Store                 StoreFactory
+	Auth                  *AuthState
+	AuthService           *service.AuthService
+	ReviewService         *service.ReviewService
+	PendingCommentService *service.PendingCommentService
 }
 
 func (s Server) healthz(w http.ResponseWriter, _ *http.Request) {
