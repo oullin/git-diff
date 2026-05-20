@@ -49,6 +49,7 @@ import {
 import { useWalkthrough } from "@composables/useWalkthrough";
 import { useCommits } from "@composables/useCommits";
 import { usePullRequests } from "@composables/usePullRequests";
+import { useRepositoryList } from "@composables/useRepositoryList";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -76,8 +77,12 @@ const diffViewMode = computed<DiffViewMode>(() => tweaks.value.viewMode);
 const hideWhitespace = computed(() => prefValues.value[PREF_KEYS.diffHideWhitespace] === "1");
 const lastRepoRoot = computed(() => prefValues.value[PREF_KEYS.lastRepoRoot] ?? "");
 
-const repositories = ref<Repository[]>([]);
-const repositoriesLoading = ref(false);
+const {
+  items: repositories,
+  loading: repositoriesLoading,
+  refresh: refreshRepositoryList,
+  remove: removeRepositoryFromList,
+} = useRepositoryList();
 const activeRepoPath = ref<string>("");
 const reviews = ref<ReviewSession[]>([]);
 const activeReview = ref<ReviewDetail | null>(null);
@@ -480,18 +485,8 @@ async function addRepository() {
   }
 }
 
-async function refreshRepositoryList() {
-  repositoriesLoading.value = true;
-  try {
-    repositories.value = await window.diffApp.listRepositories();
-  } finally {
-    repositoriesLoading.value = false;
-  }
-}
-
 async function removeRepository(path: string) {
-  await window.diffApp.removeRepository(path);
-  await refreshRepositoryList();
+  await removeRepositoryFromList(path);
   if (activeRepoPath.value === path) {
     activeRepoPath.value = "";
     state.value = null;
