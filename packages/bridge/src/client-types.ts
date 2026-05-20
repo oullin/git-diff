@@ -1,4 +1,3 @@
-import type { EventEmitter } from "node:events";
 import type {
   AuthLoginResponse,
   AuthStateResponse,
@@ -6,8 +5,6 @@ import type {
   Branch,
   CommitSummary,
   FileSearchResult,
-  OpItem,
-  OpVault,
   PendingComment,
   PullRequestSummary,
   Repository,
@@ -19,44 +16,23 @@ import type {
   ReviewDetail,
   ReviewEvent,
   ReviewSession,
-  RunLog,
-  RunSummary,
-  RunWorkflowRequest,
-  RuntimeSettings,
-  SettingsResponse,
   SystemStats,
-  TemplateFileContent,
-  TemplateFileSummary,
   UIPreferencesResponse,
   WalkthroughRecord,
-  Workflow,
-  WorkflowEvent,
-  WorkflowRunEndInfo,
 } from "@git-diff/contracts";
 
 export interface UnixTarget {
   socketPath: string;
 }
 
-export interface WorkflowRunStream extends EventEmitter {
-  on(event: "data", listener: (event: WorkflowEvent) => void): this;
-  on(event: "end", listener: () => void): this;
-  on(event: "end-info", listener: (info: WorkflowRunEndInfo) => void): this;
-  on(event: "error", listener: (error: Error) => void): this;
-}
-
-// TODO(phase-11): split this god interface into per-domain bridge clients (auth, review, repo, …).
+// WorkflowBridgeClient was originally the macOS-workflow client that the
+// gus-mac UI consumed. The diff-review app keeps the name (so the bridge's
+// HTTP wiring stays familiar) but the surface is now scoped to the methods
+// the renderer actually uses via diffApp. TODO(phase-12): rename to
+// ApiClient + split into per-domain facades.
 export interface WorkflowBridgeClient {
   close(): void;
   healthz(): Promise<void>;
-  listWorkflows(): Promise<{ workflows: Workflow[] }>;
-  listRuns(request: { limit: number }): Promise<{ runs: RunSummary[] }>;
-  runLog(request: { runId: string }): Promise<RunLog>;
-  listTemplateFiles(): Promise<{ files: TemplateFileSummary[] }>;
-  readTemplateFile(request: { path: string }): Promise<TemplateFileContent>;
-  saveTemplateFile(request: { path: string; content: string }): Promise<TemplateFileContent>;
-  getSettings(): Promise<SettingsResponse>;
-  validateSettings(request: { settings: RuntimeSettings }): Promise<SettingsResponse>;
   getUIPreferences(): Promise<UIPreferencesResponse>;
   saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse>;
   getAuthState(): Promise<AuthStateResponse>;
@@ -149,7 +125,4 @@ export interface WorkflowBridgeClient {
   }): Promise<{ results: FileSearchResult[] }>;
   upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
   removeRepository(request: { path: string }): Promise<void>;
-  listOpVaults(): Promise<{ vaults: OpVault[] }>;
-  listOpItems(request: { vault: string }): Promise<{ items: OpItem[] }>;
-  runWorkflow(request: RunWorkflowRequest): WorkflowRunStream;
 }

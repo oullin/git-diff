@@ -1,15 +1,13 @@
 import * as authClient from "#bridge/clients/auth.js";
 import * as branchClient from "#bridge/clients/branches.js";
-import * as opClient from "#bridge/clients/op.js";
 import * as pendingCommentClient from "#bridge/clients/pending-comments.js";
+import * as preferencesClient from "#bridge/clients/preferences.js";
 import * as pullRequestClient from "#bridge/clients/pull-requests.js";
 import * as repositoriesClient from "#bridge/clients/repositories.js";
 import * as repositoryClient from "#bridge/clients/repository.js";
 import * as reviewClient from "#bridge/clients/reviews.js";
-import * as settingsClient from "#bridge/clients/settings.js";
 import * as systemClient from "#bridge/clients/system.js";
 import * as walkthroughClient from "#bridge/clients/walkthrough.js";
-import * as workflowClient from "#bridge/clients/workflows.js";
 export function unixTarget(socketPath) {
     return { socketPath };
 }
@@ -35,9 +33,9 @@ export function waitForReady(client, timeoutMs = 10000) {
     });
 }
 // HttpWorkflowBridgeClient is a thin dispatcher: every method delegates to a
-// per-domain function under ./clients/. SRP lives in those modules; this class
-// exists only to satisfy the flat WorkflowBridgeClient interface used by the
-// renderer/electron IPC layer until the facade migration (phase 12).
+// per-domain function under ./clients/. SRP lives in those modules; this
+// class exists only to satisfy the flat WorkflowBridgeClient interface used
+// by the renderer/electron IPC layer.
 class HttpWorkflowBridgeClient {
     socketPath;
     constructor(target) {
@@ -50,38 +48,11 @@ class HttpWorkflowBridgeClient {
     getSystemStats() {
         return systemClient.getSystemStats(this.socketPath);
     }
-    listWorkflows() {
-        return workflowClient.listWorkflows(this.socketPath);
-    }
-    listRuns(request) {
-        return workflowClient.listRuns(this.socketPath, request);
-    }
-    runLog(request) {
-        return workflowClient.runLog(this.socketPath, request);
-    }
-    listTemplateFiles() {
-        return workflowClient.listTemplateFiles(this.socketPath);
-    }
-    readTemplateFile(request) {
-        return workflowClient.readTemplateFile(this.socketPath, request);
-    }
-    saveTemplateFile(request) {
-        return workflowClient.saveTemplateFile(this.socketPath, request);
-    }
-    runWorkflow(request) {
-        return workflowClient.runWorkflow(this.socketPath, request);
-    }
-    getSettings() {
-        return settingsClient.getSettings(this.socketPath);
-    }
-    validateSettings(request) {
-        return settingsClient.validateSettings(this.socketPath, request);
-    }
     getUIPreferences() {
-        return settingsClient.getUIPreferences(this.socketPath);
+        return preferencesClient.getUIPreferences(this.socketPath);
     }
     saveUIPreferences(values) {
-        return settingsClient.saveUIPreferences(this.socketPath, values);
+        return preferencesClient.saveUIPreferences(this.socketPath, values);
     }
     getAuthState() {
         return authClient.getAuthState(this.socketPath);
@@ -202,11 +173,5 @@ class HttpWorkflowBridgeClient {
     }
     removeCollaborator(request) {
         return repositoriesClient.removeCollaborator(this.socketPath, request);
-    }
-    listOpVaults() {
-        return opClient.listOpVaults(this.socketPath);
-    }
-    listOpItems(request) {
-        return opClient.listOpItems(this.socketPath, request);
     }
 }

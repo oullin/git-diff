@@ -1,42 +1,10 @@
-import type { EventEmitter } from "node:events";
-import type { AuthLoginResponse, AuthStateResponse, AuthUser, Branch, CommitSummary, FileSearchResult, OpItem, OpVault, PendingComment, PullRequestSummary, Repository, RepositoryCollaborator, RepositoryFile, RepositoryMode, RepositoryState, ReviewComment, ReviewDetail, ReviewEvent, ReviewSession, RunLog, RunSummary, RunWorkflowRequest, RuntimeSettings, SettingsResponse, SystemStats, TemplateFileContent, TemplateFileSummary, UIPreferencesResponse, WalkthroughRecord, Workflow, WorkflowEvent, WorkflowRunEndInfo } from "@git-diff/contracts";
+import type { AuthLoginResponse, AuthStateResponse, AuthUser, Branch, CommitSummary, FileSearchResult, PendingComment, PullRequestSummary, Repository, RepositoryCollaborator, RepositoryFile, RepositoryMode, RepositoryState, ReviewComment, ReviewDetail, ReviewEvent, ReviewSession, SystemStats, UIPreferencesResponse, WalkthroughRecord } from "@git-diff/contracts";
 export interface UnixTarget {
     socketPath: string;
-}
-export interface WorkflowRunStream extends EventEmitter {
-    on(event: "data", listener: (event: WorkflowEvent) => void): this;
-    on(event: "end", listener: () => void): this;
-    on(event: "end-info", listener: (info: WorkflowRunEndInfo) => void): this;
-    on(event: "error", listener: (error: Error) => void): this;
 }
 export interface WorkflowBridgeClient {
     close(): void;
     healthz(): Promise<void>;
-    listWorkflows(): Promise<{
-        workflows: Workflow[];
-    }>;
-    listRuns(request: {
-        limit: number;
-    }): Promise<{
-        runs: RunSummary[];
-    }>;
-    runLog(request: {
-        runId: string;
-    }): Promise<RunLog>;
-    listTemplateFiles(): Promise<{
-        files: TemplateFileSummary[];
-    }>;
-    readTemplateFile(request: {
-        path: string;
-    }): Promise<TemplateFileContent>;
-    saveTemplateFile(request: {
-        path: string;
-        content: string;
-    }): Promise<TemplateFileContent>;
-    getSettings(): Promise<SettingsResponse>;
-    validateSettings(request: {
-        settings: RuntimeSettings;
-    }): Promise<SettingsResponse>;
     getUIPreferences(): Promise<UIPreferencesResponse>;
     saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse>;
     getAuthState(): Promise<AuthStateResponse>;
@@ -220,13 +188,4 @@ export interface WorkflowBridgeClient {
     removeRepository(request: {
         path: string;
     }): Promise<void>;
-    listOpVaults(): Promise<{
-        vaults: OpVault[];
-    }>;
-    listOpItems(request: {
-        vault: string;
-    }): Promise<{
-        items: OpItem[];
-    }>;
-    runWorkflow(request: RunWorkflowRequest): WorkflowRunStream;
 }

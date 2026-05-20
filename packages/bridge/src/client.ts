@@ -5,8 +5,6 @@ import type {
   Branch,
   CommitSummary,
   FileSearchResult,
-  OpItem,
-  OpVault,
   PendingComment,
   PullRequestSummary,
   Repository,
@@ -17,31 +15,21 @@ import type {
   ReviewDetail,
   ReviewEvent,
   ReviewSession,
-  RunLog,
-  RunSummary,
-  RunWorkflowRequest,
-  RuntimeSettings,
-  SettingsResponse,
   SystemStats,
-  TemplateFileContent,
-  TemplateFileSummary,
   UIPreferencesResponse,
   WalkthroughRecord,
-  Workflow,
 } from "@git-diff/contracts";
-import type { UnixTarget, WorkflowBridgeClient, WorkflowRunStream } from "#bridge/client-types.js";
+import type { UnixTarget, WorkflowBridgeClient } from "#bridge/client-types.js";
 import * as authClient from "#bridge/clients/auth.js";
 import * as branchClient from "#bridge/clients/branches.js";
-import * as opClient from "#bridge/clients/op.js";
 import * as pendingCommentClient from "#bridge/clients/pending-comments.js";
+import * as preferencesClient from "#bridge/clients/preferences.js";
 import * as pullRequestClient from "#bridge/clients/pull-requests.js";
 import * as repositoriesClient from "#bridge/clients/repositories.js";
 import * as repositoryClient from "#bridge/clients/repository.js";
 import * as reviewClient from "#bridge/clients/reviews.js";
-import * as settingsClient from "#bridge/clients/settings.js";
 import * as systemClient from "#bridge/clients/system.js";
 import * as walkthroughClient from "#bridge/clients/walkthrough.js";
-import * as workflowClient from "#bridge/clients/workflows.js";
 
 export function unixTarget(socketPath: string): UnixTarget {
   return { socketPath };
@@ -75,9 +63,9 @@ export function waitForReady(client: WorkflowBridgeClient, timeoutMs = 10000): P
 }
 
 // HttpWorkflowBridgeClient is a thin dispatcher: every method delegates to a
-// per-domain function under ./clients/. SRP lives in those modules; this class
-// exists only to satisfy the flat WorkflowBridgeClient interface used by the
-// renderer/electron IPC layer until the facade migration (phase 12).
+// per-domain function under ./clients/. SRP lives in those modules; this
+// class exists only to satisfy the flat WorkflowBridgeClient interface used
+// by the renderer/electron IPC layer.
 class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
   private readonly socketPath: string;
 
@@ -95,48 +83,12 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     return systemClient.getSystemStats(this.socketPath);
   }
 
-  listWorkflows(): Promise<{ workflows: Workflow[] }> {
-    return workflowClient.listWorkflows(this.socketPath);
-  }
-
-  listRuns(request: { limit: number }): Promise<{ runs: RunSummary[] }> {
-    return workflowClient.listRuns(this.socketPath, request);
-  }
-
-  runLog(request: { runId: string }): Promise<RunLog> {
-    return workflowClient.runLog(this.socketPath, request);
-  }
-
-  listTemplateFiles(): Promise<{ files: TemplateFileSummary[] }> {
-    return workflowClient.listTemplateFiles(this.socketPath);
-  }
-
-  readTemplateFile(request: { path: string }): Promise<TemplateFileContent> {
-    return workflowClient.readTemplateFile(this.socketPath, request);
-  }
-
-  saveTemplateFile(request: { path: string; content: string }): Promise<TemplateFileContent> {
-    return workflowClient.saveTemplateFile(this.socketPath, request);
-  }
-
-  runWorkflow(request: RunWorkflowRequest): WorkflowRunStream {
-    return workflowClient.runWorkflow(this.socketPath, request);
-  }
-
-  getSettings(): Promise<SettingsResponse> {
-    return settingsClient.getSettings(this.socketPath);
-  }
-
-  validateSettings(request: { settings: RuntimeSettings }): Promise<SettingsResponse> {
-    return settingsClient.validateSettings(this.socketPath, request);
-  }
-
   getUIPreferences(): Promise<UIPreferencesResponse> {
-    return settingsClient.getUIPreferences(this.socketPath);
+    return preferencesClient.getUIPreferences(this.socketPath);
   }
 
   saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse> {
-    return settingsClient.saveUIPreferences(this.socketPath, values);
+    return preferencesClient.saveUIPreferences(this.socketPath, values);
   }
 
   getAuthState(): Promise<AuthStateResponse> {
@@ -346,13 +298,5 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
 
   removeCollaborator(request: { path: string; userId: number }): Promise<void> {
     return repositoriesClient.removeCollaborator(this.socketPath, request);
-  }
-
-  listOpVaults(): Promise<{ vaults: OpVault[] }> {
-    return opClient.listOpVaults(this.socketPath);
-  }
-
-  listOpItems(request: { vault: string }): Promise<{ items: OpItem[] }> {
-    return opClient.listOpItems(this.socketPath, request);
   }
 }
