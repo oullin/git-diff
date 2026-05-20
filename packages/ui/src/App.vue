@@ -52,6 +52,7 @@ import { usePullRequests } from "@composables/usePullRequests";
 import { useRepositoryList } from "@composables/useRepositoryList";
 import { useCommentDraft } from "@composables/useCommentDraft";
 import { usePendingComments } from "@composables/usePendingComments";
+import { useSelectedFile } from "@composables/useSelectedFile";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -105,9 +106,13 @@ const {
 } = useCommentDraft();
 const summaryDraft = ref("");
 
-const selectedRepoFile = ref<RepositoryFile | null>(null);
-const selectedFileLoading = ref(false);
-const selectedFileError = ref("");
+const {
+  file: selectedRepoFile,
+  loading: selectedFileLoading,
+  error: selectedFileError,
+  load: loadSelectedFile,
+  reset: resetSelectedFile,
+} = useSelectedFile({ selectedPath });
 const repoScope = ref<"changed" | "all">("changed");
 const { items: commits, loading: commitsLoading, load: loadCommits } = useCommits(state);
 const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "working");
@@ -324,7 +329,7 @@ async function logOut() {
   reviews.value = [];
   activeReview.value = null;
   selectedPath.value = "";
-  selectedRepoFile.value = null;
+  resetSelectedFile();
   await bootstrapAuth();
 }
 
@@ -335,8 +340,7 @@ async function openRepo(path: string) {
   try {
     state.value = await window.diffApp.repositoryState(path);
     selectedPath.value = state.value.files[0]?.path ?? "";
-    selectedRepoFile.value = null;
-    selectedFileError.value = "";
+    resetSelectedFile();
     const reviewResponse = await window.diffApp.listReviews(25);
     reviews.value = reviewResponse.reviews.filter(
       (review) => review.repoRoot === state.value?.root,
@@ -495,8 +499,7 @@ async function removeRepository(path: string) {
     activeReview.value = null;
     reviews.value = [];
     selectedPath.value = "";
-    selectedRepoFile.value = null;
-    selectedFileError.value = "";
+    resetSelectedFile();
     reviewPanelOpen.value = false;
   }
 }
@@ -574,38 +577,16 @@ function toggleCollapsed(path: string) {
 function selectFile(path: string) {
   selectedPath.value = path;
   if (changedByPath.value.has(path)) {
-    selectedRepoFile.value = null;
-    selectedFileError.value = "";
+    resetSelectedFile();
     nextTick(() =>
       document.getElementById(fileElementID(path))?.scrollIntoView({ block: "start" }),
     );
     return;
   }
-  void loadRepoFile(path);
-}
-
-async function loadRepoFile(path: string) {
-  if (!state.value || !path) {
-    selectedRepoFile.value = null;
-    return;
-  }
-  const root = state.value.root;
-  selectedFileLoading.value = true;
-  selectedFileError.value = "";
-  selectedRepoFile.value = null;
-  try {
-    const file = await window.diffApp.readRepositoryFile(root, path);
-    if (selectedPath.value === path) {
-      selectedRepoFile.value = file;
-    }
-  } catch (cause) {
-    if (selectedPath.value === path) {
-      selectedFileError.value = cause instanceof Error ? cause.message : String(cause);
-    }
-  } finally {
-    if (selectedPath.value === path) {
-      selectedFileLoading.value = false;
-    }
+  if (state.value) {
+    void loadSelectedFile(state.value.root, path);
+  } else {
+    resetSelectedFile();
   }
 }
 
