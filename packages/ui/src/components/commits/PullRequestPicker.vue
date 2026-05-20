@@ -8,7 +8,6 @@ defineProps<{
   pullRequests: PullRequestSummary[];
   loading: boolean;
   activeNumber?: number;
-  error?: string;
 }>();
 
 const emit = defineEmits<{
@@ -49,9 +48,6 @@ function pick(number: number) {
       >
         <Loader2 class="h-3.5 w-3.5 animate-spin" />
         <span>Loading…</span>
-      </div>
-      <div v-else-if="error" class="px-3 py-4 text-xs text-red-500">
-        {{ error }}
       </div>
       <ul
         v-else-if="pullRequests.length > 0"

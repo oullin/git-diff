@@ -10,6 +10,7 @@ import Sidebar from "@entry/components/diff/Sidebar.vue";
 import CommitPicker from "@entry/components/commits/CommitPicker.vue";
 import PullRequestPicker from "@entry/components/commits/PullRequestPicker.vue";
 import SearchBar from "@entry/components/diff/SearchBar.vue";
+import { ToastViewport, type ToastItem } from "@ui/toast";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
@@ -101,8 +102,22 @@ const searchOpen = ref(false);
 
 const pullRequests = ref<PullRequestSummary[]>([]);
 const pullRequestsLoading = ref(false);
-const pullRequestsError = ref("");
 const activePullRequest = ref<PullRequestSummary | null>(null);
+
+const toasts = ref<ToastItem[]>([]);
+
+function showToast(toast: Omit<ToastItem, "id">, ttlMs = 6000): string {
+  const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  toasts.value = [...toasts.value, { id, ...toast }];
+  if (ttlMs > 0) {
+    window.setTimeout(() => dismissToast(id), ttlMs);
+  }
+  return id;
+}
+
+function dismissToast(id: string) {
+  toasts.value = toasts.value.filter((toast) => toast.id !== id);
+}
 
 const walkthrough = ref<WalkthroughRecord | null>(null);
 const walkthroughLoading = ref(false);
@@ -453,13 +468,16 @@ async function returnToWorkingTree() {
 async function loadPullRequests() {
   if (!state.value) return;
   pullRequestsLoading.value = true;
-  pullRequestsError.value = "";
   try {
     const response = await window.diffApp.listPullRequests(state.value.root);
     pullRequests.value = response.pullRequests;
   } catch (cause) {
-    pullRequestsError.value = cause instanceof Error ? cause.message : String(cause);
     pullRequests.value = [];
+    showToast({
+      tone: "error",
+      title: "Could not load pull requests",
+      description: cause instanceof Error ? cause.message : String(cause),
+    });
   } finally {
     pullRequestsLoading.value = false;
   }
@@ -903,7 +921,6 @@ void ACCENTS;
         :pull-requests="pullRequests"
         :loading="pullRequestsLoading"
         :active-number="activePullRequest?.number"
-        :error="pullRequestsError"
         @open="loadPullRequests()"
         @select="openPullRequest"
       />
@@ -1144,5 +1161,7 @@ void ACCENTS;
     />
 
     <SearchBar :open="searchOpen" @close="searchOpen = false" />
+
+    <ToastViewport :toasts="toasts" @dismiss="dismissToast" />
   </div>
 </template>
