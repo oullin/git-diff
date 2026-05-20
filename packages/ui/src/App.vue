@@ -343,31 +343,29 @@ async function logOut() {
 }
 
 async function openRepo(path: string) {
-  loading.value = true;
-  error.value = "";
   activeRepoPath.value = path;
-  try {
-    state.value = await window.diffApp.repositoryState(path);
-    selectedPath.value = state.value.files[0]?.path ?? "";
-    resetSelectedFile();
-    const reviewResponse = await window.diffApp.listReviews(25);
-    reviews.value = reviewResponse.reviews.filter(
-      (review) => review.repoRoot === state.value?.root,
-    );
-    activeReview.value = reviews.value[0]
-      ? await window.diffApp.reviewDetail(reviews.value[0].id)
-      : null;
-    await loadPendingComments();
-    await savePreferences({ [PREF_KEYS.lastRepoRoot]: state.value.root });
-    await window.diffApp.upsertRepository({ path: state.value.root });
-    await refreshRepositoryList();
-    activeRepoPath.value = state.value.root;
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-    state.value = null;
-  } finally {
-    loading.value = false;
-  }
+
+  await repoStore.withBusy(async () => {
+    try {
+      const opened = await window.diffApp.repositoryState(path);
+      state.value = opened;
+      selectedPath.value = opened.files[0]?.path ?? "";
+      resetSelectedFile();
+      const reviewResponse = await window.diffApp.listReviews(25);
+      reviews.value = reviewResponse.reviews.filter((review) => review.repoRoot === opened.root);
+      activeReview.value = reviews.value[0]
+        ? await window.diffApp.reviewDetail(reviews.value[0].id)
+        : null;
+      await loadPendingComments();
+      await savePreferences({ [PREF_KEYS.lastRepoRoot]: opened.root });
+      await window.diffApp.upsertRepository({ path: opened.root });
+      await refreshRepositoryList();
+      activeRepoPath.value = opened.root;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : String(cause);
+      state.value = null;
+    }
+  });
 }
 
 async function refresh() {
@@ -377,38 +375,38 @@ async function refresh() {
     }
     return;
   }
-  loading.value = true;
-  try {
-    const current = state.value;
-    if (current.mode === "commit" && current.commitSha) {
-      state.value = await window.diffApp.readCommit(current.commitSha, current.root);
-    } else {
-      state.value = await window.diffApp.refreshRepository(current.root);
+
+  await repoStore.withBusy(async () => {
+    try {
+      const current = state.value!;
+      const next =
+        current.mode === "commit" && current.commitSha
+          ? await window.diffApp.readCommit(current.commitSha, current.root)
+          : await window.diffApp.refreshRepository(current.root);
+      state.value = next;
+
+      if (!next.files.some((file) => file.path === selectedPath.value)) {
+        selectedPath.value = next.files[0]?.path ?? "";
+      }
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : String(cause);
     }
-    if (!state.value.files.some((file) => file.path === selectedPath.value)) {
-      selectedPath.value = state.value.files[0]?.path ?? "";
-    }
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  } finally {
-    loading.value = false;
-  }
+  });
 }
 
 async function openCommit(sha: string) {
   if (!state.value) return;
-  loading.value = true;
-  error.value = "";
-  try {
-    state.value = await window.diffApp.readCommit(sha, state.value.root);
-    selectedPath.value = state.value.files[0]?.path ?? "";
-    activeReview.value = null;
-    activePullRequest.value = null;
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  } finally {
-    loading.value = false;
-  }
+
+  await repoStore.withBusy(async () => {
+    try {
+      state.value = await window.diffApp.readCommit(sha, state.value!.root);
+      selectedPath.value = state.value.files[0]?.path ?? "";
+      activeReview.value = null;
+      activePullRequest.value = null;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : String(cause);
+    }
+  });
 }
 
 async function returnToWorkingTree() {
@@ -419,26 +417,26 @@ async function returnToWorkingTree() {
 
 async function openPullRequest(number: number) {
   if (!state.value) return;
-  loading.value = true;
-  error.value = "";
-  try {
-    state.value = await window.diffApp.readPullRequest(number, state.value.root);
-    selectedPath.value = state.value.files[0]?.path ?? "";
-    activeReview.value = null;
-    activePullRequest.value = pullRequests.value.find((pr) => pr.number === number) ?? {
-      number,
-      title: "",
-      author: "",
-      state: "open",
-      baseRef: "",
-      headRef: state.value.branch,
-      url: "",
-    };
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  } finally {
-    loading.value = false;
-  }
+
+  await repoStore.withBusy(async () => {
+    try {
+      const opened = await window.diffApp.readPullRequest(number, state.value!.root);
+      state.value = opened;
+      selectedPath.value = opened.files[0]?.path ?? "";
+      activeReview.value = null;
+      activePullRequest.value = pullRequests.value.find((pr) => pr.number === number) ?? {
+        number,
+        title: "",
+        author: "",
+        state: "open",
+        baseRef: "",
+        headRef: opened.branch,
+        url: "",
+      };
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : String(cause);
+    }
+  });
 }
 
 const creatingBranch = ref(false);
@@ -446,35 +444,39 @@ const branchCreateError = ref("");
 
 async function switchBranch(branch: string) {
   if (!state.value) return;
-  loading.value = true;
-  error.value = "";
-  try {
-    state.value = await window.diffApp.checkoutBranch(state.value.root, branch);
-    if (!state.value.files.some((file) => file.path === selectedPath.value)) {
-      selectedPath.value = state.value.files[0]?.path ?? "";
+
+  await repoStore.withBusy(async () => {
+    try {
+      const next = await window.diffApp.checkoutBranch(state.value!.root, branch);
+      state.value = next;
+
+      if (!next.files.some((file) => file.path === selectedPath.value)) {
+        selectedPath.value = next.files[0]?.path ?? "";
+      }
+    } catch (cause) {
+      const structured = parseBridgeError(cause);
+
+      if (structured?.code === "working_tree_dirty") {
+        const files = structured.files ?? [];
+        showToast(
+          {
+            tone: "error",
+            wide: true,
+            title: "Commit or stash your changes before switching branches",
+            description:
+              files.length > 0
+                ? `${files.length} file${files.length === 1 ? "" : "s"} would be overwritten by checkout: ${files.join(", ")}`
+                : undefined,
+          },
+          0,
+        );
+        return;
+      }
+
+      error.value =
+        structured?.message ?? (cause instanceof Error ? cause.message : String(cause));
     }
-  } catch (cause) {
-    const structured = parseBridgeError(cause);
-    if (structured?.code === "working_tree_dirty") {
-      const files = structured.files ?? [];
-      showToast(
-        {
-          tone: "error",
-          wide: true,
-          title: "Commit or stash your changes before switching branches",
-          description:
-            files.length > 0
-              ? `${files.length} file${files.length === 1 ? "" : "s"} would be overwritten by checkout: ${files.join(", ")}`
-              : undefined,
-        },
-        0,
-      );
-      return;
-    }
-    error.value = structured?.message ?? (cause instanceof Error ? cause.message : String(cause));
-  } finally {
-    loading.value = false;
-  }
+  });
 }
 
 async function createBranch(name: string) {
