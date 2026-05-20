@@ -6,8 +6,7 @@ import FileContentViewer from "@entry/components/FileContentViewer.vue";
 import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
 import Sidebar from "@entry/components/diff/Sidebar.vue";
-import CommitPicker from "@entry/components/commits/CommitPicker.vue";
-import PullRequestPicker from "@entry/components/commits/PullRequestPicker.vue";
+import RepoToolbar from "@entry/components/diff/RepoToolbar.vue";
 import SearchBar from "@entry/components/diff/SearchBar.vue";
 import { ToastViewport } from "@ui/toast";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
@@ -751,66 +750,27 @@ void ACCENTS;
       @select-result="openSearchResult"
     />
 
-    <div
+    <RepoToolbar
       v-if="state"
-      class="flex flex-wrap items-center gap-2 border-b border-border bg-background/70 px-4 py-1.5 text-xs"
-    >
-      <CommitPicker
-        :commits="commits"
-        :loading="commitsLoading"
-        :active-sha="state.commitSha"
-        :mode="repoMode"
-        @open="loadCommits()"
-        @select="openCommit"
-        @back="returnToWorkingTree"
-      />
-      <PullRequestPicker
-        :pull-requests="pullRequests"
-        :loading="pullRequestsLoading"
-        :active-number="activePullRequest?.number"
-        @open="loadPullRequests()"
-        @select="openPullRequest"
-      />
-      <span
-        v-if="activePullRequest"
-        class="flex items-center gap-1 font-mono text-muted-foreground"
-      >
-        PR #{{ activePullRequest.number }}
-        <span v-if="activePullRequest.title" class="font-sans"
-          >· {{ activePullRequest.title }}</span
-        >
-      </span>
-      <span
-        v-else-if="repoMode === 'commit' && state.commitSha"
-        class="font-mono text-muted-foreground"
-      >
-        commit {{ state.branch || state.commitSha.slice(0, 7) }}
-      </span>
-      <span class="flex-1" />
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
-        :disabled="walkthroughLoading"
-        @click="generateWalkthrough(walkthrough != null)"
-      >
-        {{
-          walkthroughLoading
-            ? "Generating…"
-            : walkthrough
-              ? "Refresh walkthrough"
-              : "Generate walkthrough"
-        }}
-      </button>
-      <button
-        v-if="activeReview"
-        type="button"
-        class="inline-flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
-        :disabled="copyReviewState === 'copied'"
-        @click="copyReviewAsMarkdown"
-      >
-        {{ copyReviewState === "copied" ? "Copied!" : "Copy review as Markdown" }}
-      </button>
-    </div>
+      :state="state"
+      :commits="commits"
+      :commits-loading="commitsLoading"
+      :repo-mode="repoMode"
+      :pull-requests="pullRequests"
+      :pull-requests-loading="pullRequestsLoading"
+      :active-pull-request="activePullRequest"
+      :walkthrough-loading="walkthroughLoading"
+      :has-walkthrough="walkthrough != null"
+      :has-active-review="activeReview != null"
+      :copy-review-state="copyReviewState"
+      @load-commits="loadCommits()"
+      @open-commit="openCommit"
+      @back-to-working="returnToWorkingTree"
+      @load-pull-requests="loadPullRequests()"
+      @open-pull-request="openPullRequest"
+      @generate-walkthrough="generateWalkthrough(walkthrough != null)"
+      @copy-review-as-markdown="copyReviewAsMarkdown"
+    />
     <WalkthroughPanel :record="walkthrough" :error="walkthroughError" />
 
     <main class="flex flex-1 min-h-0">
