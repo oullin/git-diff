@@ -3,7 +3,7 @@ import { access, rm } from "node:fs/promises";
 import { request as httpRequest } from "node:http";
 import os from "node:os";
 import { join } from "node:path";
-import { macbookDir } from "#scripts/dev/paths.js";
+import { apiDir } from "#scripts/dev/paths.js";
 import type { StartSpec } from "#scripts/dev/processes.js";
 import { readSettings, settingsArgs } from "#scripts/dev/settings.js";
 import { delay } from "#scripts/dev/timing.js";
@@ -19,7 +19,7 @@ export async function backendStartSpec(socketPath: string): Promise<StartSpec> {
   return [
     "go",
     ["run", "./cmd", "serve-http", "--socket", socketPath, ...settingsArgs(await readSettings())],
-    macbookDir,
+    apiDir,
   ];
 }
 

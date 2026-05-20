@@ -10,10 +10,10 @@ import (
 func TestPackageDirs(t *testing.T) {
 	root := t.TempDir()
 	mustMkdir(t, filepath.Join(root, "packages", "ui"))
-	mustMkdir(t, filepath.Join(root, "packages", "macbook"))
+	mustMkdir(t, filepath.Join(root, "packages", "api"))
 	mustMkdir(t, filepath.Join(root, "packages", "notes"))
 	mustWrite(t, filepath.Join(root, "packages", "ui", "package.json"), "{}")
-	mustWrite(t, filepath.Join(root, "packages", "macbook", "package.json"), "{}")
+	mustWrite(t, filepath.Join(root, "packages", "api", "package.json"), "{}")
 
 	got, err := PackageDirs(root)
 
@@ -22,7 +22,7 @@ func TestPackageDirs(t *testing.T) {
 	}
 
 	want := []string{
-		filepath.Join(root, "packages", "macbook"),
+		filepath.Join(root, "packages", "api"),
 		filepath.Join(root, "packages", "ui"),
 	}
 

@@ -1,5 +1,5 @@
 {
-  "name": "macbook",
+  "name": "api",
   "private": true,
   "scripts": {
     "build": "GOCACHE=$(pwd)/../../storage/.cache/go-build GOPATH=$(pwd)/../../storage/.cache/gopath GOOS=darwin GOARCH=arm64 go build -o dist/api ./cmd",

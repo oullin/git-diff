@@ -116,7 +116,7 @@
     },
     "extraResources": [
       {
-        "from": "../macbook/dist/api",
+        "from": "../api/dist/api",
         "to": "api"
       }
     ]

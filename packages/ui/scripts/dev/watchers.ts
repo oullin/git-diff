@@ -1,7 +1,7 @@
 import { watch } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { macbookDir, repoRoot, settingsPath, storageDir, uiDir } from "#scripts/dev/paths.js";
+import { apiDir, repoRoot, settingsPath, storageDir, uiDir } from "#scripts/dev/paths.js";
 
 export function installWatchers(onChange: (changed: string) => void): void {
   const paths = [
@@ -10,7 +10,7 @@ export function installWatchers(onChange: (changed: string) => void): void {
     join(uiDir, "vite.electron.config.ts"),
     join(uiDir, "tsconfig.electron.json"),
     join(repoRoot, "packages", "bridge"),
-    macbookDir,
+    apiDir,
     storageDir,
   ];
 

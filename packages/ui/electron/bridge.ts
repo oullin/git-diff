@@ -11,7 +11,7 @@ import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { recordDiagnostic } from "#electron/diagnostics.js";
-import { macbookDir } from "#electron/paths.js";
+import { apiDir } from "#electron/paths.js";
 
 let bridgeClient: WorkflowBridgeClient | null = null;
 let bridgeProcess: ChildProcess | null = null;
@@ -63,7 +63,7 @@ async function startWorkflowBridge() {
     command.command,
     [...command.args, "serve-http", "--socket", bridgeSocketPath, ...settingsArgs(savedSettings)],
     {
-      cwd: app.isPackaged ? app.getPath("userData") : macbookDir,
+      cwd: app.isPackaged ? app.getPath("userData") : apiDir,
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
     },

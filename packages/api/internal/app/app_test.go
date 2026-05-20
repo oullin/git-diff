@@ -99,15 +99,3 @@ func TestFindRepoRootWalksUp(t *testing.T) {
 	}
 }
 
-func TestFindRepoRootFromOuterRepoUsesMacOSDir(t *testing.T) {
-	dir := t.TempDir()
-	macOSDir := filepath.Join(dir, "packages", "macbook")
-
-	if err := os.MkdirAll(filepath.Join(macOSDir, ".git"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-
-	if got := findRepoRoot(dir); got != macOSDir {
-		t.Fatalf("findRepoRoot(%q) = %q, want %q", dir, got, macOSDir)
-	}
-}
