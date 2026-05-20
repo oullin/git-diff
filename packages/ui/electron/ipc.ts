@@ -26,6 +26,7 @@ import {
   startBridgeIfNeeded,
   stopWorkflowBridge,
 } from "#electron/bridge.js";
+import { takeLaunchIntent } from "#electron/launch-intent-store.js";
 import { moveWorkflowDatabase, writeSavedSettings } from "#electron/settings-store.js";
 import { accountAvatarUrl, architectureLabel, osLabel } from "#electron/system-info.js";
 import { openTerminalCommand } from "#electron/terminal.js";
@@ -47,6 +48,8 @@ export function registerIpcHandlers(deps: IpcDeps) {
   ipcMain.handle("repository:refresh", async (_event, path: string) =>
     (await client()).refreshRepository({ path }),
   );
+
+  ipcMain.handle("launch-intent:take", async () => takeLaunchIntent());
 
   ipcMain.handle("repository:commit", async (_event, sha: string, path?: string) =>
     (await client()).readCommit({ path, sha }),

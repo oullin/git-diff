@@ -194,7 +194,20 @@ export function viewedPrefKey(repoRoot: string, filePath: string): string {
   return `${VIEWED_KEY_PREFIX}${repoRoot}.${filePath}`;
 }
 
+export type LaunchIntentKind = "working" | "commit" | "help";
+
+export interface LaunchIntent {
+  kind: LaunchIntentKind;
+  repoPath?: string;
+  sha?: string;
+  walkthrough: boolean;
+  helpText?: string;
+  raw?: string;
+}
+
 export interface DiffAppApi {
+  takeLaunchIntent(): Promise<LaunchIntent | null>;
+  onLaunchIntent(handler: (intent: LaunchIntent) => void): () => void;
   repositoryState(path?: string): Promise<RepositoryState>;
   openRepository(path: string): Promise<RepositoryState>;
   refreshRepository(path: string): Promise<RepositoryState>;

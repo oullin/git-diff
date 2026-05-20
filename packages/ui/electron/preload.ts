@@ -118,6 +118,12 @@ contextBridge.exposeInMainWorld("macOS", {
 });
 
 contextBridge.exposeInMainWorld("diffApp", {
+  takeLaunchIntent: () => ipcRenderer.invoke("launch-intent:take"),
+  onLaunchIntent: (handler: (intent: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, intent: unknown) => handler(intent);
+    ipcRenderer.on("launch-intent:updated", listener);
+    return () => ipcRenderer.removeListener("launch-intent:updated", listener);
+  },
   repositoryState: (path?: string) => ipcRenderer.invoke("repository:state", path),
   openRepository: (path: string) => ipcRenderer.invoke("repository:open", path),
   refreshRepository: (path: string) => ipcRenderer.invoke("repository:refresh", path),

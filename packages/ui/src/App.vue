@@ -179,13 +179,25 @@ watch(
   { immediate: true },
 );
 
+let unsubscribeLaunchIntent: (() => void) | null = null;
+
 onMounted(async () => {
   await bootstrapAuth();
   document.addEventListener("keydown", onKeydown);
+  unsubscribeLaunchIntent = window.diffApp.onLaunchIntent(async (intent) => {
+    if (intent.kind === "help" || !intent.repoPath) {
+      return;
+    }
+    await openRepo(intent.repoPath);
+    if (intent.sha && state.value) {
+      await openCommit(intent.sha);
+    }
+  });
 });
 
 onUnmounted(() => {
   document.removeEventListener("keydown", onKeydown);
+  unsubscribeLaunchIntent?.();
 });
 
 function onKeydown(event: KeyboardEvent) {
@@ -245,13 +257,37 @@ async function enterApp() {
   authMode.value = "ready";
   prefValues.value = (await window.diffApp.getUIPreferences()).values;
   await refreshRepositoryList();
-  const lastRoot = lastRepoRoot.value;
-  const initial =
-    repositories.value.find((repo) => repo.path === lastRoot)?.path ??
+  await applyLaunchIntent();
+}
+
+async function applyLaunchIntent() {
+  let intent = null;
+  try {
+    intent = await window.diffApp.takeLaunchIntent();
+  } catch {
+    // No CLI in this build (browser fallback) — fall through to last-repo path.
+  }
+
+  const initialPath =
+    intent?.repoPath ??
+    repositories.value.find((repo) => repo.path === lastRepoRoot.value)?.path ??
     repositories.value[0]?.path ??
     "";
-  if (initial) {
-    await openRepo(initial);
+
+  if (!initialPath) {
+    return;
+  }
+
+  await openRepo(initialPath);
+
+  if (intent?.sha && state.value) {
+    await openCommit(intent.sha);
+  }
+
+  if (intent?.walkthrough) {
+    // Walkthrough wires up in Milestone 6 — for now we surface a stub so the
+    // CLI flag round-trips without silently dropping.
+    error.value = "AI walkthrough is not yet implemented (planned for Milestone 6).";
   }
 }
 
