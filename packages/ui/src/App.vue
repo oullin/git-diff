@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { GitPullRequest, FolderOpen, Plus } from "lucide-vue-next";
-import AuthSetup from "@entry/components/AuthSetup.vue";
-import AuthLogin from "@entry/components/AuthLogin.vue";
+import AuthGate from "@entry/components/auth/AuthGate.vue";
 import FileContentViewer from "@entry/components/FileContentViewer.vue";
 import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
@@ -13,6 +12,7 @@ import SearchBar from "@entry/components/diff/SearchBar.vue";
 import { ToastViewport } from "@ui/toast";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
+import WalkthroughPanel from "@entry/components/diff/WalkthroughPanel.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
 import StatusBar from "@entry/components/diff/StatusBar.vue";
 import ReviewPanel from "@entry/components/diff/ReviewPanel.vue";
@@ -718,26 +718,9 @@ void ACCENTS;
 </script>
 
 <template>
-  <div
-    v-if="authMode === 'loading'"
-    class="grid h-screen place-items-center bg-background text-sm text-muted-foreground"
-  >
-    Loading…
-  </div>
-  <AuthSetup
-    v-else-if="authMode === 'setup'"
-    :os-username="authOSUsername"
-    @completed="handleAuthCompleted"
-  />
-  <AuthLogin
-    v-else-if="authMode === 'login'"
-    :os-username="authOSUsername"
-    @logged-in="handleAuthCompleted"
-    @wiped="handleAuthWiped"
-  />
-  <div
-    v-else
-    class="flex h-screen flex-col overflow-hidden"
+  <AuthGate @entered="handleAuthCompleted" @wiped="handleAuthWiped">
+    <div
+      class="flex h-screen flex-col overflow-hidden"
     :style="{
       background: 'var(--gd-bloom), var(--gd-bg)',
       color: 'var(--gd-text)',
@@ -828,29 +811,7 @@ void ACCENTS;
         {{ copyReviewState === "copied" ? "Copied!" : "Copy review as Markdown" }}
       </button>
     </div>
-    <div
-      v-if="walkthroughError || walkthrough"
-      class="border-b border-border bg-background/70 px-4 py-2 text-xs"
-    >
-      <div v-if="walkthroughError" class="text-red-500">{{ walkthroughError }}</div>
-      <div v-else-if="walkthrough" class="flex flex-col gap-1">
-        <div class="font-semibold">
-          AI walkthrough
-          <span class="font-normal text-muted-foreground">— {{ walkthrough.modelId }}</span>
-        </div>
-        <div v-if="walkthrough.summary" class="text-muted-foreground">
-          {{ walkthrough.summary }}
-        </div>
-        <ol class="mt-1 list-decimal pl-5 space-y-0.5">
-          <li v-for="path in walkthrough.order" :key="path">
-            <code class="font-mono text-[11px]">{{ path }}</code>
-            <span v-if="walkthrough.notes[path]" class="ml-2 text-muted-foreground">
-              — {{ walkthrough.notes[path] }}
-            </span>
-          </li>
-        </ol>
-      </div>
-    </div>
+    <WalkthroughPanel :record="walkthrough" :error="walkthroughError" />
 
     <main class="flex flex-1 min-h-0">
       <template v-if="!activeRepoPath || loading || error || !state">
@@ -1027,5 +988,6 @@ void ACCENTS;
     <SearchBar :open="searchOpen" @close="searchOpen = false" />
 
     <ToastViewport :toasts="toasts" @dismiss="dismissToast" />
-  </div>
+    </div>
+  </AuthGate>
 </template>

@@ -1,0 +1,51 @@
+<script setup lang="ts">
+import { storeToRefs } from "pinia";
+import type { AuthLoginResponse } from "@git-diff/contracts";
+import AuthLogin from "@entry/components/AuthLogin.vue";
+import AuthSetup from "@entry/components/AuthSetup.vue";
+import { useAuthStore } from "@/stores/auth.store";
+
+// AuthGate renders the auth state machine: while we don't know whether the
+// user is set up the slot stays hidden behind a Loading placeholder; the
+// setup / login screens take over when needed; once the user is
+// authenticated the default slot (the main app shell) gets shown.
+//
+// Cross-domain follow-up actions (hydrating preferences, opening the last
+// repo, replaying the launch intent) live on the host because they span
+// multiple stores -- the host listens to the @entered / @wiped events and
+// runs its own orchestration.
+const emit = defineEmits<{
+  entered: [response: AuthLoginResponse];
+  wiped: [];
+}>();
+
+const authStore = useAuthStore();
+const { mode, osUsername } = storeToRefs(authStore);
+
+function onCompleted(response: AuthLoginResponse): void {
+  authStore.complete(response);
+  emit("entered", response);
+}
+
+function onWiped(): void {
+  authStore.markWiped();
+  emit("wiped");
+}
+</script>
+
+<template>
+  <div
+    v-if="mode === 'loading'"
+    class="grid h-screen place-items-center bg-background text-sm text-muted-foreground"
+  >
+    Loading…
+  </div>
+  <AuthSetup v-else-if="mode === 'setup'" :os-username="osUsername" @completed="onCompleted" />
+  <AuthLogin
+    v-else-if="mode === 'login'"
+    :os-username="osUsername"
+    @logged-in="onCompleted"
+    @wiped="onWiped"
+  />
+  <slot v-else />
+</template>
