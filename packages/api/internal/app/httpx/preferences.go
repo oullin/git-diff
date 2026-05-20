@@ -5,33 +5,29 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/gocanto/git-diff/internal/service"
 )
 
 type savePreferencesRequest struct {
 	Values map[string]string `json:"values"`
 }
 
+func (s Server) handlePreferenceError(w http.ResponseWriter, err error, wrap string) {
+	if errors.Is(err, service.ErrAuthenticationRequired) {
+		writeError(w, http.StatusUnauthorized, err)
+
+		return
+	}
+
+	writeError(w, http.StatusInternalServerError, fmt.Errorf("%s: %w", wrap, err))
+}
+
 func (s Server) getPreferences(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil || s.Auth.CurrentUserID() == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
+	prefs, err := s.PreferenceService.Get(r.Context(), s.Auth.CurrentUserID())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
-
-		return
-	}
-
-	defer closeStore()
-
-	prefs, err := store.GetUIPreferences(r.Context(), s.Auth.CurrentUserID())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("read ui preferences: %w", err))
+		s.handlePreferenceError(w, err, "read ui preferences")
 
 		return
 	}
@@ -40,12 +36,6 @@ func (s Server) getPreferences(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) savePreferences(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil || s.Auth.CurrentUserID() == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	var req savePreferencesRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -54,20 +44,10 @@ func (s Server) savePreferences(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
+	prefs, err := s.PreferenceService.Save(r.Context(), s.Auth.CurrentUserID(), req.Values)
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
-
-		return
-	}
-
-	defer closeStore()
-
-	prefs, err := store.SaveUIPreferences(r.Context(), s.Auth.CurrentUserID(), req.Values)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("save ui preferences: %w", err))
+		s.handlePreferenceError(w, err, "save ui preferences")
 
 		return
 	}

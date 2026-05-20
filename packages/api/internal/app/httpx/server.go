@@ -28,6 +28,7 @@ type Server struct {
 	ReviewService         *service.ReviewService
 	PendingCommentService *service.PendingCommentService
 	RepositoryService     *service.RepositoryService
+	PreferenceService     *service.PreferenceService
 }
 
 func (s Server) healthz(w http.ResponseWriter, _ *http.Request) {
