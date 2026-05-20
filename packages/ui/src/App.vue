@@ -10,7 +10,7 @@ import Sidebar from "@entry/components/diff/Sidebar.vue";
 import CommitPicker from "@entry/components/commits/CommitPicker.vue";
 import PullRequestPicker from "@entry/components/commits/PullRequestPicker.vue";
 import SearchBar from "@entry/components/diff/SearchBar.vue";
-import { ToastViewport, type ToastItem } from "@ui/toast";
+import { ToastViewport } from "@ui/toast";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
@@ -38,11 +38,16 @@ import type {
 } from "@git-diff/contracts";
 import { PREF_KEYS, viewedPrefKey } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
-import { ACCENTS, applyAccent, diffBgs, resolveAccent } from "@lib/accent";
+import { ACCENTS, resolveAccent } from "@lib/accent";
 import type { PatchLine } from "@lib/patch";
 import { formatReviewAsMarkdown } from "@lib/reviewMarkdown";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
-import { setTheme } from "@composables/useTheme";
+import { useToasts } from "@composables/useToasts";
+import { useStyleWatchers } from "@composables/useStyleWatchers";
+import {
+  useDiffNavigation,
+  useKeyboardShortcuts,
+} from "@composables/useDiffNavigation";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
 
@@ -104,20 +109,7 @@ const pullRequests = ref<PullRequestSummary[]>([]);
 const pullRequestsLoading = ref(false);
 const activePullRequest = ref<PullRequestSummary | null>(null);
 
-const toasts = ref<ToastItem[]>([]);
-
-function showToast(toast: Omit<ToastItem, "id">, ttlMs = 6000): string {
-  const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  toasts.value = [...toasts.value, { id, ...toast }];
-  if (ttlMs > 0) {
-    window.setTimeout(() => dismissToast(id), ttlMs);
-  }
-  return id;
-}
-
-function dismissToast(id: string) {
-  toasts.value = toasts.value.filter((toast) => toast.id !== id);
-}
+const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
 
 interface BridgeErrorPayload {
   code: string;
@@ -212,37 +204,35 @@ watch(
   { immediate: true },
 );
 
-watch(
-  accent,
-  (current) => {
-    applyAccent(current);
-  },
-  { immediate: true },
-);
+useStyleWatchers(accent, tweaks);
 
-watch(
-  () => tweaks.value.theme,
-  (choice) => {
-    setTheme(choice);
-  },
-  { immediate: true },
-);
+const { selectAdjacent, jumpToHunk } = useDiffNavigation({
+  files,
+  changedIndex,
+  onSelect: (path) => selectFile(path),
+});
 
-watch(
-  () => tweaks.value.diffStyle,
-  (style) => {
-    const colors = diffBgs(style);
-    document.documentElement.style.setProperty("--gd-word-add-bg", colors.addStrong);
-    document.documentElement.style.setProperty("--gd-word-rem-bg", colors.remStrong);
-  },
-  { immediate: true },
-);
-
+const shortcutsEnabled = computed(() => authMode.value === "ready");
+let unsubscribeShortcuts: (() => void) | null = null;
 let unsubscribeLaunchIntent: (() => void) | null = null;
 
 onMounted(async () => {
   await bootstrapAuth();
-  document.addEventListener("keydown", onKeydown);
+  unsubscribeShortcuts = useKeyboardShortcuts({
+    enabled: shortcutsEnabled,
+    onSelectAdjacent: selectAdjacent,
+    onJumpToHunk: jumpToHunk,
+    onToggleViewed: () => {
+      const file = selectedFile.value;
+      if (file && changedByPath.value.has(file.path)) {
+        void toggleViewed(file);
+      }
+    },
+    onStartReview: () => void startReview(),
+    onOpenSearch: () => {
+      searchOpen.value = true;
+    },
+  });
   unsubscribeLaunchIntent = window.diffApp.onLaunchIntent(async (intent) => {
     if (intent.kind === "help" || !intent.repoPath) {
       return;
@@ -257,70 +247,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  document.removeEventListener("keydown", onKeydown);
+  unsubscribeShortcuts?.();
   unsubscribeLaunchIntent?.();
 });
-
-function onKeydown(event: KeyboardEvent) {
-  if (authMode.value !== "ready") return;
-  const target = event.target as HTMLElement | null;
-  if (
-    target &&
-    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
-  ) {
-    return;
-  }
-  if (event.key === "j" || event.key === "ArrowDown") {
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    event.preventDefault();
-    selectAdjacent(1);
-  } else if (event.key === "k" || event.key === "ArrowUp") {
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    event.preventDefault();
-    selectAdjacent(-1);
-  } else if (event.key === "v") {
-    const file = selectedFile.value;
-    if (file && changedByPath.value.has(file.path)) {
-      event.preventDefault();
-      void toggleViewed(file);
-    }
-  } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-    event.preventDefault();
-    void startReview();
-  } else if (event.key === "n" || event.key === "p") {
-    if (event.metaKey || event.ctrlKey || event.altKey) return;
-    event.preventDefault();
-    jumpToHunk(event.key === "n" ? 1 : -1);
-  } else if ((event.key === "f" && (event.metaKey || event.ctrlKey)) || event.key === "/") {
-    if (event.key === "/" && (event.metaKey || event.ctrlKey || event.altKey)) return;
-    event.preventDefault();
-    searchOpen.value = true;
-  }
-}
-
-function jumpToHunk(delta: number) {
-  const anchors = Array.from(document.querySelectorAll<HTMLElement>("[data-hunk-anchor]"));
-  if (anchors.length === 0) return;
-  const midpoint = window.innerHeight / 2;
-  let current = 0;
-  for (let i = 0; i < anchors.length; i++) {
-    const rect = anchors[i]!.getBoundingClientRect();
-    if (rect.top <= midpoint) current = i;
-    else break;
-  }
-  const target = Math.max(0, Math.min(anchors.length - 1, current + delta));
-  const element = anchors[target]!;
-  element.scrollIntoView({ block: "center", behavior: "smooth" });
-  element.classList.add("gd-hunk-flash");
-  window.setTimeout(() => element.classList.remove("gd-hunk-flash"), 350);
-}
-
-function selectAdjacent(delta: number) {
-  if (files.value.length === 0) return;
-  const next = Math.min(Math.max(changedIndex.value + delta, 0), files.value.length - 1);
-  const file = files.value[next];
-  if (file) selectFile(file.path);
-}
 
 async function bootstrapAuth() {
   authMode.value = "loading";
