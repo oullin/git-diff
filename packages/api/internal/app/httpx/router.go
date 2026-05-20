@@ -55,9 +55,7 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("DELETE /v1/pending-comments/{id}", s.deletePendingComment)
 	mux.HandleFunc("POST /v1/pending-comments/promote", s.promotePendingComments)
 
-	// Settings and per-user UI preferences.
-	mux.HandleFunc("GET /v1/settings", s.getSettings)
-	mux.HandleFunc("POST /v1/settings/validate", s.validateSettings)
+	// Per-user UI preferences.
 	mux.HandleFunc("GET /v1/preferences", s.getPreferences)
 	mux.HandleFunc("POST /v1/preferences", s.savePreferences)
 
