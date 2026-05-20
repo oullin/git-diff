@@ -51,6 +51,7 @@ import { useCommits } from "@composables/useCommits";
 import { usePullRequests } from "@composables/usePullRequests";
 import { useRepositoryList } from "@composables/useRepositoryList";
 import { useCommentDraft } from "@composables/useCommentDraft";
+import { usePendingComments } from "@composables/usePendingComments";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -524,7 +525,7 @@ async function startReview() {
   } catch {
     // Promotion failure shouldn't abort review start.
   }
-  pendingComments.value = [];
+  clearPendingComments();
 
   activeReview.value = await window.diffApp.reviewDetail(review.id);
   reviews.value = [review, ...reviews.value.filter((item) => item.id !== review.id)];
@@ -661,21 +662,11 @@ async function saveComment() {
   closeCommentDraft();
 }
 
-const pendingComments = ref<import("@git-diff/contracts").PendingComment[]>([]);
-
-async function loadPendingComments() {
-  if (!state.value) return;
-  try {
-    const response = await window.diffApp.listPendingComments({
-      path: state.value.root,
-      kind: state.value.mode,
-      sha: state.value.commitSha,
-    });
-    pendingComments.value = response.comments;
-  } catch {
-    pendingComments.value = [];
-  }
-}
+const {
+  items: pendingComments,
+  reload: loadPendingComments,
+  clear: clearPendingComments,
+} = usePendingComments(state);
 
 function cancelComment() {
   cancelCommentDraft();
