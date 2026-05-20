@@ -1,11 +1,11 @@
-import {
-  type AuthStateResponse,
-  type AuthUser,
-  type RuntimeSettings,
-  type SettingsResponse,
-  type RunWorkflowRequest,
-  type WorkflowEvent,
-} from "@git-diff/bridge";
+import type {
+  AuthStateResponse,
+  AuthUser,
+  RunWorkflowRequest,
+  RuntimeSettings,
+  SettingsResponse,
+  WorkflowEvent,
+} from "@git-diff/contracts";
 import {
   app,
   BrowserWindow,

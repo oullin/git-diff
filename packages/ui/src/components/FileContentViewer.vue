@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { FileText, Loader2 } from "lucide-vue-next";
-import type { RepositoryFile } from "@api";
+import type { RepositoryFile } from "@git-diff/contracts";
 
 type Props = {
   file: RepositoryFile | null;

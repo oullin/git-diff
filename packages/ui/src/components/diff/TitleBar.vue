@@ -11,7 +11,7 @@ import {
 } from "@ui/dropdown-menu";
 import DiffLogo from "./DiffLogo.vue";
 import { Skeleton } from "@ui/skeleton";
-import type { Repository, RepositoryState, SystemStats } from "@api";
+import type { Repository, RepositoryState, SystemStats } from "@git-diff/contracts";
 
 const props = defineProps<{
   state: RepositoryState | null;

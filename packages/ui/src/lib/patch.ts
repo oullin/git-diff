@@ -1,5 +1,5 @@
 import { parsePatchFiles } from "@pierre/diffs";
-import type { DiffSection } from "@api";
+import type { DiffSection } from "@git-diff/contracts";
 
 export type PatchLineType = "context" | "add" | "del" | "meta";
 

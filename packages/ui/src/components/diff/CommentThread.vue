@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@ui/dropdown-menu";
-import type { ReviewComment } from "@api";
+import type { ReviewComment } from "@git-diff/contracts";
 
 defineProps<{
   comment: ReviewComment;

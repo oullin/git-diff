@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { GitPullRequest, Loader2 } from "lucide-vue-next";
 import { Popover, PopoverContent, PopoverTrigger } from "@ui/popover";
-import type { PullRequestSummary } from "@api";
+import type { PullRequestSummary } from "@git-diff/contracts";
 
 defineProps<{
   pullRequests: PullRequestSummary[];

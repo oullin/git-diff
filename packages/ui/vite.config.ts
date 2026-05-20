@@ -17,7 +17,6 @@ export default defineConfig({
       "@ui": resolve(__dirname, "./src/components/ui"),
       "@composables": resolve(__dirname, "./src/composables"),
       "@lib": resolve(__dirname, "./src/lib"),
-      "@api": resolve(__dirname, "./src/types/api.ts"),
     },
   },
   test: {

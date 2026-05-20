@@ -1,6 +1,6 @@
+import type { RuntimeSettings } from "@git-diff/contracts";
 import {
   createWorkflowBridgeClient,
-  type RuntimeSettings,
   unixTarget,
   waitForReady,
   type WorkflowBridgeClient,

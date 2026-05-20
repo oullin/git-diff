@@ -7,7 +7,7 @@ import { parsePatch, splitPatch, type PatchLine, type SplitRow } from "@lib/patc
 import { computeWordHi, type Range } from "@lib/wordHi";
 import CommentThread from "./CommentThread.vue";
 import SplitHandle from "./SplitHandle.vue";
-import type { ChangedFile, DiffHunkStyle, DiffSection, DiffViewMode, ReviewComment } from "@api";
+import type { ChangedFile, DiffHunkStyle, DiffSection, DiffViewMode, ReviewComment } from "@git-diff/contracts";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 
 const props = withDefaults(

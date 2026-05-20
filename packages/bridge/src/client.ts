@@ -1,39 +1,41 @@
-import { requestJson } from "#bridge/http.js";
-import { runWorkflowStream } from "#bridge/sse.js";
 import type {
   AuthLoginResponse,
   AuthStateResponse,
   AuthUser,
+  Branch,
+  CommitSummary,
+  FileSearchResult,
+  OpItem,
+  OpVault,
+  PendingComment,
+  PullRequestSummary,
+  Repository,
+  RepositoryCollaborator,
+  RepositoryFile,
+  RepositoryState,
+  ReviewComment,
+  ReviewDetail,
+  ReviewEvent,
+  ReviewSession,
   RunLog,
   RunSummary,
   RunWorkflowRequest,
   RuntimeSettings,
   SettingsResponse,
+  SystemStats,
   TemplateFileContent,
   TemplateFileSummary,
   UIPreferencesResponse,
-  UnixTarget,
+  WalkthroughRecord,
   Workflow,
+} from "@git-diff/contracts";
+import { requestJson } from "#bridge/http.js";
+import { runWorkflowStream } from "#bridge/sse.js";
+import type {
+  UnixTarget,
   WorkflowBridgeClient,
   WorkflowRunStream,
-  OpItem,
-  OpVault,
-  RepositoryFile,
-  RepositoryState,
-  Repository,
-  RepositoryCollaborator,
-  FileSearchResult,
-  Branch,
-  CommitSummary,
-  PendingComment,
-  PullRequestSummary,
-  SystemStats,
-  WalkthroughRecord,
-  ReviewComment,
-  ReviewDetail,
-  ReviewEvent,
-  ReviewSession,
-} from "#bridge/types.js";
+} from "#bridge/client-types.js";
 
 type ListRunsRequest = { limit?: number };
 

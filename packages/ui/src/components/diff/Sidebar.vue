@@ -6,7 +6,7 @@ import Kbd from "./Kbd.vue";
 import SegGroup from "./SegGroup.vue";
 import RepoFileTree from "@entry/components/RepoFileTree.vue";
 import { ScrollArea } from "@ui/scroll-area";
-import type { ChangedFile, ReviewComment } from "@api";
+import type { ChangedFile, ReviewComment } from "@git-diff/contracts";
 
 const props = defineProps<{
   files: ChangedFile[];

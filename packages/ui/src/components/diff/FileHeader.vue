@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { Check, ChevronDown, ChevronRight, Copy } from "lucide-vue-next";
 import StatusBadge from "./StatusBadge.vue";
-import type { ChangedFile, DiffSection } from "@api";
+import type { ChangedFile, DiffSection } from "@git-diff/contracts";
 
 const props = defineProps<{
   file: ChangedFile;

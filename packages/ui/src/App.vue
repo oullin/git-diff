@@ -35,8 +35,8 @@ import type {
   ReviewDetail,
   ReviewSession,
   WalkthroughRecord,
-} from "@api";
-import { PREF_KEYS, viewedPrefKey } from "@api";
+} from "@git-diff/contracts";
+import { PREF_KEYS, viewedPrefKey } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
 import { ACCENTS, applyAccent, diffBgs, resolveAccent } from "@lib/accent";
 import type { PatchLine } from "@lib/patch";
@@ -803,7 +803,7 @@ async function saveComment() {
   commentDialogOpen.value = false;
 }
 
-const pendingComments = ref<import("@api").PendingComment[]>([]);
+const pendingComments = ref<import("@git-diff/contracts").PendingComment[]>([]);
 
 async function loadPendingComments() {
   if (!state.value) return;

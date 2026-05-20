@@ -1,4 +1,4 @@
-import type { ReviewComment, ReviewDetail } from "@api";
+import type { ReviewComment, ReviewDetail } from "@git-diff/contracts";
 
 // Minimal HTML→Markdown converter scoped to the subset our rich text editor
 // emits. Adding turndown would also work, but the tag set is small and we'd

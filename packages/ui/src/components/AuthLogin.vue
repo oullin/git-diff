@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { ArrowRight, Eye, EyeOff, Lock, RotateCcw } from "lucide-vue-next";
-import type { AuthLoginResponse } from "@api";
+import type { AuthLoginResponse } from "@git-diff/contracts";
 import DiffLogo from "@components/diff/DiffLogo.vue";
 import { Input } from "@ui/input";
 import { Label } from "@ui/label";

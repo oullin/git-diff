@@ -5,7 +5,7 @@ import {
   type DiffHunkStyle,
   type DiffViewMode,
   type UIAccent,
-} from "@api";
+} from "@git-diff/contracts";
 import type { ThemeChoice } from "@composables/useTheme";
 
 export interface Tweaks {

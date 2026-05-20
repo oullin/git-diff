@@ -1,12 +1,8 @@
 import { EventEmitter } from "node:events";
 import { request as httpRequest } from "node:http";
+import type { RunWorkflowRequest, WorkflowEvent, WorkflowRunEndInfo } from "@git-diff/contracts";
 import { consumeBody } from "#bridge/http.js";
-import type {
-  RunWorkflowRequest,
-  WorkflowEvent,
-  WorkflowRunEndInfo,
-  WorkflowRunStream,
-} from "#bridge/types.js";
+import type { WorkflowRunStream } from "#bridge/client-types.js";
 
 interface ErrorFramePayload {
   message?: unknown;

@@ -3,15 +3,15 @@ import type {
   AuthLoginResponse,
   AuthStateResponse,
   AuthUser,
-  DiffAppApi,
   Repository,
   RepositoryState,
   ReviewComment,
   ReviewDetail,
   ReviewSession,
   UIPreferences,
-} from "@api";
-import { PREF_KEYS } from "@api";
+} from "@git-diff/contracts";
+import { PREF_KEYS } from "@git-diff/contracts";
+import type { DiffAppApi } from "@/types/diff-app";
 
 export function installBrowserFallback() {
   if (window.diffApp) {

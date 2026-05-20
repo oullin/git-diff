@@ -30,10 +30,20 @@ importers:
   packages/api: {}
 
   packages/bridge:
+    dependencies:
+      '@git-diff/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       '@types/node':
         specifier: ^25.6.2
         version: 25.6.2
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
+  packages/contracts:
+    devDependencies:
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -45,6 +55,9 @@ importers:
       '@git-diff/bridge':
         specifier: workspace:*
         version: link:../bridge
+      '@git-diff/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@lexical/code':
         specifier: 0.38.1
         version: 0.38.1

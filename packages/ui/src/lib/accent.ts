@@ -1,4 +1,4 @@
-import type { UIAccent } from "@api";
+import type { UIAccent } from "@git-diff/contracts";
 
 export interface Accent {
   key: UIAccent;

@@ -1,4 +1,4 @@
-import type { RuntimeSettings } from "@git-diff/bridge";
+import type { RuntimeSettings } from "@git-diff/contracts";
 import { app } from "electron";
 import {
   copyFileSync,

@@ -32,7 +32,7 @@ import DiffStat from "./DiffStat.vue";
 import Kbd from "./Kbd.vue";
 import TweaksPanel from "./TweaksPanel.vue";
 import type { Tweaks } from "@composables/useTweaks";
-import type { AuthUser, FileSearchResult, RepositoryState } from "@api";
+import type { AuthUser, FileSearchResult, RepositoryState } from "@git-diff/contracts";
 
 const props = defineProps<{
   state: RepositoryState | null;
