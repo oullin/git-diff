@@ -5,18 +5,23 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/gocanto/git-diff/internal/service"
 )
 
-func (s Server) lockBranch(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
+func (s Server) handleBranchError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrAuthenticationRequired):
+		writeError(w, http.StatusUnauthorized, err)
+	case errors.Is(err, service.ErrBranchNameRequired):
+		writeError(w, http.StatusBadRequest, err)
+	case errors.Is(err, service.ErrBranchAlreadyLocked):
+		writeError(w, http.StatusConflict, err)
+	default:
+		writeError(w, http.StatusBadRequest, err)
 	}
+}
 
+func (s Server) lockBranch(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Path string `json:"path"`
 		Name string `json:"name"`
@@ -32,34 +37,10 @@ func (s Server) lockBranch(w http.ResponseWriter, r *http.Request) {
 		body.Path = s.Repo
 	}
 
-	root, err := review.ResolveRoot(r.Context(), body.Path)
+	branches, err := s.BranchService.Lock(r.Context(), s.Auth.CurrentUserID(), body.Path, body.Name)
 
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-
-		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	if err := store.LockBranch(r.Context(), root, body.Name, userID); err != nil {
-		writeError(w, http.StatusBadRequest, err)
-
-		return
-	}
-
-	branches, err := store.ListBranches(r.Context(), root)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		s.handleBranchError(w, err)
 
 		return
 	}
@@ -68,14 +49,6 @@ func (s Server) lockBranch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) unlockBranch(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	var body struct {
 		Path string `json:"path"`
 		Name string `json:"name"`
@@ -91,34 +64,10 @@ func (s Server) unlockBranch(w http.ResponseWriter, r *http.Request) {
 		body.Path = s.Repo
 	}
 
-	root, err := review.ResolveRoot(r.Context(), body.Path)
+	branches, err := s.BranchService.Unlock(r.Context(), s.Auth.CurrentUserID(), body.Path, body.Name)
 
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
-
-		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	if err := store.UnlockBranch(r.Context(), root, body.Name); err != nil {
-		writeError(w, http.StatusBadRequest, err)
-
-		return
-	}
-
-	branches, err := store.ListBranches(r.Context(), root)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		s.handleBranchError(w, err)
 
 		return
 	}
@@ -127,66 +76,24 @@ func (s Server) unlockBranch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deleteBranch(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	path := r.URL.Query().Get("path")
-	name := r.URL.Query().Get("name")
-
-	if name == "" {
-		writeError(w, http.StatusBadRequest, errors.New("name query parameter is required"))
-
-		return
-	}
 
 	if path == "" {
 		path = s.Repo
 	}
 
-	root, err := review.ResolveRoot(r.Context(), path)
+	err := s.BranchService.Delete(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		path,
+		r.URL.Query().Get("name"),
+	)
 
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err)
+		s.handleBranchError(w, err)
 
 		return
 	}
-
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	defer closeStore()
-
-	locked, err := store.IsBranchLocked(r.Context(), root, name)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	if locked {
-		writeError(w, http.StatusConflict, errors.New("branch is locked"))
-
-		return
-	}
-
-	if err := review.DeleteBranch(r.Context(), path, name); err != nil {
-		writeError(w, http.StatusBadRequest, err)
-
-		return
-	}
-
-	_ = store.DeleteBranchRow(r.Context(), root, name)
 
 	w.WriteHeader(http.StatusNoContent)
 }
