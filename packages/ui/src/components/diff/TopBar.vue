@@ -32,6 +32,7 @@ import DiffStat from "./DiffStat.vue";
 import Kbd from "./Kbd.vue";
 import TweaksPanel from "./TweaksPanel.vue";
 import type { Tweaks } from "@composables/useTweaks";
+import { useFileSearch } from "@composables/useFileSearch";
 import type { AuthUser, FileSearchResult, RepositoryState } from "@git-diff/contracts";
 
 const props = defineProps<{
@@ -60,14 +61,15 @@ const createOpen = ref(false);
 const createName = ref("");
 const createInputRef = ref<HTMLInputElement | null>(null);
 
-const searchQuery = ref("");
-const searchResults = ref<FileSearchResult[]>([]);
-const searchLoading = ref(false);
-const searchError = ref("");
-const searchOpen = computed(() => searchQuery.value.trim().length > 0);
-
-let searchDebounce: ReturnType<typeof setTimeout> | null = null;
-let searchToken = 0;
+const {
+  query: searchQuery,
+  results: searchResults,
+  loading: searchLoading,
+  error: searchError,
+  open: searchOpen,
+  onInput: onSearchInput,
+  reset: resetSearch,
+} = useFileSearch();
 
 function basename(path: string): string {
   const slash = path.lastIndexOf("/");
@@ -79,71 +81,13 @@ function dirname(path: string): string {
   return slash >= 0 ? path.slice(0, slash) : "";
 }
 
-async function runSearch(query: string) {
-  const trimmed = query.trim();
-
-  if (!trimmed) {
-    searchResults.value = [];
-    searchLoading.value = false;
-    searchError.value = "";
-    return;
-  }
-
-  const token = ++searchToken;
-  searchLoading.value = true;
-  searchError.value = "";
-
-  try {
-    const results = await window.diffApp.searchRepositoryFiles(trimmed, 50);
-    if (token !== searchToken) {
-      return;
-    }
-    searchResults.value = results;
-  } catch (cause) {
-    if (token !== searchToken) {
-      return;
-    }
-    searchError.value = cause instanceof Error ? cause.message : String(cause);
-    searchResults.value = [];
-  } finally {
-    if (token === searchToken) {
-      searchLoading.value = false;
-    }
-  }
-}
-
-function onSearchInput(value: string) {
-  searchQuery.value = value;
-
-  if (searchDebounce) {
-    clearTimeout(searchDebounce);
-  }
-
-  if (!value.trim()) {
-    searchToken++;
-    searchResults.value = [];
-    searchLoading.value = false;
-    searchError.value = "";
-    return;
-  }
-
-  searchDebounce = setTimeout(() => {
-    void runSearch(value);
-  }, 150);
-}
-
 function onSelectResult(result: FileSearchResult) {
   emit("select-result", result);
-  searchQuery.value = "";
-  searchResults.value = [];
-  searchError.value = "";
-  searchToken++;
+  resetSearch();
 }
 
 onBeforeUnmount(() => {
-  if (searchDebounce) {
-    clearTimeout(searchDebounce);
-  }
+  resetSearch();
 });
 
 async function onBranchMenuOpen(open: boolean) {
