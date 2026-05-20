@@ -15,7 +15,7 @@ func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 		path = s.Repo
 	}
 
-	names, err := review.ListBranches(r.Context(), path)
+	result, err := s.BranchService.List(r.Context(), path)
 
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)
@@ -23,32 +23,13 @@ func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, storeErr := s.Store(r.Context())
+	payload := map[string]any{"branches": result.Names}
 
-	if storeErr != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"branches": names})
-
-		return
+	if result.Records != nil {
+		payload["records"] = result.Records
 	}
 
-	defer closeStore()
-
-	root, rootErr := review.ResolveRoot(r.Context(), path)
-
-	if rootErr == nil {
-		_ = store.SyncBranches(r.Context(), root, names)
-
-		if records, listErr := store.ListBranches(r.Context(), root); listErr == nil {
-			writeJSON(w, http.StatusOK, map[string]any{
-				"branches": names,
-				"records":  records,
-			})
-
-			return
-		}
-	}
-
-	writeJSON(w, http.StatusOK, map[string]any{"branches": names})
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func (s Server) repositoryCheckout(w http.ResponseWriter, r *http.Request) {
