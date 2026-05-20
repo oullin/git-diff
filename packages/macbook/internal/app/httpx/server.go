@@ -12,34 +12,24 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/app/service"
 	"github.com/gocanto/git-diff/internal/app/setting"
-	"github.com/gocanto/git-diff/internal/domain"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
-type WorkflowStore func(context.Context) (*storage.Store, func(), error)
-
-type ServiceFactory func(setting.RuntimeSettings) service.Service
-
-type WorkflowFactory func(setting.RuntimeSettings) []domain.Workflow
+type StoreFactory func(context.Context) (*storage.Store, func(), error)
 
 type ServeConfig struct {
-	Home      string
-	Repo      string
-	Stderr    io.Writer
-	Service   ServiceFactory
-	Workflows WorkflowFactory
+	Home   string
+	Repo   string
+	Stderr io.Writer
 }
 
 type Server struct {
-	Service       service.Service
-	Home          string
-	Repo          string
-	Settings      setting.RuntimeSettings
-	Workflows     func() []domain.Workflow
-	WorkflowStore WorkflowStore
-	Auth          *AuthState
+	Home     string
+	Repo     string
+	Settings setting.RuntimeSettings
+	Store    StoreFactory
+	Auth     *AuthState
 }
 
 func Serve(args []string, cfg ServeConfig) int {
@@ -48,13 +38,7 @@ func Serve(args []string, cfg ServeConfig) int {
 
 	socketPath := fs.String("socket", "", "Unix socket path")
 	repoRoot := fs.String("repo-root", "", "Repository root")
-	appsConfigPath := fs.String("apps-config", "", "Apps manifest path")
-	secretsConfigPath := fs.String("secrets-config", "", "Secrets manifest path")
-	generatedAppsPath := fs.String("generated-apps", "", "Generated apps output path")
-	archiveRoot := fs.String("archive-root", "", "Archive root")
-	workflowDBPath := fs.String("workflow-db", "", "Workflow SQLite database path")
-	opVault := fs.String("op-vault", "", "1Password vault")
-	opItem := fs.String("op-item", "", "1Password item")
+	dbPath := fs.String("db", "", "Review SQLite database path")
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -67,14 +51,8 @@ func Serve(args []string, cfg ServeConfig) int {
 	}
 
 	settings := setting.RuntimeSettings{
-		RepoRoot:          *repoRoot,
-		AppsConfigPath:    *appsConfigPath,
-		SecretsConfigPath: *secretsConfigPath,
-		GeneratedAppsPath: *generatedAppsPath,
-		ArchiveRoot:       *archiveRoot,
-		WorkflowDBPath:    *workflowDBPath,
-		OPVault:           *opVault,
-		OPItem:            *opItem,
+		RepoRoot:     *repoRoot,
+		DatabasePath: *dbPath,
 	}
 	validation := setting.ValidateRuntimeSettings(cfg.Home, cfg.Repo, settings)
 
@@ -91,17 +69,17 @@ func Serve(args []string, cfg ServeConfig) int {
 	settings = validation.Settings
 	repo := settings.RepoRoot
 
-	store, err := storage.Open(context.Background(), settings.WorkflowDBPath)
+	store, err := storage.Open(context.Background(), settings.DatabasePath)
 
 	if err != nil {
-		fmt.Fprintf(cfg.Stderr, "open workflow log database: %v\n", err)
+		fmt.Fprintf(cfg.Stderr, "open review database: %v\n", err)
 
 		return 1
 	}
 
 	defer func() {
 		if err := store.Close(); err != nil {
-			fmt.Fprintf(cfg.Stderr, "close workflow log database: %v\n", err)
+			fmt.Fprintf(cfg.Stderr, "close review database: %v\n", err)
 		}
 	}()
 
@@ -140,12 +118,10 @@ func Serve(args []string, cfg ServeConfig) int {
 	authState := NewAuthState(osUsername)
 
 	appServer := Server{
-		Service:   cfg.Service(settings),
-		Home:      cfg.Home,
-		Repo:      repo,
-		Settings:  settings,
-		Workflows: func() []domain.Workflow { return cfg.Workflows(settings) },
-		WorkflowStore: func(context.Context) (*storage.Store, func(), error) {
+		Home:     cfg.Home,
+		Repo:     repo,
+		Settings: settings,
+		Store: func(context.Context) (*storage.Store, func(), error) {
 			return store, func() {}, nil
 		},
 		Auth: authState,
@@ -192,13 +168,6 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("POST /v1/reviews/{id}/comments", s.createReviewComment)
 	mux.HandleFunc("PATCH /v1/reviews/{id}/comments/{commentId}", s.updateReviewComment)
 	mux.HandleFunc("DELETE /v1/reviews/{id}/comments/{commentId}", s.deleteReviewComment)
-	mux.HandleFunc("GET /v1/workflows", s.listWorkflows)
-	mux.HandleFunc("POST /v1/workflows/run", s.runWorkflow)
-	mux.HandleFunc("GET /v1/template-files", s.listTemplateFiles)
-	mux.HandleFunc("GET /v1/template-files/content", s.readTemplateFile)
-	mux.HandleFunc("PUT /v1/template-files/content", s.saveTemplateFile)
-	mux.HandleFunc("GET /v1/runs", s.listRuns)
-	mux.HandleFunc("GET /v1/runs/{id}/log", s.runLog)
 	mux.HandleFunc("GET /v1/settings", s.getSettings)
 	mux.HandleFunc("POST /v1/settings/validate", s.validateSettings)
 	mux.HandleFunc("GET /v1/preferences", s.getPreferences)
@@ -209,8 +178,6 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("POST /v1/auth/resume", s.authResume)
 	mux.HandleFunc("POST /v1/auth/logout", s.authLogout)
 	mux.HandleFunc("POST /v1/auth/wipe", s.authWipe)
-	mux.HandleFunc("GET /v1/onepassword/vaults", s.listOpVaults)
-	mux.HandleFunc("GET /v1/onepassword/items", s.listOpItems)
 
 	return mux
 }

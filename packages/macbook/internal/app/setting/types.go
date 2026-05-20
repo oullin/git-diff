@@ -1,14 +1,8 @@
 package setting
 
 type RuntimeSettings struct {
-	RepoRoot          string `json:"repoRoot"`
-	AppsConfigPath    string `json:"appsConfigPath"`
-	SecretsConfigPath string `json:"secretsConfigPath"`
-	GeneratedAppsPath string `json:"generatedAppsPath"`
-	ArchiveRoot       string `json:"archiveRoot"`
-	WorkflowDBPath    string `json:"workflowDbPath"`
-	OPVault           string `json:"opVault"`
-	OPItem            string `json:"opItem"`
+	RepoRoot     string `json:"repoRoot"`
+	DatabasePath string `json:"databasePath"`
 }
 
 type Check struct {

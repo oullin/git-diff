@@ -17,7 +17,7 @@ func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -58,7 +58,7 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -96,7 +96,7 @@ func (s Server) removeRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

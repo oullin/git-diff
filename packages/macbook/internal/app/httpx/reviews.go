@@ -53,7 +53,7 @@ func (s Server) repositoryOpen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err == nil {
 		defer closeStore()
@@ -89,7 +89,7 @@ func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, storeErr := s.WorkflowStore(r.Context())
+	store, closeStore, storeErr := s.Store(r.Context())
 
 	if storeErr != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"branches": names})
@@ -235,7 +235,7 @@ func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
 		input.ID = randomID("review")
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -279,7 +279,7 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -301,7 +301,7 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) reviewDetail(w http.ResponseWriter, r *http.Request) {
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -331,7 +331,7 @@ func (s Server) addReviewEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -361,7 +361,7 @@ func (s Server) createReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -393,7 +393,7 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -415,7 +415,7 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deleteReviewComment(w http.ResponseWriter, r *http.Request) {
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

@@ -113,7 +113,7 @@ func (s Server) authState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
@@ -159,7 +159,7 @@ func (s Server) authSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
@@ -233,7 +233,7 @@ func (s Server) authLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
@@ -306,7 +306,7 @@ func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
@@ -350,7 +350,7 @@ func (s Server) authLogout(w http.ResponseWriter, r *http.Request) {
 	token := s.Auth.CurrentToken()
 
 	if token != "" {
-		store, closeStore, err := s.WorkflowStore(r.Context())
+		store, closeStore, err := s.Store(r.Context())
 
 		if err == nil {
 			defer closeStore()
@@ -391,7 +391,7 @@ func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))

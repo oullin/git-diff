@@ -7,10 +7,8 @@ import (
 	"runtime"
 
 	apphttpx "github.com/gocanto/git-diff/internal/app/httpx"
-	"github.com/gocanto/git-diff/internal/app/service"
 	"github.com/gocanto/git-diff/internal/app/setting"
 	"github.com/gocanto/git-diff/internal/command"
-	"github.com/gocanto/git-diff/internal/domain"
 )
 
 type app struct {
@@ -24,8 +22,6 @@ type app struct {
 	stdin    io.Reader
 	runner   command.Runner
 }
-
-type options = service.Options
 
 func Run(args []string) int {
 	home, err := os.UserHomeDir()
@@ -65,20 +61,6 @@ func newApp(home, repo string, stdin io.Reader, stdout, stderr io.Writer, runner
 	}
 }
 
-func (a app) service() service.Service {
-	return service.Service{
-		Home:     a.home,
-		Repo:     a.repo,
-		GOOS:     a.goos,
-		GOARCH:   a.goarch,
-		Stdin:    a.stdin,
-		Stdout:   a.stdout,
-		Stderr:   a.stderr,
-		Runner:   a.runner,
-		Settings: a.settings,
-	}
-}
-
 func (a app) run(args []string) int {
 	if len(args) == 0 {
 		a.usage()
@@ -93,34 +75,14 @@ func (a app) run(args []string) int {
 		return 0
 	case "serve-http":
 		return apphttpx.Serve(args[1:], apphttpx.ServeConfig{
-			Home:      a.home,
-			Repo:      a.repo,
-			Stderr:    a.stderr,
-			Service:   a.httpService,
-			Workflows: a.httpWorkflows,
+			Home:   a.home,
+			Repo:   a.repo,
+			Stderr: a.stderr,
 		})
-	case "list-workflows":
-		return a.listWorkflows()
-	case "run-workflow":
-		return a.runWorkflowCLI(args[1:])
 	default:
 		fmt.Fprintf(a.stderr, "unknown command %q\n\n", args[0])
 		a.usage()
 
 		return 2
 	}
-}
-
-func (a app) httpService(settings setting.RuntimeSettings) service.Service {
-	a.settings = settings
-	a.repo = settings.RepoRoot
-
-	return a.service()
-}
-
-func (a app) httpWorkflows(settings setting.RuntimeSettings) []domain.Workflow {
-	a.settings = settings
-	a.repo = settings.RepoRoot
-
-	return a.workflows()
 }

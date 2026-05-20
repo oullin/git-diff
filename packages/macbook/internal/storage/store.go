@@ -13,10 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/domain"
 	"github.com/gocanto/git-diff/internal/storage/db"
 	_ "modernc.org/sqlite"
 )
@@ -43,46 +41,6 @@ type Store struct {
 	db      *sql.DB
 	queries *db.Queries
 	now     func() time.Time
-}
-
-type RunStart struct {
-	ID                      string
-	WorkflowID              string
-	WorkflowName            string
-	ConfirmationOptionID    string
-	ConfirmationOptionLabel string
-	Mode                    domain.RunMode
-	Status                  domain.RunStatus
-}
-
-type RunSummary struct {
-	ID                      string `json:"id"`
-	WorkflowID              string `json:"workflowId"`
-	WorkflowName            string `json:"workflowName"`
-	ConfirmationOptionID    string `json:"confirmationOptionId"`
-	ConfirmationOptionLabel string `json:"confirmationOptionLabel"`
-	Mode                    string `json:"mode"`
-	Status                  string `json:"status"`
-	StartedAt               string `json:"startedAt"`
-	CompletedAt             string `json:"completedAt,omitempty"`
-	ErrorMessage            string `json:"errorMessage,omitempty"`
-}
-
-type EventRecord struct {
-	ID        int64  `json:"id"`
-	RunID     string `json:"runId"`
-	Seq       int64  `json:"seq"`
-	Type      string `json:"type"`
-	PhaseID   string `json:"phaseId,omitempty"`
-	PhaseName string `json:"phaseName,omitempty"`
-	Status    string `json:"status,omitempty"`
-	Message   string `json:"message,omitempty"`
-	CreatedAt string `json:"createdAt"`
-}
-
-type RunLog struct {
-	Run    RunSummary    `json:"run"`
-	Events []EventRecord `json:"events"`
 }
 
 type UIPreferences struct {
@@ -207,14 +165,6 @@ type Branch struct {
 	LastSeenAt string `json:"lastSeenAt"`
 }
 
-type Recorder struct {
-	store *Store
-	runID string
-	mu    sync.Mutex
-	seq   int64
-	also  func(domain.Event) error
-}
-
 type scanner interface {
 	Scan(dest ...any) error
 }
@@ -227,7 +177,7 @@ const (
 
 var ErrBranchLocked = errors.New("branch is locked")
 
-const envDBPath = "GIT_DIFF_WORKFLOW_DB_PATH"
+const envDBPath = "GIT_DIFF_DB_PATH"
 
 func Open(ctx context.Context, path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -276,6 +226,10 @@ func (s *Store) Init(ctx context.Context) error {
 		return fmt.Errorf("read embedded sqlite schema: %w", err)
 	}
 
+	if err := s.dropLegacyProvisioningTables(ctx); err != nil {
+		return fmt.Errorf("drop legacy provisioning tables: %w", err)
+	}
+
 	if _, err := s.db.ExecContext(ctx, string(schema)); err == nil {
 		return nil
 	}
@@ -286,6 +240,19 @@ func (s *Store) Init(ctx context.Context) error {
 
 	if _, err := s.db.ExecContext(ctx, string(schema)); err != nil {
 		return fmt.Errorf("initialize sqlite schema after reset: %w", err)
+	}
+
+	return nil
+}
+
+// dropLegacyProvisioningTables removes tables that used to back the macOS
+// provisioning engine. They are no longer part of the schema; this lets
+// existing user databases shed them on first launch after the upgrade.
+func (s *Store) dropLegacyProvisioningTables(ctx context.Context) error {
+	for _, table := range []string{"workflow_events", "workflow_runs"} {
+		if _, err := s.db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table); err != nil {
+			return fmt.Errorf("drop %s: %w", table, err)
+		}
 	}
 
 	return nil
@@ -348,83 +315,6 @@ func currentOSUsername() string {
 	}
 
 	return "user"
-}
-
-func (s *Store) CreateRun(ctx context.Context, run RunStart) error {
-	return s.queries.CreateRun(ctx, db.CreateRunParams{
-		ID:                      run.ID,
-		WorkflowID:              run.WorkflowID,
-		WorkflowName:            run.WorkflowName,
-		ConfirmationOptionID:    run.ConfirmationOptionID,
-		ConfirmationOptionLabel: run.ConfirmationOptionLabel,
-		Mode:                    string(run.Mode),
-		Status:                  string(run.Status),
-		StartedAt:               s.now().UTC().Format(time.RFC3339Nano),
-	})
-}
-
-func (s *Store) CompleteRun(ctx context.Context, id string, status domain.RunStatus, message string) error {
-	return s.queries.CompleteRun(ctx, db.CompleteRunParams{
-		ID:           id,
-		Status:       string(status),
-		CompletedAt:  nullString(s.now().UTC().Format(time.RFC3339Nano)),
-		ErrorMessage: nullString(message),
-	})
-}
-
-func (s *Store) InsertEvent(ctx context.Context, event domain.Event) error {
-	return s.queries.InsertEvent(ctx, db.InsertEventParams{
-		RunID:     event.RunID,
-		Seq:       event.Seq,
-		EventType: event.Type,
-		PhaseID:   nullString(event.PhaseID),
-		PhaseName: nullString(event.PhaseName),
-		Status:    nullString(event.Status),
-		Message:   nullString(event.Message),
-		CreatedAt: s.now().UTC().Format(time.RFC3339Nano),
-	})
-}
-
-func (s *Store) ListRuns(ctx context.Context, limit int64) ([]RunSummary, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-
-	rows, err := s.queries.ListRuns(ctx, limit)
-
-	if err != nil {
-		return nil, err
-	}
-
-	runs := make([]RunSummary, 0, len(rows))
-
-	for _, row := range rows {
-		runs = append(runs, runSummary(row))
-	}
-
-	return runs, nil
-}
-
-func (s *Store) RunLog(ctx context.Context, runID string) (RunLog, error) {
-	run, err := s.queries.GetRun(ctx, runID)
-
-	if err != nil {
-		return RunLog{}, err
-	}
-
-	rows, err := s.queries.ListRunEvents(ctx, runID)
-
-	if err != nil {
-		return RunLog{}, err
-	}
-
-	events := make([]EventRecord, 0, len(rows))
-
-	for _, row := range rows {
-		events = append(events, eventRecord(row))
-	}
-
-	return RunLog{Run: runSummary(run), Events: events}, nil
 }
 
 func (s *Store) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
@@ -1104,59 +994,6 @@ func (s *Store) RemoveRepository(ctx context.Context, userID int64, path string)
 }
 
 var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
-
-func NewRecorder(store *Store, runID string, also func(domain.Event) error) *Recorder {
-	return &Recorder{store: store, runID: runID, also: also}
-}
-
-func (r *Recorder) Emit(ctx context.Context, event domain.Event) error {
-	r.mu.Lock()
-
-	defer r.mu.Unlock()
-
-	r.seq++
-	event.RunID = r.runID
-	event.Seq = r.seq
-
-	if err := r.store.InsertEvent(ctx, event); err != nil {
-		return err
-	}
-
-	if r.also != nil {
-		return r.also(event)
-	}
-
-	return nil
-}
-
-func runSummary(row db.WorkflowRun) RunSummary {
-	return RunSummary{
-		ID:                      row.ID,
-		WorkflowID:              row.WorkflowID,
-		WorkflowName:            row.WorkflowName,
-		ConfirmationOptionID:    row.ConfirmationOptionID,
-		ConfirmationOptionLabel: row.ConfirmationOptionLabel,
-		Mode:                    row.Mode,
-		Status:                  row.Status,
-		StartedAt:               row.StartedAt,
-		CompletedAt:             fromNull(row.CompletedAt),
-		ErrorMessage:            fromNull(row.ErrorMessage),
-	}
-}
-
-func eventRecord(row db.WorkflowEvent) EventRecord {
-	return EventRecord{
-		ID:        row.ID,
-		RunID:     row.RunID,
-		Seq:       row.Seq,
-		Type:      row.EventType,
-		PhaseID:   fromNull(row.PhaseID),
-		PhaseName: fromNull(row.PhaseName),
-		Status:    fromNull(row.Status),
-		Message:   fromNull(row.Message),
-		CreatedAt: row.CreatedAt,
-	}
-}
 
 func scanReview(row scanner) (ReviewSession, error) {
 	var review ReviewSession

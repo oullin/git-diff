@@ -3,13 +3,10 @@ package app
 import "fmt"
 
 func (a app) usage() {
-	fmt.Fprintln(a.stdout, `api manages this machine's dotfiles, developer tools, and macOS settings.
+	fmt.Fprintln(a.stdout, `api serves the git-diff review backend over a Unix HTTP socket.
 
 Usage:
-  api serve-http --socket <path> [settings flags]
-  api list-workflows
-  api run-workflow <id> [--preview]
+  api serve-http --socket <path> [--repo-root <path>] [--db <path>]
 
-The Electron app starts the HTTP backend to display workflows, execute runs, and read persisted logs.
-The CLI run-workflow subcommand executes the same phases in a terminal so failures are visible directly.`)
+The Electron app spawns this binary to read repository diffs, manage review sessions, and persist comments.`)
 }

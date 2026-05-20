@@ -37,27 +37,15 @@ func TestValidateRuntimeSettingsResolvesPathsAndRejectsDirectoryDB(t *testing.T)
 	}
 
 	validation := ValidateRuntimeSettings(home, repo, RuntimeSettings{
-		RepoRoot:          repo,
-		AppsConfigPath:    "apps.yaml",
-		SecretsConfigPath: "~/secrets.yaml",
-		GeneratedAppsPath: "generated/apps.yaml",
-		ArchiveRoot:       "~/archives",
-		WorkflowDBPath:    dbDir,
+		RepoRoot:     repo,
+		DatabasePath: dbDir,
 	})
 
 	if validation.Valid {
 		t.Fatalf("expected invalid settings, got %#v", validation)
 	}
 
-	if validation.Settings.AppsConfigPath != filepath.Join(repo, "apps.yaml") {
-		t.Fatalf("apps path = %q", validation.Settings.AppsConfigPath)
-	}
-
-	if validation.Settings.SecretsConfigPath != filepath.Join(home, "secrets.yaml") {
-		t.Fatalf("secrets path = %q", validation.Settings.SecretsConfigPath)
-	}
-
-	if !hasSettingsCheck(validation.Checks, "workflow_db_path", CheckError) {
+	if !hasSettingsCheck(validation.Checks, "database_path", CheckError) {
 		t.Fatalf("checks = %#v", validation.Checks)
 	}
 }
@@ -71,8 +59,8 @@ func TestValidateRuntimeSettingsAcceptsValidDefaults(t *testing.T) {
 		t.Fatalf("settings should be valid: %#v", validation.Checks)
 	}
 
-	if validation.Settings.WorkflowDBPath == "" {
-		t.Fatal("expected default workflow db path")
+	if validation.Settings.DatabasePath == "" {
+		t.Fatal("expected default database path")
 	}
 }
 
@@ -81,36 +69,7 @@ func writeSettingsRepo(t *testing.T) string {
 
 	repo := t.TempDir()
 
-	for _, dir := range []string{
-		filepath.Join(repo, "stow"),
-		filepath.Join(repo, "stow", "git", ".config", "git"),
-	} {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module test\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := os.WriteFile(filepath.Join(repo, "apps.yaml"), []byte(`
-apps:
-  - name: Ghostty
-    install_method: brew
-    package: ghostty
-    config_mode: manual
-`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := os.WriteFile(filepath.Join(repo, "secrets.yaml"), []byte(`
-secrets:
-  - name: gitconfig
-    op_field: gitconfig_plaintext
-    plaintext_path: stow/git/.config/git/private.gitconfig
-    mode: plaintext
-`), 0o600); err != nil {
+	if err := os.MkdirAll(filepath.Join(repo, ".git"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 

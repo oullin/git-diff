@@ -26,7 +26,7 @@ func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -68,7 +68,7 @@ func (s Server) addCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -115,7 +115,7 @@ func (s Server) removeCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

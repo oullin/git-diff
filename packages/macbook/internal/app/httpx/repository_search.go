@@ -59,7 +59,7 @@ func (s Server) searchRepositoryFiles(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

@@ -40,7 +40,7 @@ func (s Server) lockBranch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -99,7 +99,7 @@ func (s Server) unlockBranch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -156,7 +156,7 @@ func (s Server) deleteBranch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.WorkflowStore(r.Context())
+	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

@@ -31,7 +31,7 @@ func ValidateRuntimeSettings(home, fallbackRepo string, candidate RuntimeSetting
 	}
 
 	addCheck("repo_root", "Repository root", resolved.RepoRoot, err)
-	addCheck("workflow_db_path", "Review SQLite database", resolved.WorkflowDBPath, sqlitePathValid(resolved.WorkflowDBPath))
+	addCheck("database_path", "Review SQLite database", resolved.DatabasePath, sqlitePathValid(resolved.DatabasePath))
 
 	valid := true
 
@@ -60,23 +60,15 @@ func ValidateRepoRoot(root string) (string, error) {
 	}
 
 	if !HasRepoMarkers(abs) {
-		return abs, fmt.Errorf("missing repository marker: expected %s or %s", filepath.Join(abs, ".git"), filepath.Join(abs, "go.mod"))
+		return abs, fmt.Errorf("missing repository marker: expected %s", filepath.Join(abs, ".git"))
 	}
 
 	return abs, nil
 }
 
 func HasRepoMarkers(dir string) bool {
-	info, err := os.Stat(filepath.Join(dir, ".git"))
-
-	if err == nil && (info.IsDir() || !info.IsDir()) {
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
 		return true
-	}
-
-	if info, err := os.Stat(filepath.Join(dir, "stow")); err == nil && info.IsDir() {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return true
-		}
 	}
 
 	return false

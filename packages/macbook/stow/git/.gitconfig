@@ -1,8 +1,0 @@
-[commit]
-	gpgsign = true
-[gpg "ssh"]
-	allowedSignersFile = ~/.ssh/allowed_signers
-[include]
-	path = ~/.config/git/private.gitconfig
-[coderabbit]
-# redacted machine-specific or secret-like setting
