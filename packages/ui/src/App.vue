@@ -23,7 +23,6 @@ import type {
   AuthLoginResponse,
   AuthUser,
   ChangedFile,
-  CommitSummary,
   DiffSection,
   DiffViewMode,
   FileSearchResult,
@@ -48,6 +47,7 @@ import {
   useKeyboardShortcuts,
 } from "@composables/useDiffNavigation";
 import { useWalkthrough } from "@composables/useWalkthrough";
+import { useCommits } from "@composables/useCommits";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -101,8 +101,7 @@ const selectedRepoFile = ref<RepositoryFile | null>(null);
 const selectedFileLoading = ref(false);
 const selectedFileError = ref("");
 const repoScope = ref<"changed" | "all">("changed");
-const commits = ref<CommitSummary[]>([]);
-const commitsLoading = ref(false);
+const { items: commits, loading: commitsLoading, load: loadCommits } = useCommits(state);
 const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "working");
 const searchOpen = ref(false);
 
@@ -360,19 +359,6 @@ async function refresh() {
     error.value = cause instanceof Error ? cause.message : String(cause);
   } finally {
     loading.value = false;
-  }
-}
-
-async function loadCommits(limit = 100) {
-  if (!state.value) return;
-  commitsLoading.value = true;
-  try {
-    const response = await window.diffApp.listCommits(state.value.root, limit);
-    commits.value = response.commits;
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  } finally {
-    commitsLoading.value = false;
   }
 }
 
