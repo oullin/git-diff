@@ -107,7 +107,19 @@ func (s Server) repositoryLog(w http.ResponseWriter, r *http.Request) {
 		path = s.Repo
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	var limit int
+
+	if limitParam := r.URL.Query().Get("limit"); limitParam != "" {
+		parsed, err := strconv.Atoi(limitParam)
+
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid 'limit' parameter: %w", err))
+
+			return
+		}
+
+		limit = parsed
+	}
 
 	commits, err := review.ListCommitLog(r.Context(), path, limit)
 
@@ -127,7 +139,19 @@ func (s Server) repositoryPullRequests(w http.ResponseWriter, r *http.Request) {
 		path = s.Repo
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	var limit int
+
+	if limitParam := r.URL.Query().Get("limit"); limitParam != "" {
+		parsed, err := strconv.Atoi(limitParam)
+
+		if err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Errorf("invalid 'limit' parameter: %w", err))
+
+			return
+		}
+
+		limit = parsed
+	}
 
 	prs, err := review.ListPullRequests(r.Context(), path, limit)
 

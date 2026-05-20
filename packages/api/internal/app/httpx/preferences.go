@@ -21,7 +21,7 @@ func (s Server) getPreferences(w http.ResponseWriter, r *http.Request) {
 	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
 
 		return
 	}
@@ -57,7 +57,7 @@ func (s Server) savePreferences(w http.ResponseWriter, r *http.Request) {
 	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
 
 		return
 	}

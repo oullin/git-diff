@@ -116,7 +116,7 @@ func (s Server) authState(w http.ResponseWriter, r *http.Request) {
 	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
 
 		return
 	}
@@ -162,7 +162,7 @@ func (s Server) authSetup(w http.ResponseWriter, r *http.Request) {
 	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
 
 		return
 	}
@@ -236,7 +236,7 @@ func (s Server) authLogin(w http.ResponseWriter, r *http.Request) {
 	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
 
 		return
 	}
@@ -309,7 +309,7 @@ func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
 	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
 
 		return
 	}
@@ -394,7 +394,7 @@ func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
 	store, closeStore, err := s.Store(r.Context())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open workflow log database: %w", err))
+		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
 
 		return
 	}
