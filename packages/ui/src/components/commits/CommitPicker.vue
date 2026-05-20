@@ -55,10 +55,15 @@ function formatDate(iso: string): string {
         </button>
       </PopoverTrigger>
       <PopoverContent class="w-[28rem] p-0" align="start">
-        <header class="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground">
+        <header
+          class="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground"
+        >
           Recent commits
         </header>
-        <div v-if="loading" class="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+        <div
+          v-if="loading"
+          class="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground"
+        >
           <Loader2 class="h-3.5 w-3.5 animate-spin" />
           <span>Loading…</span>
         </div>

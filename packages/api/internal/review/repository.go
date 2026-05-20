@@ -55,10 +55,6 @@ type RepositoryState struct {
 
 // RepositoryMode values describe which slice of repository history a
 // RepositoryState was built from.
-const (
-	RepositoryModeWorking = "working"
-	RepositoryModeCommit  = "commit"
-)
 
 type CommitSummary struct {
 	SHA      string `json:"sha"`
@@ -84,6 +80,22 @@ type statusEntry struct {
 	old    string
 	rename bool
 }
+
+// ReadCommitState returns a RepositoryState for a single commit. The diff is
+// computed against the commit's first parent (or against the empty tree for
+// the root commit). The shape mirrors ReadRepositoryState so the UI can render
+// either mode through the same DiffBody pipeline.
+
+type commitDiffEntry struct {
+	status GitFileStatus
+	path   string
+	old    string
+}
+
+const (
+	RepositoryModeWorking = "working"
+	RepositoryModeCommit  = "commit"
+)
 
 const maxFileReadBytes = 2 * 1024 * 1024
 
@@ -178,10 +190,6 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 	return state, nil
 }
 
-// ReadCommitState returns a RepositoryState for a single commit. The diff is
-// computed against the commit's first parent (or against the empty tree for
-// the root commit). The shape mirrors ReadRepositoryState so the UI can render
-// either mode through the same DiffBody pipeline.
 func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositoryState, error) {
 	if strings.TrimSpace(sha) == "" {
 		return RepositoryState{}, errors.New("commit sha is required")
@@ -259,12 +267,6 @@ func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositorySta
 	}
 
 	return state, nil
-}
-
-type commitDiffEntry struct {
-	status GitFileStatus
-	path   string
-	old    string
 }
 
 // parseDiffTreeNameStatus decodes the output of

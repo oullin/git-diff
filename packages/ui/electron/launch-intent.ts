@@ -42,11 +42,7 @@ Usage:
  *                  one extra entry in dev (the app path passed to `electron .`).
  * @param cwd       The working directory to resolve relative paths against.
  */
-export function parseLaunchArgs(
-  argv: string[],
-  isPackaged: boolean,
-  cwd: string,
-): LaunchIntent {
+export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string): LaunchIntent {
   const userArgs = argv.slice(isPackaged ? 1 : 2).filter((arg) => !isElectronInternal(arg));
 
   let walkthrough = false;
@@ -64,7 +60,11 @@ export function parseLaunchArgs(
 
     if (arg.startsWith("-")) {
       // Unknown flag — fall through to help so the user gets immediate feedback.
-      return { kind: "help", walkthrough: false, helpText: `Unknown flag: ${arg}\n\n${USAGE_TEXT}` };
+      return {
+        kind: "help",
+        walkthrough: false,
+        helpText: `Unknown flag: ${arg}\n\n${USAGE_TEXT}`,
+      };
     }
 
     if (!positional) {

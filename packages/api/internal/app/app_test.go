@@ -98,4 +98,3 @@ func TestFindRepoRootWalksUp(t *testing.T) {
 		t.Fatalf("findRepoRoot(%q) = %q, want %q", nested, got, dir)
 	}
 }
-

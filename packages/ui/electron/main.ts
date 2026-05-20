@@ -22,7 +22,11 @@ if (initialIntent.kind === "help") {
   app
     .whenReady()
     .then(() => {
-      dialog.showMessageBoxSync({ type: "info", message: "git-diff", detail: initialIntent.helpText ?? "" });
+      dialog.showMessageBoxSync({
+        type: "info",
+        message: "git-diff",
+        detail: initialIntent.helpText ?? "",
+      });
     })
     .finally(() => app.exit(0));
 } else {
