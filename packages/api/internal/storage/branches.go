@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+type Branch struct {
+	Name       string `json:"name"`
+	Locked     bool   `json:"locked"`
+	LockedBy   int64  `json:"lockedBy,omitempty"`
+	LockedAt   string `json:"lockedAt,omitempty"`
+	LastSeenAt string `json:"lastSeenAt"`
+}
+
 func (s *Store) SyncBranches(ctx context.Context, path string, names []string) error {
 	if path == "" {
 		return errors.New("repository path is required")

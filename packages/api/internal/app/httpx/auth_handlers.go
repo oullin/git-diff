@@ -6,19 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/gocanto/git-diff/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 )
-
-type AuthState struct {
-	mu            sync.RWMutex
-	osUsername    string
-	currentUserID int64
-	currentToken  string
-}
 
 type authUserResponse struct {
 	ID          int64  `json:"id"`
@@ -52,58 +43,6 @@ type resumeRequest struct {
 
 type wipeRequest struct {
 	OSUsername string `json:"osUsername"`
-}
-
-const (
-	bcryptCost        = 12
-	sessionTTL        = 90 * 24 * time.Hour
-	minPasswordLength = 6
-)
-
-func NewAuthState(osUsername string) *AuthState {
-	return &AuthState{osUsername: osUsername}
-}
-
-func (a *AuthState) OSUsername() string {
-	a.mu.RLock()
-
-	defer a.mu.RUnlock()
-
-	return a.osUsername
-}
-
-func (a *AuthState) CurrentUserID() int64 {
-	a.mu.RLock()
-
-	defer a.mu.RUnlock()
-
-	return a.currentUserID
-}
-
-func (a *AuthState) CurrentToken() string {
-	a.mu.RLock()
-
-	defer a.mu.RUnlock()
-
-	return a.currentToken
-}
-
-func (a *AuthState) Set(userID int64, token string) {
-	a.mu.Lock()
-
-	defer a.mu.Unlock()
-
-	a.currentUserID = userID
-	a.currentToken = token
-}
-
-func (a *AuthState) Clear() {
-	a.mu.Lock()
-
-	defer a.mu.Unlock()
-
-	a.currentUserID = 0
-	a.currentToken = ""
 }
 
 func (s Server) authState(w http.ResponseWriter, r *http.Request) {
@@ -424,30 +363,4 @@ func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
 	s.Auth.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s Server) requireAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if isPublicAuthPath(r.URL.Path) {
-			next.ServeHTTP(w, r)
-
-			return
-		}
-
-		if s.Auth == nil || s.Auth.CurrentUserID() == 0 {
-			writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-func isPublicAuthPath(path string) bool {
-	if path == "/v1/healthz" {
-		return true
-	}
-
-	return strings.HasPrefix(path, "/v1/auth/")
 }
