@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type authUserResponse struct {
@@ -45,24 +44,30 @@ type wipeRequest struct {
 	OSUsername string `json:"osUsername"`
 }
 
+func userToResponse(user storage.User) authUserResponse {
+	return authUserResponse{
+		ID:          user.ID,
+		OSUsername:  user.OSUsername,
+		DisplayName: user.DisplayName,
+	}
+}
+
+func (s Server) requireAuthSetup(w http.ResponseWriter) bool {
+	if s.Auth == nil || s.AuthService == nil {
+		writeError(w, http.StatusInternalServerError, errors.New("auth not initialized"))
+
+		return false
+	}
+
+	return true
+}
+
 func (s Server) authState(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil {
-		writeError(w, http.StatusInternalServerError, errors.New("auth state not initialized"))
-
+	if !s.requireAuthSetup(w) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
-
-		return
-	}
-
-	defer closeStore()
-
-	user, err := store.GetUserByOSUsername(r.Context(), s.Auth.OSUsername())
+	user, err := s.AuthService.State(r.Context(), s.Auth.OSUsername())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("read user: %w", err))
@@ -78,9 +83,7 @@ func (s Server) authState(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) authSetup(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil {
-		writeError(w, http.StatusInternalServerError, errors.New("auth state not initialized"))
-
+	if !s.requireAuthSetup(w) {
 		return
 	}
 
@@ -92,75 +95,33 @@ func (s Server) authSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(strings.TrimSpace(req.Password)) < minPasswordLength {
+	user, session, err := s.AuthService.Setup(r.Context(), s.Auth.OSUsername(), req.Password)
+
+	switch {
+	case errors.Is(err, service.ErrPasswordTooShort):
 		writeError(w, http.StatusBadRequest, fmt.Errorf("password must be at least %d characters", minPasswordLength))
 
 		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
-
-		return
-	}
-
-	defer closeStore()
-
-	user, err := store.GetUserByOSUsername(r.Context(), s.Auth.OSUsername())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("read user: %w", err))
-
-		return
-	}
-
-	if user.HasPassword {
+	case errors.Is(err, service.ErrPasswordAlreadySet):
 		writeError(w, http.StatusConflict, errors.New("password already set; use the login flow"))
 
 		return
-	}
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcryptCost)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("hash password: %w", err))
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, err)
 
 		return
 	}
 
-	if err := store.SetPasswordHash(r.Context(), user.ID, string(hash)); err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("save password hash: %w", err))
-
-		return
-	}
-
-	session, err := store.CreateSession(r.Context(), user.ID, sessionTTL)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("create session: %w", err))
-
-		return
-	}
-
-	_ = store.TouchUserLogin(r.Context(), user.ID)
 	s.Auth.Set(user.ID, session.RawToken)
 
 	writeJSON(w, http.StatusOK, authLoginResponse{
 		Token: session.RawToken,
-		User: authUserResponse{
-			ID:          user.ID,
-			OSUsername:  user.OSUsername,
-			DisplayName: user.DisplayName,
-		},
+		User:  userToResponse(user),
 	})
 }
 
 func (s Server) authLogin(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil {
-		writeError(w, http.StatusInternalServerError, errors.New("auth state not initialized"))
-
+	if !s.requireAuthSetup(w) {
 		return
 	}
 
@@ -172,68 +133,37 @@ func (s Server) authLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
+	user, session, err := s.AuthService.Login(r.Context(), s.Auth.OSUsername(), req.Password, req.Remember)
 
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
-
-		return
-	}
-
-	defer closeStore()
-
-	user, err := store.GetUserByOSUsername(r.Context(), s.Auth.OSUsername())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("read user: %w", err))
-
-		return
-	}
-
-	if !user.HasPassword {
+	switch {
+	case errors.Is(err, service.ErrPasswordNotSet):
 		writeError(w, http.StatusConflict, errors.New("password not set; complete setup first"))
 
 		return
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	case errors.Is(err, service.ErrInvalidPassword):
 		writeError(w, http.StatusUnauthorized, errors.New("incorrect password"))
+
+		return
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, err)
 
 		return
 	}
 
-	resp := authLoginResponse{
-		User: authUserResponse{
-			ID:          user.ID,
-			OSUsername:  user.OSUsername,
-			DisplayName: user.DisplayName,
-		},
-	}
+	resp := authLoginResponse{User: userToResponse(user)}
 
-	if req.Remember {
-		session, err := store.CreateSession(r.Context(), user.ID, sessionTTL)
-
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, fmt.Errorf("create session: %w", err))
-
-			return
-		}
-
+	if session != nil {
 		resp.Token = session.RawToken
 		s.Auth.Set(user.ID, session.RawToken)
 	} else {
 		s.Auth.Set(user.ID, "")
 	}
 
-	_ = store.TouchUserLogin(r.Context(), user.ID)
-
 	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil {
-		writeError(w, http.StatusInternalServerError, errors.New("auth state not initialized"))
-
+	if !s.requireAuthSetup(w) {
 		return
 	}
 
@@ -245,17 +175,7 @@ func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
-
-		return
-	}
-
-	defer closeStore()
-
-	user, err := store.ResumeSession(r.Context(), req.Token)
+	user, err := s.AuthService.Resume(r.Context(), req.Token)
 
 	switch {
 	case errors.Is(err, storage.ErrSessionNotFound):
@@ -270,43 +190,22 @@ func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
 
 	s.Auth.Set(user.ID, req.Token)
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"user": authUserResponse{
-			ID:          user.ID,
-			OSUsername:  user.OSUsername,
-			DisplayName: user.DisplayName,
-		},
-	})
+	writeJSON(w, http.StatusOK, map[string]any{"user": userToResponse(user)})
 }
 
 func (s Server) authLogout(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil {
-		writeError(w, http.StatusInternalServerError, errors.New("auth state not initialized"))
-
+	if !s.requireAuthSetup(w) {
 		return
 	}
 
-	token := s.Auth.CurrentToken()
-
-	if token != "" {
-		store, closeStore, err := s.Store(r.Context())
-
-		if err == nil {
-			defer closeStore()
-
-			_ = store.DeleteSession(r.Context(), token)
-		}
-	}
-
+	_ = s.AuthService.Logout(r.Context(), s.Auth.CurrentToken())
 	s.Auth.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
-	if s.Auth == nil {
-		writeError(w, http.StatusInternalServerError, errors.New("auth state not initialized"))
-
+	if !s.requireAuthSetup(w) {
 		return
 	}
 
@@ -318,44 +217,15 @@ func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	osUsername := strings.TrimSpace(req.OSUsername)
+	err := s.AuthService.Wipe(r.Context(), s.Auth.OSUsername(), req.OSUsername)
 
-	if osUsername == "" {
-		osUsername = s.Auth.OSUsername()
-	}
-
-	if osUsername != s.Auth.OSUsername() {
-		writeError(w, http.StatusForbidden, errors.New("can only wipe the active OS user"))
+	switch {
+	case errors.Is(err, service.ErrCannotWipeOtherUser):
+		writeError(w, http.StatusForbidden, err)
 
 		return
-	}
-
-	store, closeStore, err := s.Store(r.Context())
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("open review database: %w", err))
-
-		return
-	}
-
-	defer closeStore()
-
-	user, err := store.GetUserByOSUsername(r.Context(), osUsername)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("read user: %w", err))
-
-		return
-	}
-
-	if err := store.WipeUser(r.Context(), user.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("wipe user: %w", err))
-
-		return
-	}
-
-	if _, err := store.EnsureUser(r.Context(), osUsername); err != nil {
-		writeError(w, http.StatusInternalServerError, fmt.Errorf("reseed user: %w", err))
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, err)
 
 		return
 	}

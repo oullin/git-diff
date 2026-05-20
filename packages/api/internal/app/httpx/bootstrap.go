@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
@@ -51,6 +52,12 @@ func Serve(args []string, cfg ServeConfig) int {
 		return 1
 	}
 
+	authSvc := service.NewAuthService(store, service.AuthConfig{
+		BcryptCost:        bcryptCost,
+		SessionTTL:        sessionTTL,
+		MinPasswordLength: minPasswordLength,
+	})
+
 	appServer := Server{
 		Home:     cfg.Home,
 		Repo:     settings.RepoRoot,
@@ -58,7 +65,8 @@ func Serve(args []string, cfg ServeConfig) int {
 		Store: func(context.Context) (*storage.Store, func(), error) {
 			return store, func() {}, nil
 		},
-		Auth: NewAuthState(osUsername),
+		Auth:        NewAuthState(osUsername),
+		AuthService: authSvc,
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
@@ -18,11 +19,12 @@ type ServeConfig struct {
 }
 
 type Server struct {
-	Home     string
-	Repo     string
-	Settings setting.RuntimeSettings
-	Store    StoreFactory
-	Auth     *AuthState
+	Home        string
+	Repo        string
+	Settings    setting.RuntimeSettings
+	Store       StoreFactory
+	Auth        *AuthState
+	AuthService *service.AuthService
 }
 
 func (s Server) healthz(w http.ResponseWriter, _ *http.Request) {
