@@ -103,6 +103,8 @@ export function installBrowserFallback() {
       generatedAt: new Date().toISOString(),
       stale: false,
     }),
+    listPullRequests: async () => ({ pullRequests: [] }),
+    readPullRequest: async () => state,
     readRepositoryFile: async (_root: string, path: string) => ({
       path,
       content: `// ${path}\n// Preview not available in browser fallback.\n`,

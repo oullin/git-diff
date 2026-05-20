@@ -58,6 +58,16 @@ export interface WalkthroughRecord {
   stale?: boolean;
 }
 
+export interface PullRequestSummary {
+  number: number;
+  title: string;
+  author: string;
+  state: string;
+  baseRef: string;
+  headRef: string;
+  url: string;
+}
+
 export interface RepositoryFile {
   path: string;
   content: string;
@@ -208,12 +218,13 @@ export function viewedPrefKey(repoRoot: string, filePath: string): string {
   return `${VIEWED_KEY_PREFIX}${repoRoot}.${filePath}`;
 }
 
-export type LaunchIntentKind = "working" | "commit" | "help";
+export type LaunchIntentKind = "working" | "commit" | "pull-request" | "help";
 
 export interface LaunchIntent {
   kind: LaunchIntentKind;
   repoPath?: string;
   sha?: string;
+  prNumber?: number;
   walkthrough: boolean;
   helpText?: string;
   raw?: string;
@@ -234,6 +245,8 @@ export interface DiffAppApi {
     sha?: string;
     refresh?: boolean;
   }): Promise<WalkthroughRecord>;
+  listPullRequests(path?: string, limit?: number): Promise<{ pullRequests: PullRequestSummary[] }>;
+  readPullRequest(number: number, path?: string): Promise<RepositoryState>;
   readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
   listBranches(path?: string): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(path: string, branch: string): Promise<RepositoryState>;

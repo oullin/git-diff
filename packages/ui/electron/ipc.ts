@@ -75,6 +75,14 @@ export function registerIpcHandlers(deps: IpcDeps) {
     ) => (await client()).generateWalkthrough(request),
   );
 
+  ipcMain.handle("pull-requests:list", async (_event, path?: string, limit?: number) =>
+    (await client()).listPullRequests({ path, limit }),
+  );
+
+  ipcMain.handle("pull-requests:open", async (_event, number: number, path?: string) =>
+    (await client()).readPullRequest({ path, number }),
+  );
+
   ipcMain.handle("repository:file:read", async (_event, root: string, path: string) =>
     (await client()).readRepositoryFile({ root, path }),
   );

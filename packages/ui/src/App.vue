@@ -195,7 +195,9 @@ onMounted(async () => {
       return;
     }
     await openRepo(intent.repoPath);
-    if (intent.sha && state.value) {
+    if (intent.kind === "pull-request" && intent.prNumber && state.value) {
+      await openPullRequest(intent.prNumber);
+    } else if (intent.sha && state.value) {
       await openCommit(intent.sha);
     }
   });
@@ -307,7 +309,9 @@ async function applyLaunchIntent() {
 
   await openRepo(initialPath);
 
-  if (intent?.sha && state.value) {
+  if (intent?.kind === "pull-request" && intent.prNumber && state.value) {
+    await openPullRequest(intent.prNumber);
+  } else if (intent?.sha && state.value) {
     await openCommit(intent.sha);
   }
 
@@ -428,6 +432,21 @@ async function openCommit(sha: string) {
 async function returnToWorkingTree() {
   if (!state.value) return;
   await openRepo(state.value.root);
+}
+
+async function openPullRequest(number: number) {
+  if (!state.value) return;
+  loading.value = true;
+  error.value = "";
+  try {
+    state.value = await window.diffApp.readPullRequest(number, state.value.root);
+    selectedPath.value = state.value.files[0]?.path ?? "";
+    activeReview.value = null;
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function generateWalkthrough(refresh = false) {

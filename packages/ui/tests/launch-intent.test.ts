@@ -114,6 +114,19 @@ describe("parseLaunchArgs", () => {
     }
   });
 
+  test("pr <number> becomes a pull-request intent", () => {
+    const intent = parseLaunchArgs(["/bin/app", "pr", "42"], true, "/repo");
+    expect(intent.kind).toBe("pull-request");
+    expect(intent.prNumber).toBe(42);
+    expect(intent.repoPath).toBe("/repo");
+  });
+
+  test("pr without a number returns help", () => {
+    const intent = parseLaunchArgs(["/bin/app", "pr"], true, "/repo");
+    expect(intent.kind).toBe("help");
+    expect(intent.helpText).toContain("pr` subcommand requires");
+  });
+
   test("Electron internal flags are ignored", () => {
     const intent = parseLaunchArgs(
       ["/bin/app", "--no-sandbox", "--remote-debugging-port=9222", "abc1234"],

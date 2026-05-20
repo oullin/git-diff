@@ -25,6 +25,7 @@ import type {
   FileSearchResult,
   Branch,
   CommitSummary,
+  PullRequestSummary,
   SystemStats,
   WalkthroughRecord,
   ReviewComment,
@@ -203,6 +204,25 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
       sha: request.sha ?? "",
       refresh: request.refresh ?? false,
     });
+  }
+
+  listPullRequests(request: { path?: string; limit?: number }): Promise<{
+    pullRequests: PullRequestSummary[];
+  }> {
+    const parts: string[] = [];
+    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    if (request.limit) parts.push(`limit=${request.limit}`);
+    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+    return this.request<{ pullRequests: PullRequestSummary[] }>(
+      "GET",
+      `/v1/repository/pull-requests${query}`,
+    );
+  }
+
+  readPullRequest(request: { path?: string; number: number }): Promise<RepositoryState> {
+    const parts = [`number=${request.number}`];
+    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    return this.request<RepositoryState>("GET", `/v1/repository/pull-request?${parts.join("&")}`);
   }
 
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {

@@ -131,6 +131,18 @@ class HttpWorkflowBridgeClient {
       refresh: request.refresh ?? false,
     });
   }
+  listPullRequests(request) {
+    const parts = [];
+    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    if (request.limit) parts.push(`limit=${request.limit}`);
+    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+    return this.request("GET", `/v1/repository/pull-requests${query}`);
+  }
+  readPullRequest(request) {
+    const parts = [`number=${request.number}`];
+    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    return this.request("GET", `/v1/repository/pull-request?${parts.join("&")}`);
+  }
   readRepositoryFile(request) {
     const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
     return this.request("GET", `/v1/repository/file${query}`);

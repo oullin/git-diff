@@ -136,6 +136,10 @@ contextBridge.exposeInMainWorld("diffApp", {
     sha?: string;
     refresh?: boolean;
   }) => ipcRenderer.invoke("walkthrough:generate", request),
+  listPullRequests: (path?: string, limit?: number) =>
+    ipcRenderer.invoke("pull-requests:list", path, limit),
+  readPullRequest: (number: number, path?: string) =>
+    ipcRenderer.invoke("pull-requests:open", number, path),
   readRepositoryFile: (root: string, path: string) =>
     ipcRenderer.invoke("repository:file:read", root, path),
   listBranches: (path?: string) => ipcRenderer.invoke("repository:branches", path),

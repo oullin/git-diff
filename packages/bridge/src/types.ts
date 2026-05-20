@@ -187,6 +187,16 @@ export interface WalkthroughRecord {
   stale?: boolean;
 }
 
+export interface PullRequestSummary {
+  number: number;
+  title: string;
+  author: string;
+  state: string;
+  baseRef: string;
+  headRef: string;
+  url: string;
+}
+
 export interface RepositoryFile {
   path: string;
   content: string;
@@ -344,6 +354,11 @@ export interface WorkflowBridgeClient {
     sha?: string;
     refresh?: boolean;
   }): Promise<WalkthroughRecord>;
+  listPullRequests(request: {
+    path?: string;
+    limit?: number;
+  }): Promise<{ pullRequests: PullRequestSummary[] }>;
+  readPullRequest(request: { path?: string; number: number }): Promise<RepositoryState>;
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
   listBranches(request: { path?: string }): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState>;

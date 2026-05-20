@@ -2,8 +2,9 @@ import { existsSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
 const SHA_PATTERN = /^[0-9a-f]{4,40}$/i;
+const PR_NUMBER_PATTERN = /^[0-9]{1,7}$/;
 
-export type LaunchIntentKind = "working" | "commit" | "help";
+export type LaunchIntentKind = "working" | "commit" | "pull-request" | "help";
 
 export interface LaunchIntent {
   kind: LaunchIntentKind;
@@ -11,6 +12,8 @@ export interface LaunchIntent {
   repoPath?: string;
   /** Commit SHA (raw, as passed) when kind === "commit". */
   sha?: string;
+  /** PR number when kind === "pull-request". */
+  prNumber?: number;
   /** True when the -w / --walkthrough flag was set. */
   walkthrough: boolean;
   /** Set when --help / -h / help was requested. Renderer should not consume. */
@@ -25,7 +28,8 @@ Usage:
   git-diff                 open the most recently used repository (or pick one)
   git-diff <path>          open a specific git repository
   git-diff <sha>           open a specific commit from the current repository
-  git-diff -w [<sha>]      open and request an AI walkthrough (planned)
+  git-diff pr <number>     open an open pull request (requires the gh CLI)
+  git-diff -w [<sha>]      open and request an AI walkthrough
   git-diff -h | --help     print this help and exit
 `;
 
@@ -46,7 +50,7 @@ export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string
   const userArgs = argv.slice(isPackaged ? 1 : 2).filter((arg) => !isElectronInternal(arg));
 
   let walkthrough = false;
-  let positional: string | undefined;
+  const positionals: string[] = [];
 
   for (const arg of userArgs) {
     if (arg === "-h" || arg === "--help" || arg === "help") {
@@ -67,12 +71,30 @@ export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string
       };
     }
 
-    if (!positional) {
-      positional = arg;
-      continue;
-    }
+    positionals.push(arg);
+  }
 
-    // Too many positional args.
+  if (positionals[0] === "pr") {
+    if (positionals.length !== 2 || !PR_NUMBER_PATTERN.test(positionals[1]!)) {
+      return {
+        kind: "help",
+        walkthrough: false,
+        helpText: `\`pr\` subcommand requires a numeric PR id.\n\n${USAGE_TEXT}`,
+      };
+    }
+    return {
+      kind: "pull-request",
+      prNumber: Number(positionals[1]),
+      repoPath: cwd,
+      walkthrough,
+    };
+  }
+
+  if (positionals.length === 0) {
+    return { kind: "working", walkthrough };
+  }
+
+  if (positionals.length > 1) {
     return {
       kind: "help",
       walkthrough: false,
@@ -80,11 +102,7 @@ export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string
     };
   }
 
-  if (!positional) {
-    return { kind: "working", walkthrough };
-  }
-
-  return classifyPositional(positional, cwd, walkthrough);
+  return classifyPositional(positionals[0]!, cwd, walkthrough);
 }
 
 function classifyPositional(arg: string, cwd: string, walkthrough: boolean): LaunchIntent {
