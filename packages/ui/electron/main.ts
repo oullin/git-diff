@@ -1,7 +1,7 @@
 import { app, dialog } from "electron";
 import { appIcon } from "#electron/app-icon.js";
 import { setBridgeSettings, startBridgeIfNeeded, stopWorkflowBridge } from "#electron/bridge.js";
-import { recordDiagnostic, registerDiagnosticsIpc } from "#electron/diagnostics.js";
+import { recordDiagnostic } from "#electron/diagnostics.js";
 import { registerIpcHandlers } from "#electron/ipc.js";
 import { installApplicationMenu } from "#electron/menu.js";
 import { parseLaunchArgs } from "#electron/launch-intent.js";
@@ -64,7 +64,6 @@ if (initialIntent.kind === "help") {
       }
 
       setBridgeSettings(readSavedSettings());
-      registerDiagnosticsIpc();
       registerIpcHandlers({ getMainWindow, openDevToolsPanel });
       installApplicationMenu();
       createWindow(initialIntent);

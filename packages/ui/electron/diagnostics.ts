@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow } from "electron";
 import { randomUUID } from "node:crypto";
 import { stopWorkflowBridge } from "#electron/bridge.js";
 
@@ -34,26 +34,7 @@ export function recordDiagnostic(input: {
     diagnostics.splice(0, diagnostics.length - maxDiagnostics);
   }
 
-  for (const window of BrowserWindow.getAllWindows()) {
-    window.webContents.send("diagnostics:event", diagnostic);
-  }
-
   return diagnostic;
-}
-
-export function registerDiagnosticsIpc() {
-  ipcMain.handle("diagnostics:list", () => diagnostics);
-  ipcMain.handle(
-    "diagnostics:renderer-error",
-    (_event, payload: { message: string; details?: string }) => {
-      recordDiagnostic({
-        level: "error",
-        source: "Renderer",
-        message: payload.message,
-        details: payload.details,
-      });
-    },
-  );
 }
 
 export function attachWindowDiagnostics(window: BrowserWindow) {
