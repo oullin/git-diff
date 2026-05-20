@@ -99,6 +99,7 @@ export interface ReviewComment {
   bodyHtml: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }
 
 export interface ReviewDetail {

@@ -35,6 +35,7 @@ import { PREF_KEYS, viewedPrefKey } from "@api";
 import { ensureLanguage, languageFor } from "@lib/highlight";
 import { ACCENTS, applyAccent, diffBgs, resolveAccent } from "@lib/accent";
 import type { PatchLine } from "@lib/patch";
+import { formatReviewAsMarkdown } from "@lib/reviewMarkdown";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
 import { setTheme } from "@composables/useTheme";
 
@@ -666,6 +667,23 @@ function copyPath(path: string) {
   if (path) void navigator.clipboard.writeText(path);
 }
 
+const copyReviewState = ref<"idle" | "copied" | "error">("idle");
+
+async function copyReviewAsMarkdown() {
+  if (!activeReview.value) return;
+  try {
+    const markdown = formatReviewAsMarkdown(activeReview.value);
+    await navigator.clipboard.writeText(markdown);
+    copyReviewState.value = "copied";
+    setTimeout(() => {
+      if (copyReviewState.value === "copied") copyReviewState.value = "idle";
+    }, 1500);
+  } catch (cause) {
+    copyReviewState.value = "error";
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  }
+}
+
 void TWEAK_DEFAULTS;
 void ACCENTS;
 </script>
@@ -737,6 +755,16 @@ void ACCENTS;
       <span v-if="repoMode === 'commit' && state.commitSha" class="font-mono text-muted-foreground">
         commit {{ state.branch || state.commitSha.slice(0, 7) }}
       </span>
+      <span class="flex-1" />
+      <button
+        v-if="activeReview"
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
+        :disabled="copyReviewState === 'copied'"
+        @click="copyReviewAsMarkdown"
+      >
+        {{ copyReviewState === "copied" ? "Copied!" : "Copy review as Markdown" }}
+      </button>
     </div>
 
     <main class="flex flex-1 min-h-0">
