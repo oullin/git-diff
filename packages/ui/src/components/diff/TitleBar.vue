@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed } from "vue";
 import { Check, ChevronDown, Folder, Plus, Trash2 } from "lucide-vue-next";
 import {
   DropdownMenu,
@@ -11,7 +11,8 @@ import {
 } from "@ui/dropdown-menu";
 import DiffLogo from "./DiffLogo.vue";
 import { Skeleton } from "@ui/skeleton";
-import type { Repository, RepositoryState, SystemStats } from "@git-diff/contracts";
+import type { Repository, RepositoryState } from "@git-diff/contracts";
+import { useSystemStatsPolling } from "@composables/useSystemStatsPolling";
 
 const props = defineProps<{
   state: RepositoryState | null;
@@ -38,48 +39,7 @@ const workspaceLabel = computed(() => {
   return parts[parts.length - 1] ?? root;
 });
 
-const STATS_INTERVAL_MS = 5000;
-
-const stats = ref<SystemStats | null>(null);
-let statsTimer: ReturnType<typeof setInterval> | null = null;
-
-async function refreshStats() {
-  try {
-    stats.value = await window.diffApp.getSystemStats();
-  } catch {
-    /* stats are non-critical — leave the previous value in place */
-  }
-}
-
-function startPolling() {
-  if (statsTimer) return;
-  refreshStats();
-  statsTimer = setInterval(refreshStats, STATS_INTERVAL_MS);
-}
-
-function stopPolling() {
-  if (!statsTimer) return;
-  clearInterval(statsTimer);
-  statsTimer = null;
-}
-
-function handleVisibilityChange() {
-  if (document.hidden) {
-    stopPolling();
-  } else {
-    startPolling();
-  }
-}
-
-onMounted(() => {
-  if (!document.hidden) startPolling();
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("visibilitychange", handleVisibilityChange);
-  stopPolling();
-});
+const { stats } = useSystemStatsPolling();
 </script>
 
 <template>
