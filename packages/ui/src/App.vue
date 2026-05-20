@@ -53,6 +53,7 @@ import { useRepositoryList } from "@composables/useRepositoryList";
 import { useCommentDraft } from "@composables/useCommentDraft";
 import { usePendingComments } from "@composables/usePendingComments";
 import { useSelectedFile } from "@composables/useSelectedFile";
+import { usePreferences } from "@composables/usePreferences";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -67,7 +68,16 @@ const commentFeatures: RichTextFeatures = {
 };
 
 const state = ref<RepositoryState | null>(null);
-const prefValues = ref<Record<string, string>>({});
+const {
+  values: prefValues,
+  load: loadPreferences,
+  save: savePreferences,
+  reset: resetPreferences,
+} = usePreferences({
+  onSaveError: (cause) => {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  },
+});
 const authMode = ref<AuthMode>("loading");
 const authOSUsername = ref("");
 const currentUser = ref<AuthUser | null>(null);
@@ -269,7 +279,7 @@ async function bootstrapAuth() {
 
 async function enterApp() {
   authMode.value = "ready";
-  prefValues.value = (await window.diffApp.getUIPreferences()).values;
+  await loadPreferences();
   await refreshRepositoryList();
   await applyLaunchIntent();
 }
@@ -322,7 +332,7 @@ async function logOut() {
     // ignore — we'll still reset locally
   }
   currentUser.value = null;
-  prefValues.value = {};
+  resetPreferences();
   state.value = null;
   repositories.value = [];
   activeRepoPath.value = "";
@@ -678,24 +688,6 @@ async function replyToComment(parent: ReviewComment, bodyHtml: string) {
 
 async function updateTweak<K extends keyof Tweaks>(key: K, value: Tweaks[K]) {
   await savePreferences(tweakPrefPatch(key, value));
-}
-
-async function savePreferences(patch: Record<string, string>) {
-  const next = { ...prefValues.value, ...patch };
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === "") {
-      delete next[key];
-    } else {
-      next[key] = value;
-    }
-  }
-  prefValues.value = next;
-  try {
-    const response = await window.diffApp.saveUIPreferences(patch);
-    prefValues.value = response.values;
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  }
 }
 
 function fileElementID(path: string): string {
