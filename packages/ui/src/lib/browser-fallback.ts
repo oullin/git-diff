@@ -70,6 +70,7 @@ export function installBrowserFallback() {
   const api: DiffAppApi = {
     takeLaunchIntent: async () => null,
     onLaunchIntent: () => () => {},
+    openNewWindow: async () => {},
     repositoryState: async () => state,
     openRepository: async () => state,
     refreshRepository: async () => ({ ...state, generatedAt: new Date().toISOString() }),

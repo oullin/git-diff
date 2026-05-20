@@ -26,7 +26,7 @@ import {
   startBridgeIfNeeded,
   stopWorkflowBridge,
 } from "#electron/bridge.js";
-import { takeLaunchIntent } from "#electron/launch-intent-store.js";
+import { createWindow, takeIntentForWindow } from "#electron/windows.js";
 import { moveWorkflowDatabase, writeSavedSettings } from "#electron/settings-store.js";
 import { accountAvatarUrl, architectureLabel, osLabel } from "#electron/system-info.js";
 import { openTerminalCommand } from "#electron/terminal.js";
@@ -49,7 +49,15 @@ export function registerIpcHandlers(deps: IpcDeps) {
     (await client()).refreshRepository({ path }),
   );
 
-  ipcMain.handle("launch-intent:take", async () => takeLaunchIntent());
+  ipcMain.handle("launch-intent:take", async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    return window ? takeIntentForWindow(window) : null;
+  });
+
+  ipcMain.handle("window:new", async (_event, repoPath?: string) => {
+    const intent = repoPath ? { kind: "working" as const, repoPath, walkthrough: false } : null;
+    createWindow(intent);
+  });
 
   ipcMain.handle("repository:commit", async (_event, sha: string, path?: string) =>
     (await client()).readCommit({ path, sha }),

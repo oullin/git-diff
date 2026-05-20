@@ -208,6 +208,7 @@ export interface LaunchIntent {
 export interface DiffAppApi {
   takeLaunchIntent(): Promise<LaunchIntent | null>;
   onLaunchIntent(handler: (intent: LaunchIntent) => void): () => void;
+  openNewWindow(repoPath?: string): Promise<void>;
   repositoryState(path?: string): Promise<RepositoryState>;
   openRepository(path: string): Promise<RepositoryState>;
   refreshRepository(path: string): Promise<RepositoryState>;

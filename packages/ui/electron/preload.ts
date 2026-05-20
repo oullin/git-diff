@@ -124,6 +124,7 @@ contextBridge.exposeInMainWorld("diffApp", {
     ipcRenderer.on("launch-intent:updated", listener);
     return () => ipcRenderer.removeListener("launch-intent:updated", listener);
   },
+  openNewWindow: (repoPath?: string) => ipcRenderer.invoke("window:new", repoPath),
   repositoryState: (path?: string) => ipcRenderer.invoke("repository:state", path),
   openRepository: (path: string) => ipcRenderer.invoke("repository:open", path),
   refreshRepository: (path: string) => ipcRenderer.invoke("repository:refresh", path),

@@ -3,14 +3,15 @@ import { appIcon } from "#electron/app-icon.js";
 import { setBridgeSettings, startBridgeIfNeeded, stopWorkflowBridge } from "#electron/bridge.js";
 import { recordDiagnostic, registerDiagnosticsIpc } from "#electron/diagnostics.js";
 import { registerIpcHandlers } from "#electron/ipc.js";
-import { setLaunchIntent } from "#electron/launch-intent-store.js";
+import { installApplicationMenu } from "#electron/menu.js";
 import { parseLaunchArgs } from "#electron/launch-intent.js";
 import { readSavedSettings } from "#electron/settings-store.js";
 import {
   createWindow,
-  focusMainWindow,
   getMainWindow,
+  listAppWindows,
   openDevToolsPanel,
+  setIntentForWindow,
 } from "#electron/windows.js";
 
 const initialIntent = parseLaunchArgs(process.argv, app.isPackaged, process.cwd());
@@ -30,8 +31,6 @@ if (initialIntent.kind === "help") {
     })
     .finally(() => app.exit(0));
 } else {
-  setLaunchIntent(initialIntent);
-
   const singleInstanceLock = app.requestSingleInstanceLock();
 
   if (!singleInstanceLock) {
@@ -40,13 +39,20 @@ if (initialIntent.kind === "help") {
     app.on("second-instance", (_event, argv, workingDir) => {
       const intent = parseLaunchArgs(argv, app.isPackaged, workingDir || process.cwd());
       if (intent.kind === "help") {
-        dialog.showMessageBox({ type: "info", message: "git-diff", detail: intent.helpText ?? "" });
+        dialog.showMessageBox({
+          type: "info",
+          message: "git-diff",
+          detail: intent.helpText ?? "",
+        });
         return;
       }
-      setLaunchIntent(intent);
-      focusMainWindow();
-      const window = getMainWindow();
-      window?.webContents.send("launch-intent:updated", intent);
+      // Every second-instance launch opens a fresh window so two `git-diff`
+      // invocations from two terminals end up side-by-side.
+      const window = createWindow(intent);
+      setIntentForWindow(window, intent);
+      window.webContents.once("did-finish-load", () => {
+        window.webContents.send("launch-intent:updated", intent);
+      });
     });
   }
 
@@ -60,7 +66,8 @@ if (initialIntent.kind === "help") {
       setBridgeSettings(readSavedSettings());
       registerDiagnosticsIpc();
       registerIpcHandlers({ getMainWindow, openDevToolsPanel });
-      createWindow();
+      installApplicationMenu();
+      createWindow(initialIntent);
     } catch (error) {
       recordDiagnostic({
         level: "error",
@@ -91,7 +98,10 @@ if (initialIntent.kind === "help") {
   });
 
   app.on("activate", () => {
-    createWindow();
+    // On macOS, dock click reopens a window only if none are around.
+    if (listAppWindows().length === 0) {
+      createWindow();
+    }
   });
 
   app.on("before-quit", stopWorkflowBridge);
