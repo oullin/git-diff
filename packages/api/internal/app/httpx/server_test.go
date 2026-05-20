@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/gocanto/git-diff/internal/app/setting"
-	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
@@ -50,8 +49,3 @@ func testHTTPServer(t *testing.T, home, repo string) Server {
 		Auth: NewAuthState("test"),
 	}
 }
-
-// Suppress unused-import warnings; helper for future tests that need a
-// service-wired server.
-var _ = service.NewAuthService
-var _ = service.NewReviewService
