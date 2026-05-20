@@ -1,6 +1,7 @@
 import { register as registerAuth } from "#electron/ipc/auth.ipc.js";
 import { register as registerBranches } from "#electron/ipc/branches.ipc.js";
 import { register as registerPendingComments } from "#electron/ipc/pending-comments.ipc.js";
+import { register as registerPreferences } from "#electron/ipc/preferences.ipc.js";
 import { register as registerPullRequests } from "#electron/ipc/pull-requests.ipc.js";
 import { register as registerRepositories } from "#electron/ipc/repositories.ipc.js";
 import { register as registerRepository } from "#electron/ipc/repository.ipc.js";
@@ -16,6 +17,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   registerPullRequests();
   registerWalkthrough();
   registerPendingComments();
+  registerPreferences();
   registerReviews();
   registerAuth();
   registerSystem(deps);
