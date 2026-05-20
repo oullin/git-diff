@@ -35,7 +35,6 @@ import { PREF_KEYS, viewedPrefKey } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
 import { ACCENTS, resolveAccent } from "@lib/accent";
 import type { PatchLine } from "@lib/patch";
-import { formatReviewAsMarkdown } from "@lib/reviewMarkdown";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
 import { useToasts } from "@composables/useToasts";
 import { useStyleWatchers } from "@composables/useStyleWatchers";
@@ -52,6 +51,7 @@ import { usePendingComments } from "@composables/usePendingComments";
 import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
+import { useReviewMarkdownCopy } from "@composables/useReviewMarkdownCopy";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth.store";
 import { useRepoStore } from "@/stores/repo.store";
@@ -693,21 +693,14 @@ function copyPath(path: string) {
   if (path) void navigator.clipboard.writeText(path);
 }
 
-const copyReviewState = ref<"idle" | "copied" | "error">("idle");
+const { state: copyReviewState, copy: copyActiveReviewAsMarkdown } = useReviewMarkdownCopy({
+  onError: (cause) => {
+    error.value = cause instanceof Error ? cause.message : String(cause);
+  },
+});
 
 async function copyReviewAsMarkdown() {
-  if (!activeReview.value) return;
-  try {
-    const markdown = formatReviewAsMarkdown(activeReview.value);
-    await navigator.clipboard.writeText(markdown);
-    copyReviewState.value = "copied";
-    setTimeout(() => {
-      if (copyReviewState.value === "copied") copyReviewState.value = "idle";
-    }, 1500);
-  } catch (cause) {
-    copyReviewState.value = "error";
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  }
+  if (activeReview.value) await copyActiveReviewAsMarkdown(activeReview.value);
 }
 
 void TWEAK_DEFAULTS;
