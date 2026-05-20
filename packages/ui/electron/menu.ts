@@ -1,4 +1,5 @@
 import { app, dialog, Menu, type MenuItemConstructorOptions } from "electron";
+import { installTerminalHelper } from "#electron/terminal-helper.js";
 import { createWindow, focusMainWindow, getMainWindow } from "#electron/windows.js";
 
 function newWindowItem(): MenuItemConstructorOptions {
@@ -33,6 +34,13 @@ export function installApplicationMenu(): void {
             label: app.name,
             submenu: [
               { role: "about" },
+              { type: "separator" },
+              {
+                label: "Install Terminal Helper…",
+                async click() {
+                  await installTerminalHelper();
+                },
+              },
               { type: "separator" },
               { role: "services" },
               { type: "separator" },
