@@ -65,12 +65,9 @@ func Serve(args []string, cfg ServeConfig) int {
 	walkthroughSvc := service.NewWalkthroughService(store)
 
 	appServer := Server{
-		Home:     cfg.Home,
-		Repo:     settings.RepoRoot,
-		Settings: settings,
-		Store: func(context.Context) (*storage.Store, func(), error) {
-			return store, func() {}, nil
-		},
+		Home:                  cfg.Home,
+		Repo:                  settings.RepoRoot,
+		Settings:              settings,
 		Auth:                  NewAuthState(osUsername),
 		AuthService:           authSvc,
 		ReviewService:         reviewSvc,
