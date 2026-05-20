@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import AuthGate from "@entry/components/auth/AuthGate.vue";
-import FileContentViewer from "@entry/components/FileContentViewer.vue";
 import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
 import Sidebar from "@entry/components/diff/Sidebar.vue";
 import RepoToolbar from "@entry/components/diff/RepoToolbar.vue";
 import SearchBar from "@entry/components/diff/SearchBar.vue";
 import { ToastViewport } from "@ui/toast";
-import FileHeader from "@entry/components/diff/FileHeader.vue";
-import DiffBody from "@entry/components/diff/DiffBody.vue";
+import DiffList from "@entry/components/diff/DiffList.vue";
+import RepoEmptyStates from "@entry/components/diff/RepoEmptyStates.vue";
 import WalkthroughPanel from "@entry/components/diff/WalkthroughPanel.vue";
 import JumpNav from "@entry/components/diff/JumpNav.vue";
 import StatusBar from "@entry/components/diff/StatusBar.vue";
@@ -803,60 +802,30 @@ void ACCENTS;
 
         <section class="flex flex-col flex-1 min-w-0 relative">
           <div class="flex-1 overflow-auto min-h-0" style="padding: 16px 18px 24px">
-            <FileContentViewer
-              v-if="selectedPath && !selectedIsChanged"
-              :file="selectedRepoFile"
-              :path="selectedPath"
-              :loading="selectedFileLoading"
-              :error="selectedFileError"
+            <DiffList
+              :files="files"
+              :selected-path="selectedPath"
+              :selected-is-changed="selectedIsChanged"
+              :selected-repo-file="selectedRepoFile"
+              :selected-file-loading="selectedFileLoading"
+              :selected-file-error="selectedFileError"
+              :collapsed="collapsed"
+              :split-ratios="splitRatios"
+              :tweaks="tweaks"
+              :diff-view-mode="diffViewMode"
+              :hide-whitespace="hideWhitespace"
+              :review-comments="reviewComments"
+              :comment-features="commentFeatures"
+              :is-viewed-fn="isViewed"
+              :file-element-i-d="fileElementID"
+              @toggle-collapsed="toggleCollapsed"
+              @toggle-viewed="toggleViewed"
+              @copy-path="copyPath"
+              @open-comment-for-line="openCommentForLine"
+              @delete-comment="deleteComment"
+              @reply-comment="replyToComment"
+              @update:split-ratio="setSplitRatio"
             />
-            <template v-else-if="files.length === 0">
-              <div
-                class="grid h-full place-items-center text-sm"
-                :style="{ color: 'var(--gd-text-3)' }"
-              >
-                No changes detected. Edit some files and refresh.
-              </div>
-            </template>
-            <template v-else>
-              <article
-                v-for="file in files"
-                :id="fileElementID(file.path)"
-                :key="file.path"
-                :style="{
-                  background: 'var(--gd-panel)',
-                  borderRadius: '12px',
-                  boxShadow: 'var(--gd-shadow-card)',
-                  overflow: 'clip',
-                  marginBottom: '18px',
-                }"
-              >
-                <FileHeader
-                  :file="file"
-                  :collapsed="!!collapsed[file.path]"
-                  :viewed="isViewed(file)"
-                  @toggle-collapsed="toggleCollapsed(file.path)"
-                  @toggle-viewed="toggleViewed(file)"
-                  @copy="copyPath"
-                />
-                <DiffBody
-                  v-if="!collapsed[file.path]"
-                  :file="file"
-                  :view-mode="diffViewMode"
-                  :diff-style="tweaks.diffStyle"
-                  :density="tweaks.density"
-                  :word-highlight="tweaks.wordHighlight"
-                  :hide-whitespace="hideWhitespace"
-                  :comments="reviewComments"
-                  :reply-features="commentFeatures"
-                  :split-ratio="splitRatios[file.path] ?? 0.5"
-                  @add-comment="(section, line) => openCommentForLine(file, section, line)"
-                  @delete-comment="deleteComment"
-                  @reply-comment="replyToComment"
-                  @update:split-ratio="(value: number) => setSplitRatio(file.path, value)"
-                />
-              </article>
-            </template>
           </div>
 
           <JumpNav
