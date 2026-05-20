@@ -34,7 +34,6 @@ import type {
   ReviewComment,
   ReviewDetail,
   ReviewSession,
-  WalkthroughRecord,
 } from "@git-diff/contracts";
 import { PREF_KEYS, viewedPrefKey } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
@@ -48,6 +47,7 @@ import {
   useDiffNavigation,
   useKeyboardShortcuts,
 } from "@composables/useDiffNavigation";
+import { useWalkthrough } from "@composables/useWalkthrough";
 import { parseBridgeError } from "@lib/bridgeError";
 
 type AuthMode = "loading" | "setup" | "login" | "ready";
@@ -112,9 +112,12 @@ const activePullRequest = ref<PullRequestSummary | null>(null);
 
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
 
-const walkthrough = ref<WalkthroughRecord | null>(null);
-const walkthroughLoading = ref(false);
-const walkthroughError = ref("");
+const {
+  record: walkthrough,
+  loading: walkthroughLoading,
+  error: walkthroughError,
+  generate: generateWalkthrough,
+} = useWalkthrough(state);
 
 const files = computed(() => state.value?.files ?? []);
 const changedByPath = computed(() => {
@@ -434,25 +437,6 @@ async function openPullRequest(number: number) {
     error.value = cause instanceof Error ? cause.message : String(cause);
   } finally {
     loading.value = false;
-  }
-}
-
-async function generateWalkthrough(refresh = false) {
-  if (!state.value) return;
-  walkthroughLoading.value = true;
-  walkthroughError.value = "";
-  try {
-    walkthrough.value = await window.diffApp.generateWalkthrough({
-      path: state.value.root,
-      kind: state.value.mode,
-      sha: state.value.commitSha,
-      refresh,
-    });
-  } catch (cause) {
-    walkthroughError.value = cause instanceof Error ? cause.message : String(cause);
-    walkthrough.value = null;
-  } finally {
-    walkthroughLoading.value = false;
   }
 }
 
