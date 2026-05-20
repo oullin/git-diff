@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gocanto/git-diff/internal/review"
+	"github.com/gocanto/git-diff/internal/service"
 )
 
 type fileSearchResult struct {
@@ -25,14 +26,6 @@ const (
 )
 
 func (s Server) searchRepositoryFiles(w http.ResponseWriter, r *http.Request) {
-	userID := s.Auth.CurrentUserID()
-
-	if userID == 0 {
-		writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
-
-		return
-	}
-
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 	if query == "" {
@@ -59,19 +52,15 @@ func (s Server) searchRepositoryFiles(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	store, closeStore, err := s.Store(r.Context())
+	repos, err := s.RepositoryService.List(r.Context(), s.Auth.CurrentUserID())
 
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		if errors.Is(err, service.ErrAuthenticationRequired) {
+			writeError(w, http.StatusUnauthorized, err)
 
-		return
-	}
+			return
+		}
 
-	defer closeStore()
-
-	repos, err := store.ListRepositoriesForUser(r.Context(), userID)
-
-	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 
 		return
