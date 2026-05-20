@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+type UIPreferences struct {
+	Values    map[string]string `json:"values"`
+	UpdatedAt string            `json:"updatedAt,omitempty"`
+}
+
 const DefaultTheme = "light"
 const DefaultDiffViewMode = "split"
 
@@ -20,11 +25,6 @@ const (
 	PrefKeyAnthropicAPIKey    = "llm.anthropicApiKey"
 	PrefKeyAnthropicModel     = "llm.anthropicModel"
 )
-
-type UIPreferences struct {
-	Values    map[string]string `json:"values"`
-	UpdatedAt string            `json:"updatedAt,omitempty"`
-}
 
 func (s *Store) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
 	rows, err := s.db.QueryContext(ctx, `

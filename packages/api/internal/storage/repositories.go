@@ -8,14 +8,6 @@ import (
 	"time"
 )
 
-const (
-	RepoRoleOwner = "owner"
-	RepoRoleWrite = "write"
-	RepoRoleRead  = "read"
-)
-
-var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
-
 type Repository struct {
 	Path         string `json:"path"`
 	Name         string `json:"name"`
@@ -32,6 +24,14 @@ type RepositoryCollaborator struct {
 	Role        string `json:"role"`
 	GrantedAt   string `json:"grantedAt"`
 }
+
+const (
+	RepoRoleOwner = "owner"
+	RepoRoleWrite = "write"
+	RepoRoleRead  = "read"
+)
+
+var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
 
 func (s *Store) ListRepositoriesForUser(ctx context.Context, userID int64) ([]Repository, error) {
 	if userID == 0 {

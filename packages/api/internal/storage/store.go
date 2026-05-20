@@ -21,8 +21,6 @@ var ErrBranchLocked = errors.New("branch is locked")
 //go:embed schema.sql
 var schemaFS embed.FS
 
-const envDBPath = "GIT_DIFF_DB_PATH"
-
 type Store struct {
 	db      *sql.DB
 	queries *db.Queries
@@ -32,6 +30,8 @@ type Store struct {
 type scanner interface {
 	Scan(dest ...any) error
 }
+
+const envDBPath = "GIT_DIFF_DB_PATH"
 
 func Open(ctx context.Context, path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

@@ -5,18 +5,18 @@ import (
 	"time"
 )
 
-const (
-	bcryptCost        = 12
-	sessionTTL        = 90 * 24 * time.Hour
-	minPasswordLength = 6
-)
-
 type AuthState struct {
 	mu            sync.RWMutex
 	osUsername    string
 	currentUserID int64
 	currentToken  string
 }
+
+const (
+	bcryptCost        = 12
+	sessionTTL        = 90 * 24 * time.Hour
+	minPasswordLength = 6
+)
 
 func NewAuthState(osUsername string) *AuthState {
 	return &AuthState{osUsername: osUsername}

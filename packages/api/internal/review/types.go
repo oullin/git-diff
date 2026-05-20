@@ -2,21 +2,6 @@ package review
 
 type GitFileStatus string
 
-const (
-	StatusAdded     GitFileStatus = "added"
-	StatusDeleted   GitFileStatus = "deleted"
-	StatusModified  GitFileStatus = "modified"
-	StatusRenamed   GitFileStatus = "renamed"
-	StatusUntracked GitFileStatus = "untracked"
-)
-
-const (
-	RepositoryModeWorking = "working"
-	RepositoryModeCommit  = "commit"
-)
-
-const maxFileReadBytes = 2 * 1024 * 1024
-
 type DiffSection struct {
 	ID     string `json:"id"`
 	Kind   string `json:"kind"`
@@ -74,10 +59,6 @@ type WorkingTreeDirtyError struct {
 	Files []string
 }
 
-func (e *WorkingTreeDirtyError) Error() string {
-	return "working tree has uncommitted changes"
-}
-
 type statusEntry struct {
 	index  byte
 	work   byte
@@ -90,4 +71,23 @@ type commitDiffEntry struct {
 	status GitFileStatus
 	path   string
 	old    string
+}
+
+const (
+	StatusAdded     GitFileStatus = "added"
+	StatusDeleted   GitFileStatus = "deleted"
+	StatusModified  GitFileStatus = "modified"
+	StatusRenamed   GitFileStatus = "renamed"
+	StatusUntracked GitFileStatus = "untracked"
+)
+
+const (
+	RepositoryModeWorking = "working"
+	RepositoryModeCommit  = "commit"
+)
+
+const maxFileReadBytes = 2 * 1024 * 1024
+
+func (e *WorkingTreeDirtyError) Error() string {
+	return "working tree has uncommitted changes"
 }
