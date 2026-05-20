@@ -25,6 +25,7 @@ import type {
   FileSearchResult,
   Branch,
   CommitSummary,
+  PendingComment,
   PullRequestSummary,
   SystemStats,
   WalkthroughRecord,
@@ -223,6 +224,51 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
     const parts = [`number=${request.number}`];
     if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
     return this.request<RepositoryState>("GET", `/v1/repository/pull-request?${parts.join("&")}`);
+  }
+
+  listPendingComments(request: {
+    path?: string;
+    kind?: "working" | "commit";
+    sha?: string;
+  }): Promise<{ comments: PendingComment[] }> {
+    const parts: string[] = [];
+    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    if (request.kind) parts.push(`kind=${request.kind}`);
+    if (request.sha) parts.push(`sha=${encodeURIComponent(request.sha)}`);
+    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+    return this.request<{ comments: PendingComment[] }>("GET", `/v1/pending-comments${query}`);
+  }
+
+  createPendingComment(request: {
+    repoRoot: string;
+    contextKind: "working" | "commit";
+    contextSha?: string;
+    filePath: string;
+    diffSection: string;
+    side: string;
+    lineNumber: number;
+    authorLabel: string;
+    bodyHtml: string;
+  }): Promise<PendingComment> {
+    return this.request<PendingComment>("POST", "/v1/pending-comments", request);
+  }
+
+  updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment> {
+    return this.request<PendingComment>(
+      "PATCH",
+      `/v1/pending-comments/${encodeURIComponent(request.id)}`,
+      {
+        bodyHtml: request.bodyHtml,
+      },
+    );
+  }
+
+  deletePendingComment(request: { id: string }): Promise<void> {
+    return this.request<void>("DELETE", `/v1/pending-comments/${encodeURIComponent(request.id)}`);
+  }
+
+  promotePendingComments(request: { reviewId: string }): Promise<{ promoted: number }> {
+    return this.request<{ promoted: number }>("POST", "/v1/pending-comments/promote", request);
   }
 
   readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {

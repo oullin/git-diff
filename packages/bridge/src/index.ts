@@ -35,6 +35,7 @@ export type {
   TemplateFileSummary,
   UIPreferencesResponse,
   UnixTarget,
+  PendingComment,
   PullRequestSummary,
   WalkthroughRecord,
   Workflow,

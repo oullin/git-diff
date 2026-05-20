@@ -364,6 +364,7 @@ async function openRepo(path: string) {
     activeReview.value = reviews.value[0]
       ? await window.diffApp.reviewDetail(reviews.value[0].id)
       : null;
+    await loadPendingComments();
     await savePreferences({ [PREF_KEYS.lastRepoRoot]: state.value.root });
     await window.diffApp.upsertRepository({ path: state.value.root });
     await refreshRepositoryList();
@@ -552,6 +553,14 @@ async function startReview() {
     contextKind: ctx.mode,
     contextSha: ctx.commitSha,
   });
+  // Promote any drafts that were taken before the review session existed.
+  try {
+    await window.diffApp.promotePendingComments(review.id);
+  } catch {
+    // Promotion failure shouldn't abort review start.
+  }
+  pendingComments.value = [];
+
   activeReview.value = await window.diffApp.reviewDetail(review.id);
   reviews.value = [review, ...reviews.value.filter((item) => item.id !== review.id)];
   summaryDraft.value = "";
@@ -651,23 +660,60 @@ function openCommentForLine(file: ChangedFile, section: DiffSection, line: Patch
 }
 
 async function saveComment() {
-  if (!commentTarget.value || !activeReview.value || !commentDraft.value.trim()) {
+  if (!commentTarget.value || !commentDraft.value.trim() || !state.value) {
     return;
   }
   const target = commentTarget.value;
-  await window.diffApp.createReviewComment({
-    reviewId: activeReview.value.review.id,
-    filePath: target.file.path,
-    diffSection: target.section.kind,
-    side: target.side,
-    lineNumber: target.line,
-    authorLabel: currentUser.value?.displayName || currentUser.value?.osUsername || "You",
-    bodyHtml: sanitizeHtml(commentDraft.value),
-  });
-  activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
+  const author = currentUser.value?.displayName || currentUser.value?.osUsername || "You";
+  const body = sanitizeHtml(commentDraft.value);
+
+  if (activeReview.value) {
+    await window.diffApp.createReviewComment({
+      reviewId: activeReview.value.review.id,
+      filePath: target.file.path,
+      diffSection: target.section.kind,
+      side: target.side,
+      lineNumber: target.line,
+      authorLabel: author,
+      bodyHtml: body,
+    });
+    activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
+  } else {
+    // No active review yet — store as a draft. On startReview, draft comments
+    // for this (repo, context) are promoted into the new review session.
+    await window.diffApp.createPendingComment({
+      repoRoot: state.value.root,
+      contextKind: state.value.mode,
+      contextSha: state.value.commitSha,
+      filePath: target.file.path,
+      diffSection: target.section.kind,
+      side: target.side,
+      lineNumber: target.line,
+      authorLabel: author,
+      bodyHtml: body,
+    });
+    await loadPendingComments();
+  }
+
   commentTarget.value = null;
   commentDraft.value = "";
   commentDialogOpen.value = false;
+}
+
+const pendingComments = ref<import("@api").PendingComment[]>([]);
+
+async function loadPendingComments() {
+  if (!state.value) return;
+  try {
+    const response = await window.diffApp.listPendingComments({
+      path: state.value.root,
+      kind: state.value.mode,
+      sha: state.value.commitSha,
+    });
+    pendingComments.value = response.comments;
+  } catch {
+    pendingComments.value = [];
+  }
 }
 
 function cancelComment() {

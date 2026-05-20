@@ -68,6 +68,22 @@ export interface PullRequestSummary {
   url: string;
 }
 
+export interface PendingComment {
+  id: string;
+  userId: number;
+  repoRoot: string;
+  contextKind: RepositoryMode;
+  contextSha?: string;
+  filePath: string;
+  diffSection: string;
+  side: string;
+  lineNumber: number;
+  authorLabel: string;
+  bodyHtml: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RepositoryFile {
   path: string;
   content: string;
@@ -247,6 +263,25 @@ export interface DiffAppApi {
   }): Promise<WalkthroughRecord>;
   listPullRequests(path?: string, limit?: number): Promise<{ pullRequests: PullRequestSummary[] }>;
   readPullRequest(number: number, path?: string): Promise<RepositoryState>;
+  listPendingComments(request: {
+    path?: string;
+    kind?: RepositoryMode;
+    sha?: string;
+  }): Promise<{ comments: PendingComment[] }>;
+  createPendingComment(request: {
+    repoRoot: string;
+    contextKind: RepositoryMode;
+    contextSha?: string;
+    filePath: string;
+    diffSection: string;
+    side: string;
+    lineNumber: number;
+    authorLabel: string;
+    bodyHtml: string;
+  }): Promise<PendingComment>;
+  updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment>;
+  deletePendingComment(id: string): Promise<void>;
+  promotePendingComments(reviewId: string): Promise<{ promoted: number }>;
   readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
   listBranches(path?: string): Promise<{ branches: string[]; records?: Branch[] }>;
   checkoutBranch(path: string, branch: string): Promise<RepositoryState>;

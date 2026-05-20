@@ -140,6 +140,24 @@ contextBridge.exposeInMainWorld("diffApp", {
     ipcRenderer.invoke("pull-requests:list", path, limit),
   readPullRequest: (number: number, path?: string) =>
     ipcRenderer.invoke("pull-requests:open", number, path),
+  listPendingComments: (request: { path?: string; kind?: "working" | "commit"; sha?: string }) =>
+    ipcRenderer.invoke("pending-comments:list", request),
+  createPendingComment: (request: {
+    repoRoot: string;
+    contextKind: "working" | "commit";
+    contextSha?: string;
+    filePath: string;
+    diffSection: string;
+    side: string;
+    lineNumber: number;
+    authorLabel: string;
+    bodyHtml: string;
+  }) => ipcRenderer.invoke("pending-comments:create", request),
+  updatePendingComment: (request: { id: string; bodyHtml: string }) =>
+    ipcRenderer.invoke("pending-comments:update", request),
+  deletePendingComment: (id: string) => ipcRenderer.invoke("pending-comments:delete", id),
+  promotePendingComments: (reviewId: string) =>
+    ipcRenderer.invoke("pending-comments:promote", reviewId),
   readRepositoryFile: (root: string, path: string) =>
     ipcRenderer.invoke("repository:file:read", root, path),
   listBranches: (path?: string) => ipcRenderer.invoke("repository:branches", path),
