@@ -49,6 +49,7 @@
     "dompurify": "3.4.2",
     "lexical": "0.38.1",
     "lexical-vue": "0.14.1",
+    "pinia": "^3.0.4",
     "prismjs": "1.30.0"
   },
   "devDependencies": {

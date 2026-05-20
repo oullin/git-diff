@@ -55,9 +55,10 @@ import { usePendingComments } from "@composables/usePendingComments";
 import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
+import { storeToRefs } from "pinia";
+import { useAuthStore } from "@/stores/auth.store";
 import { parseBridgeError } from "@lib/bridgeError";
 
-type AuthMode = "loading" | "setup" | "login" | "ready";
 
 const commentFeatures: RichTextFeatures = {
   checklist: false,
@@ -79,9 +80,12 @@ const {
     error.value = cause instanceof Error ? cause.message : String(cause);
   },
 });
-const authMode = ref<AuthMode>("loading");
-const authOSUsername = ref("");
-const currentUser = ref<AuthUser | null>(null);
+const authStore = useAuthStore();
+const {
+  mode: authMode,
+  osUsername: authOSUsername,
+  currentUser,
+} = storeToRefs(authStore);
 
 const prefs = computed(() => prefValues.value);
 const tweaks = useTweaks(prefs);
@@ -261,24 +265,18 @@ onUnmounted(() => {
 });
 
 async function bootstrapAuth() {
-  authMode.value = "loading";
-  try {
-    const result = await window.diffApp.authBootstrap();
-    authOSUsername.value = result.state.osUsername;
-    if (result.user) {
-      currentUser.value = result.user;
-      await enterApp();
-      return;
-    }
-    authMode.value = result.state.needsSetup ? "setup" : "login";
-  } catch (cause) {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-    authMode.value = "login";
+  const { entered } = await authStore.bootstrap();
+
+  if (authStore.bootstrapError) {
+    error.value = authStore.bootstrapError;
+  }
+
+  if (entered) {
+    await enterApp();
   }
 }
 
 async function enterApp() {
-  authMode.value = "ready";
   await loadPreferences();
   await refreshRepositoryList();
   await applyLaunchIntent();
@@ -316,22 +314,16 @@ async function applyLaunchIntent() {
 }
 
 async function handleAuthCompleted(response: AuthLoginResponse) {
-  currentUser.value = response.user;
+  authStore.complete(response);
   await enterApp();
 }
 
 async function handleAuthWiped() {
-  currentUser.value = null;
-  authMode.value = "setup";
+  authStore.markWiped();
 }
 
 async function logOut() {
-  try {
-    await window.diffApp.authLogout();
-  } catch {
-    // ignore — we'll still reset locally
-  }
-  currentUser.value = null;
+  await authStore.logout();
   resetPreferences();
   state.value = null;
   repositories.value = [];

@@ -2,6 +2,7 @@ import { createApp } from "vue";
 import App from "@entry/App.vue";
 import { initTheme } from "@composables/useTheme";
 import { installBrowserFallback } from "@lib/browser-fallback";
+import { pinia } from "@/stores";
 import "./style.css";
 
 installBrowserFallback();
@@ -28,4 +29,4 @@ window.addEventListener("unhandledrejection", (event) => {
   reportRendererError(message || "Unhandled renderer rejection", details);
 });
 
-createApp(App).mount("#app");
+createApp(App).use(pinia).mount("#app");
