@@ -8,6 +8,7 @@ import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
 import Sidebar from "@entry/components/diff/Sidebar.vue";
 import CommitPicker from "@entry/components/commits/CommitPicker.vue";
+import PullRequestPicker from "@entry/components/commits/PullRequestPicker.vue";
 import SearchBar from "@entry/components/diff/SearchBar.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
@@ -25,6 +26,7 @@ import type {
   DiffSection,
   DiffViewMode,
   FileSearchResult,
+  PullRequestSummary,
   Repository,
   RepositoryFile,
   RepositoryState,
@@ -96,6 +98,11 @@ const commits = ref<CommitSummary[]>([]);
 const commitsLoading = ref(false);
 const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "working");
 const searchOpen = ref(false);
+
+const pullRequests = ref<PullRequestSummary[]>([]);
+const pullRequestsLoading = ref(false);
+const pullRequestsError = ref("");
+const activePullRequest = ref<PullRequestSummary | null>(null);
 
 const walkthrough = ref<WalkthroughRecord | null>(null);
 const walkthroughLoading = ref(false);
@@ -429,6 +436,7 @@ async function openCommit(sha: string) {
     state.value = await window.diffApp.readCommit(sha, state.value.root);
     selectedPath.value = state.value.files[0]?.path ?? "";
     activeReview.value = null;
+    activePullRequest.value = null;
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : String(cause);
   } finally {
@@ -438,7 +446,23 @@ async function openCommit(sha: string) {
 
 async function returnToWorkingTree() {
   if (!state.value) return;
+  activePullRequest.value = null;
   await openRepo(state.value.root);
+}
+
+async function loadPullRequests() {
+  if (!state.value) return;
+  pullRequestsLoading.value = true;
+  pullRequestsError.value = "";
+  try {
+    const response = await window.diffApp.listPullRequests(state.value.root);
+    pullRequests.value = response.pullRequests;
+  } catch (cause) {
+    pullRequestsError.value = cause instanceof Error ? cause.message : String(cause);
+    pullRequests.value = [];
+  } finally {
+    pullRequestsLoading.value = false;
+  }
 }
 
 async function openPullRequest(number: number) {
@@ -449,6 +473,15 @@ async function openPullRequest(number: number) {
     state.value = await window.diffApp.readPullRequest(number, state.value.root);
     selectedPath.value = state.value.files[0]?.path ?? "";
     activeReview.value = null;
+    activePullRequest.value = pullRequests.value.find((pr) => pr.number === number) ?? {
+      number,
+      title: "",
+      author: "",
+      state: "open",
+      baseRef: "",
+      headRef: state.value.branch,
+      url: "",
+    };
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : String(cause);
   } finally {
@@ -866,7 +899,27 @@ void ACCENTS;
         @select="openCommit"
         @back="returnToWorkingTree"
       />
-      <span v-if="repoMode === 'commit' && state.commitSha" class="font-mono text-muted-foreground">
+      <PullRequestPicker
+        :pull-requests="pullRequests"
+        :loading="pullRequestsLoading"
+        :active-number="activePullRequest?.number"
+        :error="pullRequestsError"
+        @open="loadPullRequests()"
+        @select="openPullRequest"
+      />
+      <span
+        v-if="activePullRequest"
+        class="flex items-center gap-1 font-mono text-muted-foreground"
+      >
+        PR #{{ activePullRequest.number }}
+        <span v-if="activePullRequest.title" class="font-sans"
+          >· {{ activePullRequest.title }}</span
+        >
+      </span>
+      <span
+        v-else-if="repoMode === 'commit' && state.commitSha"
+        class="font-mono text-muted-foreground"
+      >
         commit {{ state.branch || state.commitSha.slice(0, 7) }}
       </span>
       <span class="flex-1" />
