@@ -227,7 +227,28 @@ function onKeydown(event: KeyboardEvent) {
   } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
     event.preventDefault();
     void startReview();
+  } else if (event.key === "n" || event.key === "p") {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    event.preventDefault();
+    jumpToHunk(event.key === "n" ? 1 : -1);
   }
+}
+
+function jumpToHunk(delta: number) {
+  const anchors = Array.from(document.querySelectorAll<HTMLElement>("[data-hunk-anchor]"));
+  if (anchors.length === 0) return;
+  const midpoint = window.innerHeight / 2;
+  let current = 0;
+  for (let i = 0; i < anchors.length; i++) {
+    const rect = anchors[i]!.getBoundingClientRect();
+    if (rect.top <= midpoint) current = i;
+    else break;
+  }
+  const target = Math.max(0, Math.min(anchors.length - 1, current + delta));
+  const element = anchors[target]!;
+  element.scrollIntoView({ block: "center", behavior: "smooth" });
+  element.classList.add("gd-hunk-flash");
+  window.setTimeout(() => element.classList.remove("gd-hunk-flash"), 350);
 }
 
 function selectAdjacent(delta: number) {

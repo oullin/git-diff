@@ -190,6 +190,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                 <div
                   v-if="row.line.text.startsWith('@@')"
                   class="flex items-center"
+                  data-hunk-anchor
                   :style="{
                     gap: '10px',
                     padding: '8px 16px',
@@ -504,6 +505,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
               <div
                 v-if="line.type === 'meta' && line.text.startsWith('@@')"
                 class="flex items-center"
+                data-hunk-anchor
                 :style="{
                   gap: '10px',
                   padding: '8px 16px',
