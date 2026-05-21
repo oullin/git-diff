@@ -6,43 +6,24 @@ import type { BundledLanguage } from "shiki";
 
 import lichtTheme from "../themes/licht.json" with { type: "json" };
 import dunkelTheme from "../themes/dunkel.json" with { type: "json" };
+import type {
+    ErrorResponse,
+    HighlightResponse,
+    HighlightThemeId,
+    PrewarmResponse,
+    WorkerRequest,
+} from "./highlight-protocol";
 
-type ThemeId = "Licht" | "Dunkel";
-
-type HighlightRequest = {
-    kind: "highlight";
-    id: number;
-    text: string;
-    lang: BundledLanguage;
-    theme: ThemeId;
-};
-
-type PrewarmRequest = {
-    kind: "prewarm";
-    id: number;
-    lang: BundledLanguage;
-};
-
-type WorkerRequest = HighlightRequest | PrewarmRequest;
-
-type HighlightResponse = {
-    kind: "highlight";
-    id: number;
-    html: string;
-};
-
-type PrewarmResponse = {
-    kind: "prewarm";
-    id: number;
-};
-
-type ErrorResponse = {
-    kind: "error";
-    id: number;
-    message: string;
-};
-
-export type WorkerResponse = HighlightResponse | PrewarmResponse | ErrorResponse;
+export type {
+    ErrorResponse,
+    HighlightRequest,
+    HighlightResponse,
+    HighlightThemeId,
+    PrewarmRequest,
+    PrewarmResponse,
+    WorkerRequest,
+    WorkerResponse,
+} from "./highlight-protocol";
 
 let highlighter: HighlighterCore | null = null;
 const loadedLangs = new Set<string>();
@@ -100,7 +81,11 @@ function escapeHtml(value: string): string {
     });
 }
 
-async function tokenize(text: string, lang: BundledLanguage, theme: ThemeId): Promise<string> {
+async function tokenize(
+    text: string,
+    lang: BundledLanguage,
+    theme: HighlightThemeId,
+): Promise<string> {
     const h = await ensureLanguage(lang);
     const tokens = h.codeToTokensBase(text, {
         lang,
