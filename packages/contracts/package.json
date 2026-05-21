@@ -34,6 +34,10 @@
             "types": "./dist/commit/index.d.ts",
             "default": "./dist/commit/index.js"
         },
+        "./common": {
+            "types": "./dist/common/index.d.ts",
+            "default": "./dist/common/index.js"
+        },
         "./preference": {
             "types": "./dist/preference/index.d.ts",
             "default": "./dist/preference/index.js"

@@ -1,7 +1,11 @@
 import type {
+    AuthLoginRequest,
     AuthLoginResponse,
+    AuthResumeRequest,
+    AuthResumeResponse,
+    AuthSetupRequest,
     AuthStateResponse,
-    AuthUser,
+    AuthWipeRequest,
     Branch,
     CommitSummary,
     FileSearchResult,
@@ -17,7 +21,7 @@ import type {
     ReviewEvent,
     ReviewSession,
     SystemStats,
-    UIPreferencesResponse,
+    UIPreferences,
     WalkthroughRecord,
 } from "@git-diff/contracts";
 import type { UnixTarget, WorkflowBridgeClient } from "#bridge/client-types.js";
@@ -84,11 +88,11 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
         return systemClient.getSystemStats(this.socketPath);
     }
 
-    getUIPreferences(): Promise<UIPreferencesResponse> {
+    getUIPreferences(): Promise<UIPreferences> {
         return preferencesClient.getUIPreferences(this.socketPath);
     }
 
-    saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse> {
+    saveUIPreferences(values: Record<string, string>): Promise<UIPreferences> {
         return preferencesClient.saveUIPreferences(this.socketPath, values);
     }
 
@@ -96,15 +100,15 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
         return authClient.getAuthState(this.socketPath);
     }
 
-    authSetup(request: { password: string }): Promise<AuthLoginResponse> {
+    authSetup(request: AuthSetupRequest): Promise<AuthLoginResponse> {
         return authClient.authSetup(this.socketPath, request);
     }
 
-    authLogin(request: { password: string; remember: boolean }): Promise<AuthLoginResponse> {
+    authLogin(request: AuthLoginRequest): Promise<AuthLoginResponse> {
         return authClient.authLogin(this.socketPath, request);
     }
 
-    authResume(request: { token: string }): Promise<{ user: AuthUser }> {
+    authResume(request: AuthResumeRequest): Promise<AuthResumeResponse> {
         return authClient.authResume(this.socketPath, request);
     }
 
@@ -112,7 +116,7 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
         return authClient.authLogout(this.socketPath);
     }
 
-    authWipe(request: { osUsername?: string }): Promise<void> {
+    authWipe(request: AuthWipeRequest): Promise<void> {
         return authClient.authWipe(this.socketPath, request);
     }
 

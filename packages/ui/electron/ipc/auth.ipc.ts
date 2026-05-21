@@ -1,5 +1,11 @@
 import { ipcMain } from "electron";
-import type { AuthStateResponse, AuthUser } from "@git-diff/contracts";
+import type {
+    AuthLoginRequest,
+    AuthSetupRequest,
+    AuthStateResponse,
+    AuthUser,
+    AuthWipeRequest,
+} from "@git-diff/contracts";
 import { client } from "#electron/bridge.js";
 import {
     clearSessionToken,
@@ -10,7 +16,7 @@ import {
 export function register(): void {
     ipcMain.handle("auth:state", async () => (await client()).getAuthState());
 
-    ipcMain.handle("auth:setup", async (_event, request: { password: string }) => {
+    ipcMain.handle("auth:setup", async (_event, request: AuthSetupRequest) => {
         const response = await (await client()).authSetup(request);
 
         if (response.token) {
@@ -20,20 +26,17 @@ export function register(): void {
         return response;
     });
 
-    ipcMain.handle(
-        "auth:login",
-        async (_event, request: { password: string; remember: boolean }) => {
-            const response = await (await client()).authLogin(request);
+    ipcMain.handle("auth:login", async (_event, request: AuthLoginRequest) => {
+        const response = await (await client()).authLogin(request);
 
-            if (request.remember && response.token) {
-                writeSessionToken(response.token);
-            } else {
-                clearSessionToken();
-            }
+        if (request.remember && response.token) {
+            writeSessionToken(response.token);
+        } else {
+            clearSessionToken();
+        }
 
-            return response;
-        },
-    );
+        return response;
+    });
 
     ipcMain.handle("auth:logout", async () => {
         clearSessionToken();
@@ -41,7 +44,7 @@ export function register(): void {
         await (await client()).authLogout();
     });
 
-    ipcMain.handle("auth:wipe", async (_event, request: { osUsername?: string } = {}) => {
+    ipcMain.handle("auth:wipe", async (_event, request: AuthWipeRequest = {}) => {
         clearSessionToken();
 
         await (await client()).authWipe({ osUsername: request.osUsername });

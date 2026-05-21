@@ -6,7 +6,6 @@ export interface UIPreferences {
     values: Record<string, string>;
     updatedAt?: string;
 }
-export type UIPreferencesResponse = UIPreferences;
 export declare const PREF_KEYS: {
     readonly theme: "theme";
     readonly diffViewMode: "diff.viewMode";

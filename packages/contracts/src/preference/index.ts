@@ -8,9 +8,6 @@ export interface UIPreferences {
     updatedAt?: string;
 }
 
-// Alias retained for back-compat with bridge transport naming.
-export type UIPreferencesResponse = UIPreferences;
-
 export const PREF_KEYS = {
     theme: "theme",
     diffViewMode: "diff.viewMode",

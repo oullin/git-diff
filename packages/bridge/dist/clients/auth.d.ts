@@ -1,30 +1,24 @@
-import type { AuthLoginResponse, AuthStateResponse, AuthUser } from "@git-diff/contracts";
+import type {
+    AuthLoginRequest,
+    AuthLoginResponse,
+    AuthResumeRequest,
+    AuthResumeResponse,
+    AuthSetupRequest,
+    AuthStateResponse,
+    AuthWipeRequest,
+} from "@git-diff/contracts";
 export declare function getAuthState(socketPath: string): Promise<AuthStateResponse>;
 export declare function authSetup(
     socketPath: string,
-    request: {
-        password: string;
-    },
+    request: AuthSetupRequest,
 ): Promise<AuthLoginResponse>;
 export declare function authLogin(
     socketPath: string,
-    request: {
-        password: string;
-        remember: boolean;
-    },
+    request: AuthLoginRequest,
 ): Promise<AuthLoginResponse>;
 export declare function authResume(
     socketPath: string,
-    request: {
-        token: string;
-    },
-): Promise<{
-    user: AuthUser;
-}>;
+    request: AuthResumeRequest,
+): Promise<AuthResumeResponse>;
 export declare function authLogout(socketPath: string): Promise<void>;
-export declare function authWipe(
-    socketPath: string,
-    request: {
-        osUsername?: string;
-    },
-): Promise<void>;
+export declare function authWipe(socketPath: string, request: AuthWipeRequest): Promise<void>;

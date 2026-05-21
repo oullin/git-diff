@@ -1,7 +1,11 @@
 import type {
+    AuthLoginRequest,
     AuthLoginResponse,
+    AuthResumeRequest,
+    AuthResumeResponse,
+    AuthSetupRequest,
     AuthStateResponse,
-    AuthUser,
+    AuthWipeRequest,
     Branch,
     CommitSummary,
     FileSearchResult,
@@ -10,6 +14,7 @@ import type {
     Repository,
     RepositoryCollaborator,
     RepositoryFile,
+    RepositoryFileRange,
     RepositoryMode,
     RepositoryState,
     ReviewComment,
@@ -17,7 +22,7 @@ import type {
     ReviewEvent,
     ReviewSession,
     SystemStats,
-    UIPreferencesResponse,
+    UIPreferences,
     WalkthroughRecord,
 } from "@git-diff/contracts";
 export interface UnixTarget {
@@ -26,16 +31,14 @@ export interface UnixTarget {
 export interface WorkflowBridgeClient {
     close(): void;
     healthz(): Promise<void>;
-    getUIPreferences(): Promise<UIPreferencesResponse>;
-    saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse>;
+    getUIPreferences(): Promise<UIPreferences>;
+    saveUIPreferences(values: Record<string, string>): Promise<UIPreferences>;
     getAuthState(): Promise<AuthStateResponse>;
-    authSetup(request: { password: string }): Promise<AuthLoginResponse>;
-    authLogin(request: { password: string; remember: boolean }): Promise<AuthLoginResponse>;
-    authResume(request: { token: string }): Promise<{
-        user: AuthUser;
-    }>;
+    authSetup(request: AuthSetupRequest): Promise<AuthLoginResponse>;
+    authLogin(request: AuthLoginRequest): Promise<AuthLoginResponse>;
+    authResume(request: AuthResumeRequest): Promise<AuthResumeResponse>;
     authLogout(): Promise<void>;
-    authWipe(request: { osUsername?: string }): Promise<void>;
+    authWipe(request: AuthWipeRequest): Promise<void>;
     repositoryState(request: { path?: string }): Promise<RepositoryState>;
     openRepository(request: { path: string }): Promise<RepositoryState>;
     refreshRepository(request: { path: string }): Promise<RepositoryState>;
@@ -64,6 +67,8 @@ export interface WorkflowBridgeClient {
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
     }): Promise<PendingComment>;
@@ -73,6 +78,13 @@ export interface WorkflowBridgeClient {
         promoted: number;
     }>;
     readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
+    readRepositoryFileRange(request: {
+        root: string;
+        path: string;
+        ref?: string;
+        startLine: number;
+        endLine: number;
+    }): Promise<RepositoryFileRange>;
     listBranches(request: { path?: string }): Promise<{
         branches: string[];
         records?: Branch[];
@@ -114,6 +126,8 @@ export interface WorkflowBridgeClient {
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
     }): Promise<ReviewComment>;

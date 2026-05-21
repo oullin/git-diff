@@ -35,3 +35,15 @@ export function readRepositoryFile(socketPath, request) {
     const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
     return requestJson(socketPath, "GET", `/v1/repository/file${query}`);
 }
+export function readRepositoryFileRange(socketPath, request) {
+    const parts = [
+        `root=${encodeURIComponent(request.root)}`,
+        `path=${encodeURIComponent(request.path)}`,
+        `startLine=${request.startLine}`,
+        `endLine=${request.endLine}`,
+    ];
+    if (request.ref) {
+        parts.push(`ref=${encodeURIComponent(request.ref)}`);
+    }
+    return requestJson(socketPath, "GET", `/v1/repository/file-range?${parts.join("&")}`);
+}

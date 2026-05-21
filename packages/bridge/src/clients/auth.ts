@@ -1,4 +1,12 @@
-import type { AuthLoginResponse, AuthStateResponse, AuthUser } from "@git-diff/contracts";
+import type {
+    AuthLoginRequest,
+    AuthLoginResponse,
+    AuthResumeRequest,
+    AuthResumeResponse,
+    AuthSetupRequest,
+    AuthStateResponse,
+    AuthWipeRequest,
+} from "@git-diff/contracts";
 import { requestJson } from "#bridge/http.js";
 
 export function getAuthState(socketPath: string): Promise<AuthStateResponse> {
@@ -7,7 +15,7 @@ export function getAuthState(socketPath: string): Promise<AuthStateResponse> {
 
 export function authSetup(
     socketPath: string,
-    request: { password: string },
+    request: AuthSetupRequest,
 ): Promise<AuthLoginResponse> {
     return requestJson<AuthLoginResponse>(socketPath, "POST", "/v1/auth/setup", {
         password: request.password,
@@ -16,7 +24,7 @@ export function authSetup(
 
 export function authLogin(
     socketPath: string,
-    request: { password: string; remember: boolean },
+    request: AuthLoginRequest,
 ): Promise<AuthLoginResponse> {
     return requestJson<AuthLoginResponse>(socketPath, "POST", "/v1/auth/login", {
         password: request.password,
@@ -26,9 +34,9 @@ export function authLogin(
 
 export function authResume(
     socketPath: string,
-    request: { token: string },
-): Promise<{ user: AuthUser }> {
-    return requestJson<{ user: AuthUser }>(socketPath, "POST", "/v1/auth/resume", {
+    request: AuthResumeRequest,
+): Promise<AuthResumeResponse> {
+    return requestJson<AuthResumeResponse>(socketPath, "POST", "/v1/auth/resume", {
         token: request.token,
     });
 }
@@ -37,7 +45,7 @@ export function authLogout(socketPath: string): Promise<void> {
     return requestJson<void>(socketPath, "POST", "/v1/auth/logout");
 }
 
-export function authWipe(socketPath: string, request: { osUsername?: string }): Promise<void> {
+export function authWipe(socketPath: string, request: AuthWipeRequest): Promise<void> {
     return requestJson<void>(socketPath, "POST", "/v1/auth/wipe", {
         osUsername: request.osUsername ?? "",
     });

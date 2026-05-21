@@ -1,4 +1,9 @@
-import type { CommitSummary, RepositoryFile, RepositoryState } from "@git-diff/contracts";
+import type {
+    CommitSummary,
+    RepositoryFile,
+    RepositoryFileRange,
+    RepositoryState,
+} from "@git-diff/contracts";
 export declare function repositoryState(
     socketPath: string,
     request: {
@@ -40,3 +45,13 @@ export declare function readRepositoryFile(
         path: string;
     },
 ): Promise<RepositoryFile>;
+export declare function readRepositoryFileRange(
+    socketPath: string,
+    request: {
+        root: string;
+        path: string;
+        ref?: string;
+        startLine: number;
+        endLine: number;
+    },
+): Promise<RepositoryFileRange>;

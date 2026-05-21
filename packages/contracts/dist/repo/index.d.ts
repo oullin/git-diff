@@ -1,7 +1,5 @@
-export type GitFileStatus = "added" | "deleted" | "modified" | "renamed" | "untracked";
-export type DiffSectionKind = "staged" | "unstaged" | "untracked" | "commit";
-export type RepositoryMode = "working" | "commit";
-export type RepositoryRole = "owner" | "write" | "read";
+export type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole, } from "../common/index.js";
+import type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole } from "../common/index.js";
 export interface DiffSection {
     id: string;
     kind: DiffSectionKind;

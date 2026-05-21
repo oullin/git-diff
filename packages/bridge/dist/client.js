@@ -90,6 +90,9 @@ class HttpWorkflowBridgeClient {
     readRepositoryFile(request) {
         return repositoryClient.readRepositoryFile(this.socketPath, request);
     }
+    readRepositoryFileRange(request) {
+        return repositoryClient.readRepositoryFileRange(this.socketPath, request);
+    }
     generateWalkthrough(request) {
         return walkthroughClient.generateWalkthrough(this.socketPath, request);
     }
