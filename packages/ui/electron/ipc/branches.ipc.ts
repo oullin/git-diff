@@ -3,12 +3,12 @@ import { client } from "#electron/bridge.js";
 
 export function register(): void {
     ipcMain.handle("repository:branches", async (_event, path?: string) =>
-        (await client()).listBranches({ path }),
+        (await client()).branches.list({ path }),
     );
 
     ipcMain.handle("repository:checkout", async (_event, path: string, branch: string) => {
         try {
-            return await (await client()).checkoutBranch({ path, branch });
+            return await (await client()).branches.checkout({ path, branch });
         } catch (cause) {
             const err = cause as { code?: string; files?: string[]; message?: string };
             if (err && typeof err.code === "string") {
@@ -24,18 +24,18 @@ export function register(): void {
     });
 
     ipcMain.handle("repository:branches:create", async (_event, path: string, name: string) =>
-        (await client()).createBranch({ path, name }),
+        (await client()).branches.create({ path, name }),
     );
 
     ipcMain.handle("repository:branches:delete", async (_event, name: string, path?: string) =>
-        (await client()).deleteBranch({ path, name }),
+        (await client()).branches.delete({ path, name }),
     );
 
     ipcMain.handle("repository:branches:lock", async (_event, name: string, path?: string) =>
-        (await client()).lockBranch({ path, name }),
+        (await client()).branches.lock({ path, name }),
     );
 
     ipcMain.handle("repository:branches:unlock", async (_event, name: string, path?: string) =>
-        (await client()).unlockBranch({ path, name }),
+        (await client()).branches.unlock({ path, name }),
     );
 }

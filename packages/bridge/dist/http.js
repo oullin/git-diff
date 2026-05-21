@@ -1,5 +1,17 @@
 import { request as httpRequest } from "node:http";
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+export function isBridgeError(value) {
+    return value instanceof Error && typeof value.kind === "string";
+}
+export class SocketHttpTransport {
+    socketPath;
+    constructor(socketPath) {
+        this.socketPath = socketPath;
+    }
+    request(method, path, body, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
+        return requestJson(this.socketPath, method, path, body, timeoutMs);
+    }
+}
 export function requestJson(
     socketPath,
     method,
@@ -36,7 +48,9 @@ export function requestJson(
                         try {
                             succeed(JSON.parse(raw));
                         } catch (error) {
-                            fail(error instanceof Error ? error : new Error(String(error)));
+                            fail(
+                                transportError(`${method} ${path} returned malformed JSON`, error),
+                            );
                         }
                         return;
                     }
@@ -48,20 +62,18 @@ export function requestJson(
                         succeed(undefined);
                         return;
                     }
-                    const error = new Error(`${method} ${path} failed (${res.statusCode}): ${raw}`);
-                    const bridgeError = error;
-                    bridgeError.statusCode = res.statusCode;
-                    if (isJsonResponse(res)) {
-                        applyJsonErrorPayload(bridgeError, raw);
-                    }
-                    fail(bridgeError);
+                    fail(buildHttpError(method, path, res, raw));
                 })
-                .catch(fail);
+                .catch((error) =>
+                    fail(transportError(`${method} ${path} response read failed`, error)),
+                );
         });
         req.setTimeout(timeoutMs, () => {
-            req.destroy(new Error(`${method} ${path} timed out after ${timeoutMs}ms`));
+            req.destroy(transportError(`${method} ${path} timed out after ${timeoutMs}ms`));
         });
-        req.on("error", fail);
+        req.on("error", (error) =>
+            fail(transportError(`${method} ${path} transport error`, error)),
+        );
         if (payload !== null) {
             req.write(payload);
         }
@@ -81,6 +93,32 @@ export function consumeBody(res) {
 }
 function isJsonResponse(res) {
     return (res.headers["content-type"] ?? "").includes("application/json");
+}
+function buildHttpError(method, path, res, raw) {
+    const status = res.statusCode ?? 0;
+    const kind = kindForStatus(status);
+    const error = new Error(`${method} ${path} failed (${status}): ${raw}`);
+    error.kind = kind;
+    error.statusCode = status;
+    if (isJsonResponse(res)) {
+        applyJsonErrorPayload(error, raw);
+    }
+    return error;
+}
+function kindForStatus(status) {
+    if (status === 401) return "auth";
+    if (status === 400) return "validation";
+    if (status === 404) return "notFound";
+    if (status === 409) return "conflict";
+    return "server";
+}
+function transportError(message, cause) {
+    const error = new Error(message);
+    error.kind = "transport";
+    if (cause instanceof Error) {
+        error.message = `${message}: ${cause.message}`;
+    }
+    return error;
 }
 function applyJsonErrorPayload(error, raw) {
     try {

@@ -1,3 +1,8 @@
 import type { SystemStats } from "@git-diff/contracts";
-export declare function healthz(socketPath: string): Promise<void>;
-export declare function getSystemStats(socketPath: string): Promise<SystemStats>;
+import type { HttpTransport } from "#bridge/http.js";
+export declare class SystemClient {
+    private readonly transport;
+    constructor(transport: HttpTransport);
+    healthz(): Promise<void>;
+    stats(): Promise<SystemStats>;
+}

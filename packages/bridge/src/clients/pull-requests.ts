@@ -1,36 +1,35 @@
 import type { PullRequestSummary, RepositoryState } from "@git-diff/contracts";
-import { requestJson } from "#bridge/http.js";
+import type { HttpTransport } from "#bridge/http.js";
 
-export function listPullRequests(
-    socketPath: string,
-    request: { path?: string; limit?: number },
-): Promise<{ pullRequests: PullRequestSummary[] }> {
-    const parts: string[] = [];
+export class PullRequestClient {
+    constructor(private readonly transport: HttpTransport) {}
 
-    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    list(request: {
+        path?: string;
+        limit?: number;
+    }): Promise<{ pullRequests: PullRequestSummary[] }> {
+        const parts: string[] = [];
 
-    if (request.limit) parts.push(`limit=${request.limit}`);
+        if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
 
-    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+        if (request.limit) parts.push(`limit=${request.limit}`);
 
-    return requestJson<{ pullRequests: PullRequestSummary[] }>(
-        socketPath,
-        "GET",
-        `/v1/repository/pull-requests${query}`,
-    );
-}
+        const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
 
-export function readPullRequest(
-    socketPath: string,
-    request: { path?: string; number: number },
-): Promise<RepositoryState> {
-    const parts = [`number=${request.number}`];
+        return this.transport.request<{ pullRequests: PullRequestSummary[] }>(
+            "GET",
+            `/v1/repository/pull-requests${query}`,
+        );
+    }
 
-    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    read(request: { path?: string; number: number }): Promise<RepositoryState> {
+        const parts = [`number=${request.number}`];
 
-    return requestJson<RepositoryState>(
-        socketPath,
-        "GET",
-        `/v1/repository/pull-request?${parts.join("&")}`,
-    );
+        if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+
+        return this.transport.request<RepositoryState>(
+            "GET",
+            `/v1/repository/pull-request?${parts.join("&")}`,
+        );
+    }
 }

@@ -1,56 +1,35 @@
 import type { ReviewComment, ReviewDetail, ReviewEvent, ReviewSession } from "@git-diff/contracts";
-export declare function createReview(
-    socketPath: string,
-    request: Partial<ReviewSession>,
-): Promise<ReviewSession>;
-export declare function listReviews(
-    socketPath: string,
-    request?: {
-        limit?: number;
-    },
-): Promise<{
-    reviews: ReviewSession[];
-}>;
-export declare function reviewDetail(
-    socketPath: string,
-    request: {
-        id: string;
-    },
-): Promise<ReviewDetail>;
-export declare function addReviewEvent(
-    socketPath: string,
-    request: {
+import type { HttpTransport } from "#bridge/http.js";
+export declare class ReviewClient {
+    private readonly transport;
+    constructor(transport: HttpTransport);
+    create(request: Partial<ReviewSession>): Promise<ReviewSession>;
+    list(request?: { limit?: number }): Promise<{
+        reviews: ReviewSession[];
+    }>;
+    detail(request: { id: string }): Promise<ReviewDetail>;
+    addEvent(request: {
         reviewId: string;
         type: string;
         filePath?: string;
         message?: string;
         metadata?: string;
-    },
-): Promise<ReviewEvent>;
-export declare function createReviewComment(
-    socketPath: string,
-    request: {
+    }): Promise<ReviewEvent>;
+    createComment(request: {
         reviewId: string;
         filePath: string;
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
-    },
-): Promise<ReviewComment>;
-export declare function updateReviewComment(
-    socketPath: string,
-    request: {
+    }): Promise<ReviewComment>;
+    updateComment(request: {
         reviewId: string;
         commentId: string;
         bodyHtml: string;
-    },
-): Promise<ReviewComment>;
-export declare function deleteReviewComment(
-    socketPath: string,
-    request: {
-        reviewId: string;
-        commentId: string;
-    },
-): Promise<void>;
+    }): Promise<ReviewComment>;
+    deleteComment(request: { reviewId: string; commentId: string }): Promise<void>;
+}

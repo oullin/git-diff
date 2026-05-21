@@ -1,17 +1,10 @@
 import type { PullRequestSummary, RepositoryState } from "@git-diff/contracts";
-export declare function listPullRequests(
-    socketPath: string,
-    request: {
-        path?: string;
-        limit?: number;
-    },
-): Promise<{
-    pullRequests: PullRequestSummary[];
-}>;
-export declare function readPullRequest(
-    socketPath: string,
-    request: {
-        path?: string;
-        number: number;
-    },
-): Promise<RepositoryState>;
+import type { HttpTransport } from "#bridge/http.js";
+export declare class PullRequestClient {
+    private readonly transport;
+    constructor(transport: HttpTransport);
+    list(request: { path?: string; limit?: number }): Promise<{
+        pullRequests: PullRequestSummary[];
+    }>;
+    read(request: { path?: string; number: number }): Promise<RepositoryState>;
+}

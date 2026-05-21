@@ -14,10 +14,10 @@ import {
 } from "#electron/ipc/session-token.js";
 
 export function register(): void {
-    ipcMain.handle("auth:state", async () => (await client()).getAuthState());
+    ipcMain.handle("auth:state", async () => (await client()).auth.getState());
 
     ipcMain.handle("auth:setup", async (_event, request: AuthSetupRequest) => {
-        const response = await (await client()).authSetup(request);
+        const response = await (await client()).auth.setup(request);
 
         if (response.token) {
             writeSessionToken(response.token);
@@ -27,7 +27,7 @@ export function register(): void {
     });
 
     ipcMain.handle("auth:login", async (_event, request: AuthLoginRequest) => {
-        const response = await (await client()).authLogin(request);
+        const response = await (await client()).auth.login(request);
 
         if (request.remember && response.token) {
             writeSessionToken(response.token);
@@ -41,13 +41,13 @@ export function register(): void {
     ipcMain.handle("auth:logout", async () => {
         clearSessionToken();
 
-        await (await client()).authLogout();
+        await (await client()).auth.logout();
     });
 
     ipcMain.handle("auth:wipe", async (_event, request: AuthWipeRequest = {}) => {
         clearSessionToken();
 
-        await (await client()).authWipe({ osUsername: request.osUsername });
+        await (await client()).auth.wipe({ osUsername: request.osUsername });
     });
 
     ipcMain.handle(
@@ -59,14 +59,14 @@ export function register(): void {
 
             if (token) {
                 try {
-                    const resumed = await c.authResume({ token });
+                    const resumed = await c.auth.resume({ token });
                     user = resumed.user;
                 } catch {
                     clearSessionToken();
                 }
             }
 
-            const state = await c.getAuthState();
+            const state = await c.auth.getState();
 
             return { user, state };
         },

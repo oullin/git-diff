@@ -5,27 +5,27 @@ import type { IpcDeps } from "#electron/ipc/types.js";
 
 export function register(deps: IpcDeps): void {
     ipcMain.handle("repository:state", async (_event, path?: string) =>
-        (await client()).repositoryState({ path }),
+        (await client()).repository.state({ path }),
     );
 
     ipcMain.handle("repository:open", async (_event, path: string) =>
-        (await client()).openRepository({ path }),
+        (await client()).repository.open({ path }),
     );
 
     ipcMain.handle("repository:refresh", async (_event, path: string) =>
-        (await client()).refreshRepository({ path }),
+        (await client()).repository.refresh({ path }),
     );
 
     ipcMain.handle("repository:commit", async (_event, sha: string, path?: string) =>
-        (await client()).readCommit({ path, sha }),
+        (await client()).repository.readCommit({ path, sha }),
     );
 
     ipcMain.handle("repository:log", async (_event, path?: string, limit?: number) =>
-        (await client()).listCommits({ path, limit }),
+        (await client()).repository.listCommits({ path, limit }),
     );
 
     ipcMain.handle("repository:file:read", async (_event, root: string, path: string) =>
-        (await client()).readRepositoryFile({ root, path }),
+        (await client()).repository.readFile({ root, path }),
     );
 
     ipcMain.handle(
@@ -39,7 +39,7 @@ export function register(deps: IpcDeps): void {
                 startLine: number;
                 endLine: number;
             },
-        ) => (await client()).readRepositoryFileRange(request),
+        ) => (await client()).repository.readFileRange(request),
     );
 
     ipcMain.handle("repository:choose", async (_event, defaultPath?: string) => {

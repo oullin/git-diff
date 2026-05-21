@@ -1,6 +1,8 @@
 import type { UIPreferences } from "@git-diff/contracts";
-export declare function getUIPreferences(socketPath: string): Promise<UIPreferences>;
-export declare function saveUIPreferences(
-    socketPath: string,
-    values: Record<string, string>,
-): Promise<UIPreferences>;
+import type { HttpTransport } from "#bridge/http.js";
+export declare class PreferenceClient {
+    private readonly transport;
+    constructor(transport: HttpTransport);
+    get(): Promise<UIPreferences>;
+    save(values: Record<string, string>): Promise<UIPreferences>;
+}

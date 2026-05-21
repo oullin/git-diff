@@ -5,16 +5,67 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type JsonBody = Record<string, unknown>;
 
+/**
+ * Discriminated error union returned by the bridge transport. `kind`
+ * partitions the cases so consumers can branch on a single field:
+ * - `transport`: socket/connect/timeout failures
+ * - `auth`: HTTP 401
+ * - `validation`: HTTP 400 (`files` carries the offending paths)
+ * - `notFound`: HTTP 404
+ * - `conflict`: HTTP 409 (`code` carries the storage error key)
+ * - `server`: everything else
+ */
+export type BridgeErrorKind =
+    | "transport"
+    | "auth"
+    | "validation"
+    | "notFound"
+    | "conflict"
+    | "server";
+
 export interface BridgeError extends Error {
+    kind: BridgeErrorKind;
     statusCode?: number;
     code?: string;
     files?: string[];
+}
+
+export function isBridgeError(value: unknown): value is BridgeError {
+    return value instanceof Error && typeof (value as BridgeError).kind === "string";
 }
 
 interface JsonErrorPayload {
     error?: unknown;
     code?: unknown;
     files?: unknown;
+}
+
+/**
+ * HttpTransport is the seam between bridge clients and the unix-socket
+ * transport. Per-domain clients depend on this interface so tests can
+ * substitute an in-memory transport, and the implementation can grow
+ * features (retries, tracing) without leaking into the client surface.
+ */
+export interface HttpTransport {
+    request<Response>(
+        method: HttpMethod,
+        path: string,
+        body?: JsonBody,
+        timeoutMs?: number,
+    ): Promise<Response>;
+}
+
+export class SocketHttpTransport implements HttpTransport {
+    constructor(private readonly socketPath: string) {}
+
+    request<Response>(
+        method: HttpMethod,
+        path: string,
+        body?: JsonBody,
+        timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+    ): Promise<Response> {
+        return requestJson<Response>(this.socketPath, method, path, body, timeoutMs);
+    }
 }
 
 export function requestJson<Response>(
@@ -59,7 +110,9 @@ export function requestJson<Response>(
                         try {
                             succeed(JSON.parse(raw) as Response);
                         } catch (error) {
-                            fail(error instanceof Error ? error : new Error(String(error)));
+                            fail(
+                                transportError(`${method} ${path} returned malformed JSON`, error),
+                            );
                         }
 
                         return;
@@ -75,25 +128,20 @@ export function requestJson<Response>(
                         return;
                     }
 
-                    const error = new Error(`${method} ${path} failed (${res.statusCode}): ${raw}`);
-                    const bridgeError = error as BridgeError;
-
-                    bridgeError.statusCode = res.statusCode;
-
-                    if (isJsonResponse(res)) {
-                        applyJsonErrorPayload(bridgeError, raw);
-                    }
-
-                    fail(bridgeError);
+                    fail(buildHttpError(method, path, res, raw));
                 })
-                .catch(fail);
+                .catch((error: unknown) =>
+                    fail(transportError(`${method} ${path} response read failed`, error)),
+                );
         });
 
         req.setTimeout(timeoutMs, () => {
-            req.destroy(new Error(`${method} ${path} timed out after ${timeoutMs}ms`));
+            req.destroy(transportError(`${method} ${path} timed out after ${timeoutMs}ms`));
         });
 
-        req.on("error", fail);
+        req.on("error", (error: Error) =>
+            fail(transportError(`${method} ${path} transport error`, error)),
+        );
 
         if (payload !== null) {
             req.write(payload);
@@ -119,6 +167,50 @@ export function consumeBody(res: IncomingMessage): Promise<string> {
 
 function isJsonResponse(res: IncomingMessage): boolean {
     return (res.headers["content-type"] ?? "").includes("application/json");
+}
+
+function buildHttpError(
+    method: HttpMethod,
+    path: string,
+    res: IncomingMessage,
+    raw: string,
+): BridgeError {
+    const status = res.statusCode ?? 0;
+    const kind = kindForStatus(status);
+    const error = new Error(`${method} ${path} failed (${status}): ${raw}`) as BridgeError;
+
+    error.kind = kind;
+    error.statusCode = status;
+
+    if (isJsonResponse(res)) {
+        applyJsonErrorPayload(error, raw);
+    }
+
+    return error;
+}
+
+function kindForStatus(status: number): BridgeErrorKind {
+    if (status === 401) return "auth";
+
+    if (status === 400) return "validation";
+
+    if (status === 404) return "notFound";
+
+    if (status === 409) return "conflict";
+
+    return "server";
+}
+
+function transportError(message: string, cause?: unknown): BridgeError {
+    const error = new Error(message) as BridgeError;
+
+    error.kind = "transport";
+
+    if (cause instanceof Error) {
+        error.message = `${message}: ${cause.message}`;
+    }
+
+    return error;
 }
 
 function applyJsonErrorPayload(error: BridgeError, raw: string): void {

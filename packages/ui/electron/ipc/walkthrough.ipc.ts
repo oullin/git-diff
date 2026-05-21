@@ -12,6 +12,6 @@ export function register(): void {
                 sha?: string;
                 refresh?: boolean;
             },
-        ) => (await client()).generateWalkthrough(request),
+        ) => (await client()).walkthroughs.generate(request),
     );
 }

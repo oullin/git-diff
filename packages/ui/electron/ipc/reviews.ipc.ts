@@ -3,15 +3,15 @@ import { client } from "#electron/bridge.js";
 
 export function register(): void {
     ipcMain.handle("reviews:create", async (_event, request: Record<string, unknown>) =>
-        (await client()).createReview(request),
+        (await client()).reviews.create(request),
     );
 
     ipcMain.handle("reviews:list", async (_event, limit?: number) =>
-        (await client()).listReviews({ limit }),
+        (await client()).reviews.list({ limit }),
     );
 
     ipcMain.handle("reviews:detail", async (_event, id: string) =>
-        (await client()).reviewDetail({ id }),
+        (await client()).reviews.detail({ id }),
     );
 
     ipcMain.handle(
@@ -25,7 +25,7 @@ export function register(): void {
                 message?: string;
                 metadata?: string;
             },
-        ) => (await client()).addReviewEvent(request),
+        ) => (await client()).reviews.addEvent(request),
     );
 
     ipcMain.handle(
@@ -41,7 +41,7 @@ export function register(): void {
                 authorLabel: string;
                 bodyHtml: string;
             },
-        ) => (await client()).createReviewComment(request),
+        ) => (await client()).reviews.createComment(request),
     );
 
     ipcMain.handle(
@@ -53,7 +53,7 @@ export function register(): void {
                 commentId: string;
                 bodyHtml: string;
             },
-        ) => (await client()).updateReviewComment(request),
+        ) => (await client()).reviews.updateComment(request),
     );
 
     ipcMain.handle(
@@ -64,6 +64,6 @@ export function register(): void {
                 reviewId: string;
                 commentId: string;
             },
-        ) => (await client()).deleteReviewComment(request),
+        ) => (await client()).reviews.deleteComment(request),
     );
 }

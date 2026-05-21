@@ -1,10 +1,5 @@
 import type { RuntimeSettings } from "@git-diff/contracts";
-import {
-    createWorkflowBridgeClient,
-    unixTarget,
-    waitForReady,
-    type WorkflowBridgeClient,
-} from "@git-diff/bridge";
+import { type ApiClient, createApiClient, waitForReady } from "@git-diff/bridge";
 import { app } from "electron";
 import { spawn, type ChildProcess } from "node:child_process";
 import { rmSync } from "node:fs";
@@ -13,7 +8,7 @@ import { join } from "node:path";
 import { recordDiagnostic } from "#electron/diagnostics.js";
 import { apiDir } from "#electron/paths.js";
 
-let bridgeClient: WorkflowBridgeClient | null = null;
+let bridgeClient: ApiClient | null = null;
 let bridgeProcess: ChildProcess | null = null;
 let bridgeSocketPath = "";
 const externalBridgeSocketPath = process.env.API_BRIDGE_SOCKET?.trim() ?? "";
@@ -48,7 +43,7 @@ async function startWorkflowBridge() {
     }
 
     if (externalBridgeSocketPath) {
-        const httpClient = createWorkflowBridgeClient(unixTarget(externalBridgeSocketPath));
+        const httpClient = createApiClient(externalBridgeSocketPath);
         await waitForReady(httpClient);
         bridgeSocketPath = externalBridgeSocketPath;
         bridgeClient = httpClient;
@@ -101,7 +96,7 @@ async function startWorkflowBridge() {
         bridgeStartup = null;
     });
 
-    const httpClient = createWorkflowBridgeClient(unixTarget(bridgeSocketPath));
+    const httpClient = createApiClient(bridgeSocketPath);
 
     try {
         await waitForReady(httpClient);
@@ -149,7 +144,7 @@ export function startBridgeIfNeeded(): Promise<void> {
     return bridgeStartup;
 }
 
-export async function client(): Promise<WorkflowBridgeClient> {
+export async function client(): Promise<ApiClient> {
     if (!bridgeClient) {
         await startBridgeIfNeeded();
     }

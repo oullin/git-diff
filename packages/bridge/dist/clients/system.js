@@ -1,7 +1,12 @@
-import { requestJson } from "#bridge/http.js";
-export function healthz(socketPath) {
-    return requestJson(socketPath, "GET", "/v1/healthz");
-}
-export function getSystemStats(socketPath) {
-    return requestJson(socketPath, "GET", "/v1/system/stats");
+export class SystemClient {
+    transport;
+    constructor(transport) {
+        this.transport = transport;
+    }
+    healthz() {
+        return this.transport.request("GET", "/v1/healthz");
+    }
+    stats() {
+        return this.transport.request("GET", "/v1/system/stats");
+    }
 }

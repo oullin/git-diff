@@ -1,55 +1,77 @@
-import type {
-    AuthLoginRequest,
-    AuthLoginResponse,
-    AuthResumeRequest,
-    AuthResumeResponse,
-    AuthSetupRequest,
-    AuthStateResponse,
-    AuthWipeRequest,
-    Branch,
-    CommitSummary,
-    FileSearchResult,
-    PendingComment,
-    PullRequestSummary,
-    Repository,
-    RepositoryCollaborator,
-    RepositoryFile,
-    RepositoryFileRange,
-    RepositoryState,
-    ReviewComment,
-    ReviewDetail,
-    ReviewEvent,
-    ReviewSession,
-    SystemStats,
-    UIPreferences,
-    WalkthroughRecord,
-} from "@git-diff/contracts";
-import type { UnixTarget, WorkflowBridgeClient } from "#bridge/client-types.js";
-import * as authClient from "#bridge/clients/auth.js";
-import * as branchClient from "#bridge/clients/branches.js";
-import * as pendingCommentClient from "#bridge/clients/pending-comments.js";
-import * as preferencesClient from "#bridge/clients/preferences.js";
-import * as pullRequestClient from "#bridge/clients/pull-requests.js";
-import * as repositoriesClient from "#bridge/clients/repositories.js";
-import * as repositoryClient from "#bridge/clients/repository.js";
-import * as reviewClient from "#bridge/clients/reviews.js";
-import * as systemClient from "#bridge/clients/system.js";
-import * as walkthroughClient from "#bridge/clients/walkthrough.js";
+import { AuthClient } from "#bridge/clients/auth.js";
+import { BranchClient } from "#bridge/clients/branches.js";
+import { PendingCommentClient } from "#bridge/clients/pending-comments.js";
+import { PreferenceClient } from "#bridge/clients/preferences.js";
+import { PullRequestClient } from "#bridge/clients/pull-requests.js";
+import { RepositoriesClient } from "#bridge/clients/repositories.js";
+import { RepositoryClient } from "#bridge/clients/repository.js";
+import { ReviewClient } from "#bridge/clients/reviews.js";
+import { SystemClient } from "#bridge/clients/system.js";
+import { WalkthroughClient } from "#bridge/clients/walkthrough.js";
+import { type HttpTransport, SocketHttpTransport } from "#bridge/http.js";
 
-export function unixTarget(socketPath: string): UnixTarget {
-    return { socketPath };
+/**
+ * ApiClient bundles every per-domain client. Consumers depend on the
+ * shape of this object (one field per domain) rather than the wire
+ * format or the transport — this keeps Electron IPC handlers stable
+ * across transport changes.
+ */
+export interface ApiClient {
+    readonly auth: AuthClient;
+    readonly branches: BranchClient;
+    readonly pendingComments: PendingCommentClient;
+    readonly preferences: PreferenceClient;
+    readonly pullRequests: PullRequestClient;
+    readonly repositories: RepositoriesClient;
+    readonly repository: RepositoryClient;
+    readonly reviews: ReviewClient;
+    readonly system: SystemClient;
+    readonly walkthroughs: WalkthroughClient;
+    close(): void;
 }
 
-export function createWorkflowBridgeClient(target: UnixTarget): WorkflowBridgeClient {
-    return new HttpWorkflowBridgeClient(target);
+class HttpApiClient implements ApiClient {
+    readonly auth: AuthClient;
+    readonly branches: BranchClient;
+    readonly pendingComments: PendingCommentClient;
+    readonly preferences: PreferenceClient;
+    readonly pullRequests: PullRequestClient;
+    readonly repositories: RepositoriesClient;
+    readonly repository: RepositoryClient;
+    readonly reviews: ReviewClient;
+    readonly system: SystemClient;
+    readonly walkthroughs: WalkthroughClient;
+
+    constructor(transport: HttpTransport) {
+        this.auth = new AuthClient(transport);
+        this.branches = new BranchClient(transport);
+        this.pendingComments = new PendingCommentClient(transport);
+        this.preferences = new PreferenceClient(transport);
+        this.pullRequests = new PullRequestClient(transport);
+        this.repositories = new RepositoriesClient(transport);
+        this.repository = new RepositoryClient(transport);
+        this.reviews = new ReviewClient(transport);
+        this.system = new SystemClient(transport);
+        this.walkthroughs = new WalkthroughClient(transport);
+    }
+
+    close(): void {}
 }
 
-export function waitForReady(client: WorkflowBridgeClient, timeoutMs = 10000): Promise<void> {
+export function createApiClient(socketPath: string): ApiClient {
+    return new HttpApiClient(new SocketHttpTransport(socketPath));
+}
+
+export function createApiClientFromTransport(transport: HttpTransport): ApiClient {
+    return new HttpApiClient(transport);
+}
+
+export function waitForReady(client: ApiClient, timeoutMs = 10000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
 
     return new Promise<void>((resolve, reject) => {
         const attempt = (): void => {
-            client
+            client.system
                 .healthz()
                 .then(resolve)
                 .catch((error: unknown) => {
@@ -65,253 +87,4 @@ export function waitForReady(client: WorkflowBridgeClient, timeoutMs = 10000): P
 
         attempt();
     });
-}
-
-// HttpWorkflowBridgeClient is a thin dispatcher: every method delegates to a
-// per-domain function under ./clients/. SRP lives in those modules; this
-// class exists only to satisfy the flat WorkflowBridgeClient interface used
-// by the renderer/electron IPC layer.
-class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
-    private readonly socketPath: string;
-
-    constructor(target: UnixTarget) {
-        this.socketPath = target.socketPath;
-    }
-
-    close(): void {}
-
-    healthz(): Promise<void> {
-        return systemClient.healthz(this.socketPath);
-    }
-
-    getSystemStats(): Promise<SystemStats> {
-        return systemClient.getSystemStats(this.socketPath);
-    }
-
-    getUIPreferences(): Promise<UIPreferences> {
-        return preferencesClient.getUIPreferences(this.socketPath);
-    }
-
-    saveUIPreferences(values: Record<string, string>): Promise<UIPreferences> {
-        return preferencesClient.saveUIPreferences(this.socketPath, values);
-    }
-
-    getAuthState(): Promise<AuthStateResponse> {
-        return authClient.getAuthState(this.socketPath);
-    }
-
-    authSetup(request: AuthSetupRequest): Promise<AuthLoginResponse> {
-        return authClient.authSetup(this.socketPath, request);
-    }
-
-    authLogin(request: AuthLoginRequest): Promise<AuthLoginResponse> {
-        return authClient.authLogin(this.socketPath, request);
-    }
-
-    authResume(request: AuthResumeRequest): Promise<AuthResumeResponse> {
-        return authClient.authResume(this.socketPath, request);
-    }
-
-    authLogout(): Promise<void> {
-        return authClient.authLogout(this.socketPath);
-    }
-
-    authWipe(request: AuthWipeRequest): Promise<void> {
-        return authClient.authWipe(this.socketPath, request);
-    }
-
-    repositoryState(request: { path?: string }): Promise<RepositoryState> {
-        return repositoryClient.repositoryState(this.socketPath, request);
-    }
-
-    openRepository(request: { path: string }): Promise<RepositoryState> {
-        return repositoryClient.openRepository(this.socketPath, request);
-    }
-
-    refreshRepository(request: { path: string }): Promise<RepositoryState> {
-        return repositoryClient.refreshRepository(this.socketPath, request);
-    }
-
-    readCommit(request: { path?: string; sha: string }): Promise<RepositoryState> {
-        return repositoryClient.readCommit(this.socketPath, request);
-    }
-
-    listCommits(request: { path?: string; limit?: number }): Promise<{ commits: CommitSummary[] }> {
-        return repositoryClient.listCommits(this.socketPath, request);
-    }
-
-    readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {
-        return repositoryClient.readRepositoryFile(this.socketPath, request);
-    }
-
-    readRepositoryFileRange(request: {
-        root: string;
-        path: string;
-        ref?: string;
-        startLine: number;
-        endLine: number;
-    }): Promise<RepositoryFileRange> {
-        return repositoryClient.readRepositoryFileRange(this.socketPath, request);
-    }
-
-    generateWalkthrough(request: {
-        path?: string;
-        kind?: "working" | "commit";
-        sha?: string;
-        refresh?: boolean;
-    }): Promise<WalkthroughRecord> {
-        return walkthroughClient.generateWalkthrough(this.socketPath, request);
-    }
-
-    listPullRequests(request: {
-        path?: string;
-        limit?: number;
-    }): Promise<{ pullRequests: PullRequestSummary[] }> {
-        return pullRequestClient.listPullRequests(this.socketPath, request);
-    }
-
-    readPullRequest(request: { path?: string; number: number }): Promise<RepositoryState> {
-        return pullRequestClient.readPullRequest(this.socketPath, request);
-    }
-
-    listPendingComments(request: {
-        path?: string;
-        kind?: "working" | "commit";
-        sha?: string;
-    }): Promise<{ comments: PendingComment[] }> {
-        return pendingCommentClient.listPendingComments(this.socketPath, request);
-    }
-
-    createPendingComment(request: {
-        repoRoot: string;
-        contextKind: "working" | "commit";
-        contextSha?: string;
-        filePath: string;
-        diffSection: string;
-        side: string;
-        lineNumber: number;
-        authorLabel: string;
-        bodyHtml: string;
-    }): Promise<PendingComment> {
-        return pendingCommentClient.createPendingComment(this.socketPath, request);
-    }
-
-    updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment> {
-        return pendingCommentClient.updatePendingComment(this.socketPath, request);
-    }
-
-    deletePendingComment(request: { id: string }): Promise<void> {
-        return pendingCommentClient.deletePendingComment(this.socketPath, request);
-    }
-
-    promotePendingComments(request: { reviewId: string }): Promise<{ promoted: number }> {
-        return pendingCommentClient.promotePendingComments(this.socketPath, request);
-    }
-
-    listBranches(request: { path?: string }): Promise<{ branches: string[]; records?: Branch[] }> {
-        return branchClient.listBranches(this.socketPath, request);
-    }
-
-    checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState> {
-        return branchClient.checkoutBranch(this.socketPath, request);
-    }
-
-    createBranch(request: { path: string; name: string }): Promise<RepositoryState> {
-        return branchClient.createBranch(this.socketPath, request);
-    }
-
-    deleteBranch(request: { path?: string; name: string }): Promise<void> {
-        return branchClient.deleteBranch(this.socketPath, request);
-    }
-
-    lockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }> {
-        return branchClient.lockBranch(this.socketPath, request);
-    }
-
-    unlockBranch(request: { path?: string; name: string }): Promise<{ branches: Branch[] }> {
-        return branchClient.unlockBranch(this.socketPath, request);
-    }
-
-    createReview(request: Partial<ReviewSession>): Promise<ReviewSession> {
-        return reviewClient.createReview(this.socketPath, request);
-    }
-
-    listReviews(request: { limit?: number }): Promise<{ reviews: ReviewSession[] }> {
-        return reviewClient.listReviews(this.socketPath, request);
-    }
-
-    reviewDetail(request: { id: string }): Promise<ReviewDetail> {
-        return reviewClient.reviewDetail(this.socketPath, request);
-    }
-
-    addReviewEvent(request: {
-        reviewId: string;
-        type: string;
-        filePath?: string;
-        message?: string;
-        metadata?: string;
-    }): Promise<ReviewEvent> {
-        return reviewClient.addReviewEvent(this.socketPath, request);
-    }
-
-    createReviewComment(request: {
-        reviewId: string;
-        filePath: string;
-        diffSection: string;
-        side: string;
-        lineNumber: number;
-        authorLabel: string;
-        bodyHtml: string;
-    }): Promise<ReviewComment> {
-        return reviewClient.createReviewComment(this.socketPath, request);
-    }
-
-    updateReviewComment(request: {
-        reviewId: string;
-        commentId: string;
-        bodyHtml: string;
-    }): Promise<ReviewComment> {
-        return reviewClient.updateReviewComment(this.socketPath, request);
-    }
-
-    deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void> {
-        return reviewClient.deleteReviewComment(this.socketPath, request);
-    }
-
-    listRepositories(): Promise<{ repositories: Repository[] }> {
-        return repositoriesClient.listRepositories(this.socketPath);
-    }
-
-    searchRepositoryFiles(request: {
-        query: string;
-        limit?: number;
-    }): Promise<{ results: FileSearchResult[] }> {
-        return repositoriesClient.searchRepositoryFiles(this.socketPath, request);
-    }
-
-    upsertRepository(request: { path: string; name?: string }): Promise<Repository> {
-        return repositoriesClient.upsertRepository(this.socketPath, request);
-    }
-
-    removeRepository(request: { path: string }): Promise<void> {
-        return repositoriesClient.removeRepository(this.socketPath, request);
-    }
-
-    listCollaborators(request: {
-        path: string;
-    }): Promise<{ collaborators: RepositoryCollaborator[] }> {
-        return repositoriesClient.listCollaborators(this.socketPath, request);
-    }
-
-    addCollaborator(request: {
-        path: string;
-        userId: number;
-        role: "write" | "read";
-    }): Promise<RepositoryCollaborator> {
-        return repositoriesClient.addCollaborator(this.socketPath, request);
-    }
-
-    removeCollaborator(request: { path: string; userId: number }): Promise<void> {
-        return repositoriesClient.removeCollaborator(this.socketPath, request);
-    }
 }

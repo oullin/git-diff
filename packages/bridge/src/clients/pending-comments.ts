@@ -1,30 +1,31 @@
 import type { PendingComment } from "@git-diff/contracts";
-import { requestJson } from "#bridge/http.js";
+import type { HttpTransport } from "#bridge/http.js";
 
-export function listPendingComments(
-    socketPath: string,
-    request: { path?: string; kind?: "working" | "commit"; sha?: string },
-): Promise<{ comments: PendingComment[] }> {
-    const parts: string[] = [];
+export class PendingCommentClient {
+    constructor(private readonly transport: HttpTransport) {}
 
-    if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
+    list(request: {
+        path?: string;
+        kind?: "working" | "commit";
+        sha?: string;
+    }): Promise<{ comments: PendingComment[] }> {
+        const parts: string[] = [];
 
-    if (request.kind) parts.push(`kind=${request.kind}`);
+        if (request.path) parts.push(`path=${encodeURIComponent(request.path)}`);
 
-    if (request.sha) parts.push(`sha=${encodeURIComponent(request.sha)}`);
+        if (request.kind) parts.push(`kind=${request.kind}`);
 
-    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+        if (request.sha) parts.push(`sha=${encodeURIComponent(request.sha)}`);
 
-    return requestJson<{ comments: PendingComment[] }>(
-        socketPath,
-        "GET",
-        `/v1/pending-comments${query}`,
-    );
-}
+        const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
 
-export function createPendingComment(
-    socketPath: string,
-    request: {
+        return this.transport.request<{ comments: PendingComment[] }>(
+            "GET",
+            `/v1/pending-comments${query}`,
+        );
+    }
+
+    create(request: {
         repoRoot: string;
         contextKind: "working" | "commit";
         contextSha?: string;
@@ -32,41 +33,34 @@ export function createPendingComment(
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
-    },
-): Promise<PendingComment> {
-    return requestJson<PendingComment>(socketPath, "POST", "/v1/pending-comments", request);
-}
+    }): Promise<PendingComment> {
+        return this.transport.request<PendingComment>("POST", "/v1/pending-comments", request);
+    }
 
-export function updatePendingComment(
-    socketPath: string,
-    request: { id: string; bodyHtml: string },
-): Promise<PendingComment> {
-    return requestJson<PendingComment>(
-        socketPath,
-        "PATCH",
-        `/v1/pending-comments/${encodeURIComponent(request.id)}`,
-        { bodyHtml: request.bodyHtml },
-    );
-}
+    update(request: { id: string; bodyHtml: string }): Promise<PendingComment> {
+        return this.transport.request<PendingComment>(
+            "PATCH",
+            `/v1/pending-comments/${encodeURIComponent(request.id)}`,
+            { bodyHtml: request.bodyHtml },
+        );
+    }
 
-export function deletePendingComment(socketPath: string, request: { id: string }): Promise<void> {
-    return requestJson<void>(
-        socketPath,
-        "DELETE",
-        `/v1/pending-comments/${encodeURIComponent(request.id)}`,
-    );
-}
+    delete(request: { id: string }): Promise<void> {
+        return this.transport.request<void>(
+            "DELETE",
+            `/v1/pending-comments/${encodeURIComponent(request.id)}`,
+        );
+    }
 
-export function promotePendingComments(
-    socketPath: string,
-    request: { reviewId: string },
-): Promise<{ promoted: number }> {
-    return requestJson<{ promoted: number }>(
-        socketPath,
-        "POST",
-        "/v1/pending-comments/promote",
-        request,
-    );
+    promote(request: { reviewId: string }): Promise<{ promoted: number }> {
+        return this.transport.request<{ promoted: number }>(
+            "POST",
+            "/v1/pending-comments/promote",
+            request,
+        );
+    }
 }

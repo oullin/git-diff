@@ -1,49 +1,19 @@
 import type { Branch, RepositoryState } from "@git-diff/contracts";
-export declare function listBranches(
-    socketPath: string,
-    request: {
-        path?: string;
-    },
-): Promise<{
-    branches: string[];
-    records?: Branch[];
-}>;
-export declare function checkoutBranch(
-    socketPath: string,
-    request: {
-        path: string;
-        branch: string;
-    },
-): Promise<RepositoryState>;
-export declare function createBranch(
-    socketPath: string,
-    request: {
-        path: string;
-        name: string;
-    },
-): Promise<RepositoryState>;
-export declare function deleteBranch(
-    socketPath: string,
-    request: {
-        path?: string;
-        name: string;
-    },
-): Promise<void>;
-export declare function lockBranch(
-    socketPath: string,
-    request: {
-        path?: string;
-        name: string;
-    },
-): Promise<{
-    branches: Branch[];
-}>;
-export declare function unlockBranch(
-    socketPath: string,
-    request: {
-        path?: string;
-        name: string;
-    },
-): Promise<{
-    branches: Branch[];
-}>;
+import type { HttpTransport } from "#bridge/http.js";
+export declare class BranchClient {
+    private readonly transport;
+    constructor(transport: HttpTransport);
+    list(request: { path?: string }): Promise<{
+        branches: string[];
+        records?: Branch[];
+    }>;
+    checkout(request: { path: string; branch: string }): Promise<RepositoryState>;
+    create(request: { path: string; name: string }): Promise<RepositoryState>;
+    delete(request: { path?: string; name: string }): Promise<void>;
+    lock(request: { path?: string; name: string }): Promise<{
+        branches: Branch[];
+    }>;
+    unlock(request: { path?: string; name: string }): Promise<{
+        branches: Branch[];
+    }>;
+}
