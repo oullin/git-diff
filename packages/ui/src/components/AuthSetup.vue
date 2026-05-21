@@ -3,10 +3,12 @@ import { ref } from "vue";
 import { ArrowRight, Eye, EyeOff, Lock, ShieldCheck } from "lucide-vue-next";
 import type { AuthLoginResponse } from "@git-diff/contracts";
 import DiffLogo from "@components/diff/DiffLogo.vue";
+import { useAuthForm } from "@composables/useAuthForm";
+import { services } from "@lib/services";
 import { Input } from "@ui/input";
 import { Label } from "@ui/label";
 
-const props = defineProps<{
+defineProps<{
     osUsername: string;
 }>();
 
@@ -16,36 +18,27 @@ const emit = defineEmits<{
 
 const password = ref("");
 const confirm = ref("");
-const submitting = ref(false);
-const error = ref("");
 const showPassword = ref(false);
 const showConfirm = ref(false);
+const { submitting, error, submit: runSubmit, fail } = useAuthForm();
 
 async function submit() {
-    error.value = "";
-
     if (password.value.length < 6) {
-        error.value = "Password must be at least 6 characters.";
+        fail("Password must be at least 6 characters.");
 
         return;
     }
 
     if (password.value !== confirm.value) {
-        error.value = "Passwords do not match.";
+        fail("Passwords do not match.");
 
         return;
     }
 
-    submitting.value = true;
+    const response = await runSubmit(() => services().auth.setup(password.value));
 
-    try {
-        const response = await window.diffApp.authSetup(password.value);
-
+    if (response) {
         emit("completed", response);
-    } catch (cause) {
-        error.value = cause instanceof Error ? cause.message : String(cause);
-    } finally {
-        submitting.value = false;
     }
 }
 </script>
@@ -81,7 +74,7 @@ async function submit() {
                                 class="text-[22px] font-semibold tracking-tight"
                                 :style="{ color: 'var(--gd-text)' }"
                             >
-                                Welcome, {{ props.osUsername }}
+                                Welcome, {{ $props.osUsername }}
                             </h1>
                             <p
                                 class="text-[13.5px] leading-relaxed"
