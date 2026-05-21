@@ -71,6 +71,8 @@ export interface WorkflowBridgeClient {
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
     }): Promise<PendingComment>;
@@ -117,6 +119,8 @@ export interface WorkflowBridgeClient {
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
     }): Promise<ReviewComment>;

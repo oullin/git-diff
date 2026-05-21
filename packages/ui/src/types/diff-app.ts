@@ -56,6 +56,8 @@ export interface DiffAppApi {
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
     }): Promise<PendingComment>;
@@ -104,6 +106,8 @@ export interface DiffAppApi {
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
     }): Promise<ReviewComment>;

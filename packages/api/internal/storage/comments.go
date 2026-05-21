@@ -8,26 +8,30 @@ import (
 )
 
 type ReviewCommentInput struct {
-	FilePath    string `json:"filePath"`
-	DiffSection string `json:"diffSection"`
-	Side        string `json:"side"`
-	LineNumber  int64  `json:"lineNumber"`
-	AuthorLabel string `json:"authorLabel"`
-	BodyHTML    string `json:"bodyHtml"`
+	FilePath        string `json:"filePath"`
+	DiffSection     string `json:"diffSection"`
+	Side            string `json:"side"`
+	LineNumber      int64  `json:"lineNumber"`
+	StartLineNumber *int64 `json:"startLineNumber,omitempty"`
+	StartSide       string `json:"startSide,omitempty"`
+	AuthorLabel     string `json:"authorLabel"`
+	BodyHTML        string `json:"bodyHtml"`
 }
 
 type ReviewComment struct {
-	ID          string `json:"id"`
-	ReviewID    string `json:"reviewId"`
-	FilePath    string `json:"filePath"`
-	DiffSection string `json:"diffSection"`
-	Side        string `json:"side"`
-	LineNumber  int64  `json:"lineNumber"`
-	AuthorLabel string `json:"authorLabel"`
-	BodyHTML    string `json:"bodyHtml"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
-	DeletedAt   string `json:"deletedAt,omitempty"`
+	ID              string `json:"id"`
+	ReviewID        string `json:"reviewId"`
+	FilePath        string `json:"filePath"`
+	DiffSection     string `json:"diffSection"`
+	Side            string `json:"side"`
+	LineNumber      int64  `json:"lineNumber"`
+	StartLineNumber *int64 `json:"startLineNumber,omitempty"`
+	StartSide       string `json:"startSide,omitempty"`
+	AuthorLabel     string `json:"authorLabel"`
+	BodyHTML        string `json:"bodyHtml"`
+	CreatedAt       string `json:"createdAt"`
+	UpdatedAt       string `json:"updatedAt"`
+	DeletedAt       string `json:"deletedAt,omitempty"`
 }
 
 func (s *Store) CreateReviewComment(ctx context.Context, reviewID string, commentID string, input ReviewCommentInput) (ReviewComment, error) {
@@ -40,9 +44,12 @@ func (s *Store) CreateReviewComment(ctx context.Context, reviewID string, commen
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO review_comments (
 			id, review_id, file_path, diff_section, side, line_number,
+			start_line_number, start_side,
 			author_label, body_html, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, commentID, reviewID, input.FilePath, input.DiffSection, input.Side, input.LineNumber, input.AuthorLabel, input.BodyHTML, now, now)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, commentID, reviewID, input.FilePath, input.DiffSection, input.Side, input.LineNumber,
+		nullableInt(input.StartLineNumber), nullableString(input.StartSide),
+		input.AuthorLabel, input.BodyHTML, now, now)
 
 	if err != nil {
 		return ReviewComment{}, err
@@ -52,8 +59,9 @@ func (s *Store) CreateReviewComment(ctx context.Context, reviewID string, commen
 
 	return ReviewComment{
 		ID: commentID, ReviewID: reviewID, FilePath: input.FilePath, DiffSection: input.DiffSection,
-		Side: input.Side, LineNumber: input.LineNumber, AuthorLabel: input.AuthorLabel,
-		BodyHTML: input.BodyHTML, CreatedAt: now, UpdatedAt: now,
+		Side: input.Side, LineNumber: input.LineNumber,
+		StartLineNumber: input.StartLineNumber, StartSide: input.StartSide,
+		AuthorLabel: input.AuthorLabel, BodyHTML: input.BodyHTML, CreatedAt: now, UpdatedAt: now,
 	}, nil
 }
 
@@ -102,7 +110,7 @@ func (s *Store) DeleteReviewComment(ctx context.Context, reviewID string, commen
 
 func (s *Store) GetReviewComment(ctx context.Context, reviewID string, commentID string) (ReviewComment, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, review_id, file_path, diff_section, side, line_number, author_label, body_html, created_at, updated_at, deleted_at
+		SELECT id, review_id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html, created_at, updated_at, deleted_at
 		FROM review_comments
 		WHERE id = ? AND review_id = ?
 	`, commentID, reviewID)
@@ -112,7 +120,7 @@ func (s *Store) GetReviewComment(ctx context.Context, reviewID string, commentID
 
 func (s *Store) ListReviewComments(ctx context.Context, reviewID string) ([]ReviewComment, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, review_id, file_path, diff_section, side, line_number, author_label, body_html, created_at, updated_at, deleted_at
+		SELECT id, review_id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html, created_at, updated_at, deleted_at
 		FROM review_comments
 		WHERE review_id = ? AND deleted_at IS NULL
 		ORDER BY created_at ASC
@@ -140,9 +148,12 @@ func (s *Store) ListReviewComments(ctx context.Context, reviewID string) ([]Revi
 }
 
 func scanComment(row scanner) (ReviewComment, error) {
-	var comment ReviewComment
-
-	var deletedAt sql.NullString
+	var (
+		comment         ReviewComment
+		startLineNumber sql.NullInt64
+		startSide       sql.NullString
+		deletedAt       sql.NullString
+	)
 
 	if err := row.Scan(
 		&comment.ID,
@@ -151,6 +162,8 @@ func scanComment(row scanner) (ReviewComment, error) {
 		&comment.DiffSection,
 		&comment.Side,
 		&comment.LineNumber,
+		&startLineNumber,
+		&startSide,
 		&comment.AuthorLabel,
 		&comment.BodyHTML,
 		&comment.CreatedAt,
@@ -160,6 +173,12 @@ func scanComment(row scanner) (ReviewComment, error) {
 		return ReviewComment{}, err
 	}
 
+	if startLineNumber.Valid {
+		v := startLineNumber.Int64
+		comment.StartLineNumber = &v
+	}
+
+	comment.StartSide = fromNull(startSide)
 	comment.DeletedAt = fromNull(deletedAt)
 
 	return comment, nil

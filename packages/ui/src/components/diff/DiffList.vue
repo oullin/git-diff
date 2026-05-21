@@ -6,6 +6,7 @@ import DiffBody from "@entry/components/diff/DiffBody.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import FileContentViewer from "@entry/components/FileContentViewer.vue";
 import MarkdownPreview from "@entry/components/diff/MarkdownPreview.vue";
+import type { LineSelectionRange } from "@composables/useLineSelection";
 import type { DiffViewMode } from "@git-diff/contracts";
 import type { Tweaks } from "@composables/useTweaks";
 
@@ -44,7 +45,12 @@ const emit = defineEmits<{
     "toggle-viewed": [file: ChangedFile];
     "toggle-preview": [path: string];
     "copy-path": [path: string];
-    "open-comment-for-line": [file: ChangedFile, section: DiffSection, line: PatchLine];
+    "open-comment-for-line": [
+        file: ChangedFile,
+        section: DiffSection,
+        line: PatchLine,
+        range?: LineSelectionRange,
+    ];
     "delete-comment": [comment: ReviewComment];
     "reply-comment": [parent: ReviewComment, bodyHtml: string];
     "update:split-ratio": [path: string, ratio: number];
@@ -106,7 +112,10 @@ const emit = defineEmits<{
                 :repo-root="repoRoot"
                 :commit-ref="commitRef"
                 :split-ratio="splitRatios[file.path] ?? 0.5"
-                @add-comment="(section, line) => emit('open-comment-for-line', file, section, line)"
+                @add-comment="
+                    (section, line, range) =>
+                        emit('open-comment-for-line', file, section, line, range)
+                "
                 @delete-comment="(comment) => emit('delete-comment', comment)"
                 @reply-comment="(parent, bodyHtml) => emit('reply-comment', parent, bodyHtml)"
                 @update:split-ratio="

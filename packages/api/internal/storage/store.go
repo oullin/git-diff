@@ -88,6 +88,10 @@ func (s *Store) Init(ctx context.Context) error {
 		return fmt.Errorf("add review_sessions context columns: %w", err)
 	}
 
+	if err := s.addCommentRangeColumns(ctx); err != nil {
+		return fmt.Errorf("add comment range columns: %w", err)
+	}
+
 	if _, err := s.db.ExecContext(ctx, string(schema)); err == nil {
 		return nil
 	}
@@ -155,6 +159,61 @@ func (s *Store) addReviewSessionContextColumns(ctx context.Context) error {
 	if !have["context_sha"] {
 		if _, err := s.db.ExecContext(ctx, "ALTER TABLE review_sessions ADD COLUMN context_sha TEXT"); err != nil {
 			return fmt.Errorf("add context_sha: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// addCommentRangeColumns brings legacy databases up to the current schema by
+// attaching start_line_number / start_side columns to review_comments and
+// pending_comments. Multi-line and cross-side comment ranges are stored
+// through these fields; single-line comments leave both NULL.
+func (s *Store) addCommentRangeColumns(ctx context.Context) error {
+	for _, table := range []string{"review_comments", "pending_comments"} {
+		rows, err := s.db.QueryContext(ctx, "PRAGMA table_info("+table+")")
+
+		if err != nil {
+			continue
+		}
+
+		have := map[string]bool{}
+
+		for rows.Next() {
+			var (
+				cid       int
+				name      string
+				ctype     string
+				notnull   int
+				dfltValue sql.NullString
+				pk        int
+			)
+
+			if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
+				rows.Close()
+
+				return fmt.Errorf("scan %s column row: %w", table, err)
+			}
+
+			have[name] = true
+		}
+
+		rows.Close()
+
+		if len(have) == 0 {
+			continue
+		}
+
+		if !have["start_line_number"] {
+			if _, err := s.db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN start_line_number INTEGER"); err != nil {
+				return fmt.Errorf("add %s.start_line_number: %w", table, err)
+			}
+		}
+
+		if !have["start_side"] {
+			if _, err := s.db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN start_side TEXT"); err != nil {
+				return fmt.Errorf("add %s.start_side: %w", table, err)
+			}
 		}
 	}
 
@@ -243,4 +302,20 @@ func fromNull(value sql.NullString) string {
 	}
 
 	return value.String
+}
+
+func nullableString(value string) any {
+	if value == "" {
+		return nil
+	}
+
+	return value
+}
+
+func nullableInt(value *int64) any {
+	if value == nil {
+		return nil
+	}
+
+	return *value
 }

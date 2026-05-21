@@ -12,31 +12,35 @@ import (
 // scopes it; when the user starts a review, PromotePendingComments moves any
 // matching rows into review_comments.
 type PendingComment struct {
-	ID          string `json:"id"`
-	UserID      int64  `json:"userId"`
-	RepoRoot    string `json:"repoRoot"`
-	ContextKind string `json:"contextKind"`
-	ContextSHA  string `json:"contextSha,omitempty"`
-	FilePath    string `json:"filePath"`
-	DiffSection string `json:"diffSection"`
-	Side        string `json:"side"`
-	LineNumber  int64  `json:"lineNumber"`
-	AuthorLabel string `json:"authorLabel"`
-	BodyHTML    string `json:"bodyHtml"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
+	ID              string `json:"id"`
+	UserID          int64  `json:"userId"`
+	RepoRoot        string `json:"repoRoot"`
+	ContextKind     string `json:"contextKind"`
+	ContextSHA      string `json:"contextSha,omitempty"`
+	FilePath        string `json:"filePath"`
+	DiffSection     string `json:"diffSection"`
+	Side            string `json:"side"`
+	LineNumber      int64  `json:"lineNumber"`
+	StartLineNumber *int64 `json:"startLineNumber,omitempty"`
+	StartSide       string `json:"startSide,omitempty"`
+	AuthorLabel     string `json:"authorLabel"`
+	BodyHTML        string `json:"bodyHtml"`
+	CreatedAt       string `json:"createdAt"`
+	UpdatedAt       string `json:"updatedAt"`
 }
 
 type PendingCommentInput struct {
-	RepoRoot    string `json:"repoRoot"`
-	ContextKind string `json:"contextKind"`
-	ContextSHA  string `json:"contextSha"`
-	FilePath    string `json:"filePath"`
-	DiffSection string `json:"diffSection"`
-	Side        string `json:"side"`
-	LineNumber  int64  `json:"lineNumber"`
-	AuthorLabel string `json:"authorLabel"`
-	BodyHTML    string `json:"bodyHtml"`
+	RepoRoot        string `json:"repoRoot"`
+	ContextKind     string `json:"contextKind"`
+	ContextSHA      string `json:"contextSha"`
+	FilePath        string `json:"filePath"`
+	DiffSection     string `json:"diffSection"`
+	Side            string `json:"side"`
+	LineNumber      int64  `json:"lineNumber"`
+	StartLineNumber *int64 `json:"startLineNumber,omitempty"`
+	StartSide       string `json:"startSide,omitempty"`
+	AuthorLabel     string `json:"authorLabel"`
+	BodyHTML        string `json:"bodyHtml"`
 }
 
 func (s *Store) CreatePendingComment(ctx context.Context, userID int64, id string, input PendingCommentInput) (PendingComment, error) {
@@ -55,10 +59,12 @@ func (s *Store) CreatePendingComment(ctx context.Context, userID int64, id strin
 		INSERT INTO pending_comments (
 			id, user_id, repo_root, context_kind, context_sha,
 			file_path, diff_section, side, line_number,
+			start_line_number, start_side,
 			author_label, body_html, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, id, userID, input.RepoRoot, kind, input.ContextSHA,
 		input.FilePath, input.DiffSection, input.Side, input.LineNumber,
+		nullableInt(input.StartLineNumber), nullableString(input.StartSide),
 		input.AuthorLabel, input.BodyHTML, now, now)
 
 	if err != nil {
@@ -66,19 +72,21 @@ func (s *Store) CreatePendingComment(ctx context.Context, userID int64, id strin
 	}
 
 	return PendingComment{
-		ID:          id,
-		UserID:      userID,
-		RepoRoot:    input.RepoRoot,
-		ContextKind: kind,
-		ContextSHA:  input.ContextSHA,
-		FilePath:    input.FilePath,
-		DiffSection: input.DiffSection,
-		Side:        input.Side,
-		LineNumber:  input.LineNumber,
-		AuthorLabel: input.AuthorLabel,
-		BodyHTML:    input.BodyHTML,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:              id,
+		UserID:          userID,
+		RepoRoot:        input.RepoRoot,
+		ContextKind:     kind,
+		ContextSHA:      input.ContextSHA,
+		FilePath:        input.FilePath,
+		DiffSection:     input.DiffSection,
+		Side:            input.Side,
+		LineNumber:      input.LineNumber,
+		StartLineNumber: input.StartLineNumber,
+		StartSide:       input.StartSide,
+		AuthorLabel:     input.AuthorLabel,
+		BodyHTML:        input.BodyHTML,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}, nil
 }
 
@@ -107,6 +115,7 @@ func (s *Store) GetPendingComment(ctx context.Context, userID int64, id string) 
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, user_id, repo_root, context_kind, context_sha,
 			file_path, diff_section, side, line_number,
+			start_line_number, start_side,
 			author_label, body_html, created_at, updated_at
 		FROM pending_comments
 		WHERE id = ? AND user_id = ?
@@ -129,6 +138,7 @@ func (s *Store) ListPendingComments(ctx context.Context, userID int64, repoRoot,
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, user_id, repo_root, context_kind, context_sha,
 			file_path, diff_section, side, line_number,
+			start_line_number, start_side,
 			author_label, body_html, created_at, updated_at
 		FROM pending_comments
 		WHERE user_id = ? AND repo_root = ? AND context_kind = ? AND context_sha = ?
@@ -185,7 +195,7 @@ func (s *Store) PromotePendingComments(ctx context.Context, userID int64, review
 	now := s.now().UTC().Format(time.RFC3339Nano)
 
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id, file_path, diff_section, side, line_number, author_label, body_html
+		SELECT id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html
 		FROM pending_comments
 		WHERE user_id = ? AND repo_root = ? AND context_kind = ? AND context_sha = ?
 	`, userID, repoRoot, kind, fromNull(contextSHA))
@@ -197,6 +207,8 @@ func (s *Store) PromotePendingComments(ctx context.Context, userID int64, review
 	type promote struct {
 		id, filePath, diffSection, side, authorLabel, bodyHTML string
 		lineNumber                                             int64
+		startLineNumber                                        sql.NullInt64
+		startSide                                              sql.NullString
 	}
 
 	pending := []promote{}
@@ -204,7 +216,7 @@ func (s *Store) PromotePendingComments(ctx context.Context, userID int64, review
 	for rows.Next() {
 		var p promote
 
-		if err := rows.Scan(&p.id, &p.filePath, &p.diffSection, &p.side, &p.lineNumber, &p.authorLabel, &p.bodyHTML); err != nil {
+		if err := rows.Scan(&p.id, &p.filePath, &p.diffSection, &p.side, &p.lineNumber, &p.startLineNumber, &p.startSide, &p.authorLabel, &p.bodyHTML); err != nil {
 			rows.Close()
 
 			return 0, err
@@ -221,9 +233,11 @@ func (s *Store) PromotePendingComments(ctx context.Context, userID int64, review
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO review_comments (
 				id, review_id, file_path, diff_section, side, line_number,
+				start_line_number, start_side,
 				author_label, body_html, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		`, newID, reviewID, p.filePath, p.diffSection, p.side, p.lineNumber,
+			p.startLineNumber, p.startSide,
 			p.authorLabel, p.bodyHTML, now, now); err != nil {
 			return 0, err
 		}
@@ -242,8 +256,10 @@ func (s *Store) PromotePendingComments(ctx context.Context, userID int64, review
 
 func scanPendingComment(row scanner) (PendingComment, error) {
 	var (
-		comment    PendingComment
-		contextSHA sql.NullString
+		comment         PendingComment
+		contextSHA      sql.NullString
+		startLineNumber sql.NullInt64
+		startSide       sql.NullString
 	)
 
 	if err := row.Scan(
@@ -256,6 +272,8 @@ func scanPendingComment(row scanner) (PendingComment, error) {
 		&comment.DiffSection,
 		&comment.Side,
 		&comment.LineNumber,
+		&startLineNumber,
+		&startSide,
 		&comment.AuthorLabel,
 		&comment.BodyHTML,
 		&comment.CreatedAt,
@@ -265,6 +283,13 @@ func scanPendingComment(row scanner) (PendingComment, error) {
 	}
 
 	comment.ContextSHA = fromNull(contextSHA)
+
+	if startLineNumber.Valid {
+		v := startLineNumber.Int64
+		comment.StartLineNumber = &v
+	}
+
+	comment.StartSide = fromNull(startSide)
 
 	return comment, nil
 }

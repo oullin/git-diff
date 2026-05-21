@@ -35,6 +35,10 @@ export interface ReviewComment {
     diffSection: string;
     side: string;
     lineNumber: number;
+    /** First line of the comment range; absent for single-line comments. */
+    startLineNumber?: number;
+    /** Side of the range start; absent when the range stays on `side`. */
+    startSide?: string;
     authorLabel: string;
     bodyHtml: string;
     createdAt: string;
@@ -58,6 +62,10 @@ export interface PendingComment {
     diffSection: string;
     side: string;
     lineNumber: number;
+    /** First line of the comment range; absent for single-line drafts. */
+    startLineNumber?: number;
+    /** Side of the range start; absent when the range stays on `side`. */
+    startSide?: string;
     authorLabel: string;
     bodyHtml: string;
     createdAt: string;

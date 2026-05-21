@@ -9,6 +9,10 @@ export interface CommentTarget {
     section: DiffSection;
     line: number;
     side: string;
+    /** First line of the comment range; undefined for single-line drafts. */
+    startLine?: number;
+    /** Side of the range start; undefined when the range stays on `side`. */
+    startSide?: string;
 }
 
 // useCommentDraft holds the AddCommentDialog state: the target line, the

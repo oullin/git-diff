@@ -34,6 +34,8 @@ contextBridge.exposeInMainWorld("diffApp", {
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
     }) => ipcRenderer.invoke("pending-comments:create", request),

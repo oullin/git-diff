@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS review_comments (
   diff_section TEXT NOT NULL,
   side TEXT NOT NULL,
   line_number INTEGER NOT NULL,
+  start_line_number INTEGER,
+  start_side TEXT,
   author_label TEXT NOT NULL,
   body_html TEXT NOT NULL,
   created_at TEXT NOT NULL,
@@ -89,19 +91,21 @@ CREATE TABLE IF NOT EXISTS walkthroughs (
 );
 
 CREATE TABLE IF NOT EXISTS pending_comments (
-  id           TEXT PRIMARY KEY,
-  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  repo_root    TEXT NOT NULL,
-  context_kind TEXT NOT NULL DEFAULT 'working',
-  context_sha  TEXT NOT NULL DEFAULT '',
-  file_path    TEXT NOT NULL,
-  diff_section TEXT NOT NULL,
-  side         TEXT NOT NULL,
-  line_number  INTEGER NOT NULL,
-  author_label TEXT NOT NULL,
-  body_html    TEXT NOT NULL,
-  created_at   TEXT NOT NULL,
-  updated_at   TEXT NOT NULL
+  id                TEXT PRIMARY KEY,
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  repo_root         TEXT NOT NULL,
+  context_kind      TEXT NOT NULL DEFAULT 'working',
+  context_sha       TEXT NOT NULL DEFAULT '',
+  file_path         TEXT NOT NULL,
+  diff_section      TEXT NOT NULL,
+  side              TEXT NOT NULL,
+  line_number       INTEGER NOT NULL,
+  start_line_number INTEGER,
+  start_side        TEXT,
+  author_label      TEXT NOT NULL,
+  body_html         TEXT NOT NULL,
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_pending_comments_scope

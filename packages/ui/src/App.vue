@@ -33,6 +33,7 @@ import type {
 } from "@git-diff/contracts";
 import { PREF_KEYS, viewedPrefKey } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
+import type { LineSelectionRange } from "@composables/useLineSelection";
 import { ACCENTS, resolveAccent } from "@lib/accent";
 import type { PatchLine } from "@lib/patch";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
@@ -631,11 +632,29 @@ function selectFile(path: string) {
     }
 }
 
-function openCommentForLine(file: ChangedFile, section: DiffSection, line: PatchLine) {
+function openCommentForLine(
+    file: ChangedFile,
+    section: DiffSection,
+    line: PatchLine,
+    range?: LineSelectionRange,
+) {
     const lineNumber = line.newLine ?? line.oldLine;
 
     if (!lineNumber || !activeReview.value) {
         reviewPanelOpen.value = true;
+
+        return;
+    }
+
+    if (range) {
+        beginCommentDraft({
+            file,
+            section,
+            line: range.endLine,
+            side: range.endSide,
+            startLine: range.startLine,
+            startSide: range.startSide,
+        });
 
         return;
     }
@@ -664,6 +683,8 @@ async function saveComment() {
             diffSection: target.section.kind,
             side: target.side,
             lineNumber: target.line,
+            startLineNumber: target.startLine,
+            startSide: target.startSide,
             authorLabel: author,
             bodyHtml: body,
         });
@@ -679,6 +700,8 @@ async function saveComment() {
             diffSection: target.section.kind,
             side: target.side,
             lineNumber: target.line,
+            startLineNumber: target.startLine,
+            startSide: target.startSide,
             authorLabel: author,
             bodyHtml: body,
         });

@@ -14,6 +14,12 @@ import {
 } from "@lib/patch";
 import { computeWordHi, type Range } from "@lib/wordHi";
 import { useContextExpansion } from "@composables/useContextExpansion";
+import {
+    useLineSelection,
+    type LineAnchor,
+    type LineSelectionRange,
+    type LineSide,
+} from "@composables/useLineSelection";
 import CommentThread from "./CommentThread.vue";
 import SplitHandle from "./SplitHandle.vue";
 import type {
@@ -43,13 +49,86 @@ const props = withDefaults(
 );
 
 const { getExpansions, isInflight, isDownwardEof, expandUp, expandDown } = useContextExpansion();
+const { setAnchor, getAnchor, clear: clearAnchor, rangeTo } = useLineSelection();
 
 const emit = defineEmits<{
-    "add-comment": [section: DiffSection, line: PatchLine];
+    "add-comment": [section: DiffSection, line: PatchLine, range?: LineSelectionRange];
     "delete-comment": [comment: ReviewComment];
     "reply-comment": [parent: ReviewComment, bodyHtml: string];
     "update:splitRatio": [value: number];
 }>();
+
+function lineSideAndNumber(line: PatchLine): { side: LineSide; lineNumber: number } | null {
+    if (line.type === "add" && line.newLine != null) {
+        return { side: "right", lineNumber: line.newLine };
+    }
+
+    if (line.type === "del" && line.oldLine != null) {
+        return { side: "left", lineNumber: line.oldLine };
+    }
+
+    // Context lines render on both sides in split view; default to right so a
+    // single-line comment lands on the new-file side.
+    if (line.newLine != null) {
+        return { side: "right", lineNumber: line.newLine };
+    }
+
+    if (line.oldLine != null) {
+        return { side: "left", lineNumber: line.oldLine };
+    }
+
+    return null;
+}
+
+function handleAddCommentClick(
+    event: MouseEvent,
+    section: DiffSection,
+    line: PatchLine,
+    explicitSide?: LineSide,
+): void {
+    const anchored = lineSideAndNumber(line);
+
+    if (!anchored) {
+        return;
+    }
+
+    const target: LineAnchor = {
+        sectionId: section.id,
+        side: explicitSide ?? anchored.side,
+        lineNumber:
+            explicitSide === "left"
+                ? (line.oldLine ?? anchored.lineNumber)
+                : explicitSide === "right"
+                  ? (line.newLine ?? anchored.lineNumber)
+                  : anchored.lineNumber,
+    };
+
+    if (event.shiftKey) {
+        const range = rangeTo(target);
+
+        if (range) {
+            emit("add-comment", section, line, range);
+            clearAnchor();
+
+            return;
+        }
+    }
+
+    setAnchor(target);
+    emit("add-comment", section, line);
+}
+
+function isAnchored(section: DiffSection, line: PatchLine, side: LineSide): boolean {
+    const anchor = getAnchor();
+
+    if (!anchor || anchor.sectionId !== section.id || anchor.side !== side) {
+        return false;
+    }
+
+    const lineNum = side === "left" ? line.oldLine : line.newLine;
+
+    return lineNum != null && lineNum === anchor.lineNumber;
+}
 
 const wrapperStyle = computed(() => {
     const left = Math.min(80, Math.max(20, props.splitRatio * 100));
@@ -594,8 +673,8 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                     <button
                                         type="button"
                                         class="gd-add-comment"
-                                        title="Add comment"
-                                        @click="emit('add-comment', section, row.line)"
+                                        title="Add comment (shift-click to extend selection)"
+                                        @click="(e) => handleAddCommentClick(e, section, row.line)"
                                     >
                                         <Plus :size="12" :stroke-width="2.5" />
                                     </button>
@@ -741,13 +820,14 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                         v-if="row.left || row.right"
                                         type="button"
                                         class="gd-add-comment"
-                                        title="Add comment"
+                                        title="Add comment (shift-click to extend selection)"
                                         @click="
-                                            emit(
-                                                'add-comment',
-                                                section,
-                                                (row.right ?? row.left) as PatchLine,
-                                            )
+                                            (e) =>
+                                                handleAddCommentClick(
+                                                    e,
+                                                    section,
+                                                    (row.right ?? row.left) as PatchLine,
+                                                )
                                         "
                                     >
                                         <Plus :size="12" :stroke-width="2.5" />
@@ -976,8 +1056,8 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                     <button
                                         type="button"
                                         class="gd-add-comment"
-                                        title="Add comment"
-                                        @click="emit('add-comment', section, line)"
+                                        title="Add comment (shift-click to extend selection)"
+                                        @click="(e) => handleAddCommentClick(e, section, line)"
                                     >
                                         <Plus :size="12" :stroke-width="2.5" />
                                     </button>

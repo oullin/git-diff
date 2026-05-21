@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { MoreHorizontal } from "lucide-vue-next";
 import { LazyRichTextEditor, type RichTextFeatures } from "@ui/rich-text-editor";
 import { SafeHtml } from "@ui/safe-html";
@@ -10,12 +10,15 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@ui/dropdown-menu";
+import { commentRangeLabel } from "@composables/useLineSelection";
 import type { ReviewComment } from "@git-diff/contracts";
 
-defineProps<{
+const props = defineProps<{
     comment: ReviewComment;
     replyFeatures: RichTextFeatures;
 }>();
+
+const rangeLabel = computed(() => commentRangeLabel(props.comment));
 
 const emit = defineEmits<{ delete: []; reply: [bodyHtml: string] }>();
 
@@ -114,6 +117,18 @@ function relativeTime(iso: string): string {
                 <span :style="{ fontSize: '11.5px', color: 'var(--gd-text-3)' }">{{
                     relativeTime(comment.createdAt)
                 }}</span>
+                <span
+                    :style="{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--gd-text-3)',
+                        padding: '2px 6px',
+                        background: 'var(--gd-panel-2)',
+                        border: '1px solid var(--gd-border)',
+                        borderRadius: '4px',
+                    }"
+                    >{{ rangeLabel }}</span
+                >
                 <div class="flex-1" />
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
