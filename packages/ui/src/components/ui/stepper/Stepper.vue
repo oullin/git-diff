@@ -13,7 +13,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
 </script>
 
 <template>
-  <StepperRoot data-slot="stepper" v-bind="forwarded" :class="cn('flex w-full', props.class)">
-    <slot />
-  </StepperRoot>
+    <StepperRoot data-slot="stepper" v-bind="forwarded" :class="cn('flex w-full', props.class)">
+        <slot />
+    </StepperRoot>
 </template>

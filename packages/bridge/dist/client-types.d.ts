@@ -1,4 +1,25 @@
-import type { AuthLoginResponse, AuthStateResponse, AuthUser, Branch, CommitSummary, FileSearchResult, PendingComment, PullRequestSummary, Repository, RepositoryCollaborator, RepositoryFile, RepositoryMode, RepositoryState, ReviewComment, ReviewDetail, ReviewEvent, ReviewSession, SystemStats, UIPreferencesResponse, WalkthroughRecord } from "@git-diff/contracts";
+import type {
+    AuthLoginResponse,
+    AuthStateResponse,
+    AuthUser,
+    Branch,
+    CommitSummary,
+    FileSearchResult,
+    PendingComment,
+    PullRequestSummary,
+    Repository,
+    RepositoryCollaborator,
+    RepositoryFile,
+    RepositoryMode,
+    RepositoryState,
+    ReviewComment,
+    ReviewDetail,
+    ReviewEvent,
+    ReviewSession,
+    SystemStats,
+    UIPreferencesResponse,
+    WalkthroughRecord,
+} from "@git-diff/contracts";
 export interface UnixTarget {
     socketPath: string;
 }
@@ -8,39 +29,18 @@ export interface WorkflowBridgeClient {
     getUIPreferences(): Promise<UIPreferencesResponse>;
     saveUIPreferences(values: Record<string, string>): Promise<UIPreferencesResponse>;
     getAuthState(): Promise<AuthStateResponse>;
-    authSetup(request: {
-        password: string;
-    }): Promise<AuthLoginResponse>;
-    authLogin(request: {
-        password: string;
-        remember: boolean;
-    }): Promise<AuthLoginResponse>;
-    authResume(request: {
-        token: string;
-    }): Promise<{
+    authSetup(request: { password: string }): Promise<AuthLoginResponse>;
+    authLogin(request: { password: string; remember: boolean }): Promise<AuthLoginResponse>;
+    authResume(request: { token: string }): Promise<{
         user: AuthUser;
     }>;
     authLogout(): Promise<void>;
-    authWipe(request: {
-        osUsername?: string;
-    }): Promise<void>;
-    repositoryState(request: {
-        path?: string;
-    }): Promise<RepositoryState>;
-    openRepository(request: {
-        path: string;
-    }): Promise<RepositoryState>;
-    refreshRepository(request: {
-        path: string;
-    }): Promise<RepositoryState>;
-    readCommit(request: {
-        path?: string;
-        sha: string;
-    }): Promise<RepositoryState>;
-    listCommits(request: {
-        path?: string;
-        limit?: number;
-    }): Promise<{
+    authWipe(request: { osUsername?: string }): Promise<void>;
+    repositoryState(request: { path?: string }): Promise<RepositoryState>;
+    openRepository(request: { path: string }): Promise<RepositoryState>;
+    refreshRepository(request: { path: string }): Promise<RepositoryState>;
+    readCommit(request: { path?: string; sha: string }): Promise<RepositoryState>;
+    listCommits(request: { path?: string; limit?: number }): Promise<{
         commits: CommitSummary[];
     }>;
     generateWalkthrough(request: {
@@ -49,21 +49,11 @@ export interface WorkflowBridgeClient {
         sha?: string;
         refresh?: boolean;
     }): Promise<WalkthroughRecord>;
-    listPullRequests(request: {
-        path?: string;
-        limit?: number;
-    }): Promise<{
+    listPullRequests(request: { path?: string; limit?: number }): Promise<{
         pullRequests: PullRequestSummary[];
     }>;
-    readPullRequest(request: {
-        path?: string;
-        number: number;
-    }): Promise<RepositoryState>;
-    listPendingComments(request: {
-        path?: string;
-        kind?: RepositoryMode;
-        sha?: string;
-    }): Promise<{
+    readPullRequest(request: { path?: string; number: number }): Promise<RepositoryState>;
+    listPendingComments(request: { path?: string; kind?: RepositoryMode; sha?: string }): Promise<{
         comments: PendingComment[];
     }>;
     createPendingComment(request: {
@@ -77,55 +67,26 @@ export interface WorkflowBridgeClient {
         authorLabel: string;
         bodyHtml: string;
     }): Promise<PendingComment>;
-    updatePendingComment(request: {
-        id: string;
-        bodyHtml: string;
-    }): Promise<PendingComment>;
-    deletePendingComment(request: {
-        id: string;
-    }): Promise<void>;
-    promotePendingComments(request: {
-        reviewId: string;
-    }): Promise<{
+    updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment>;
+    deletePendingComment(request: { id: string }): Promise<void>;
+    promotePendingComments(request: { reviewId: string }): Promise<{
         promoted: number;
     }>;
-    readRepositoryFile(request: {
-        root: string;
-        path: string;
-    }): Promise<RepositoryFile>;
-    listBranches(request: {
-        path?: string;
-    }): Promise<{
+    readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
+    listBranches(request: { path?: string }): Promise<{
         branches: string[];
         records?: Branch[];
     }>;
-    checkoutBranch(request: {
-        path: string;
-        branch: string;
-    }): Promise<RepositoryState>;
-    createBranch(request: {
-        path: string;
-        name: string;
-    }): Promise<RepositoryState>;
-    deleteBranch(request: {
-        path?: string;
-        name: string;
-    }): Promise<void>;
-    lockBranch(request: {
-        path?: string;
-        name: string;
-    }): Promise<{
+    checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState>;
+    createBranch(request: { path: string; name: string }): Promise<RepositoryState>;
+    deleteBranch(request: { path?: string; name: string }): Promise<void>;
+    lockBranch(request: { path?: string; name: string }): Promise<{
         branches: Branch[];
     }>;
-    unlockBranch(request: {
-        path?: string;
-        name: string;
-    }): Promise<{
+    unlockBranch(request: { path?: string; name: string }): Promise<{
         branches: Branch[];
     }>;
-    listCollaborators(request: {
-        path: string;
-    }): Promise<{
+    listCollaborators(request: { path: string }): Promise<{
         collaborators: RepositoryCollaborator[];
     }>;
     addCollaborator(request: {
@@ -133,20 +94,13 @@ export interface WorkflowBridgeClient {
         userId: number;
         role: "write" | "read";
     }): Promise<RepositoryCollaborator>;
-    removeCollaborator(request: {
-        path: string;
-        userId: number;
-    }): Promise<void>;
+    removeCollaborator(request: { path: string; userId: number }): Promise<void>;
     getSystemStats(): Promise<SystemStats>;
     createReview(request: Partial<ReviewSession>): Promise<ReviewSession>;
-    listReviews(request: {
-        limit?: number;
-    }): Promise<{
+    listReviews(request: { limit?: number }): Promise<{
         reviews: ReviewSession[];
     }>;
-    reviewDetail(request: {
-        id: string;
-    }): Promise<ReviewDetail>;
+    reviewDetail(request: { id: string }): Promise<ReviewDetail>;
     addReviewEvent(request: {
         reviewId: string;
         type: string;
@@ -168,24 +122,13 @@ export interface WorkflowBridgeClient {
         commentId: string;
         bodyHtml: string;
     }): Promise<ReviewComment>;
-    deleteReviewComment(request: {
-        reviewId: string;
-        commentId: string;
-    }): Promise<void>;
+    deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void>;
     listRepositories(): Promise<{
         repositories: Repository[];
     }>;
-    searchRepositoryFiles(request: {
-        query: string;
-        limit?: number;
-    }): Promise<{
+    searchRepositoryFiles(request: { query: string; limit?: number }): Promise<{
         results: FileSearchResult[];
     }>;
-    upsertRepository(request: {
-        path: string;
-        name?: string;
-    }): Promise<Repository>;
-    removeRepository(request: {
-        path: string;
-    }): Promise<void>;
+    upsertRepository(request: { path: string; name?: string }): Promise<Repository>;
+    removeRepository(request: { path: string }): Promise<void>;
 }

@@ -19,13 +19,8 @@ type WalkthroughService struct {
 	store *storage.Store
 }
 
-func NewWalkthroughService(store *storage.Store) *WalkthroughService {
-	return &WalkthroughService{store: store}
-}
-
 // ErrAnthropicNotConfigured signals that no API key was found in env vars
 // or saved preferences; handlers translate to 412 Precondition Failed.
-var ErrAnthropicNotConfigured = errors.New("anthropic api key not configured")
 
 type GenerateRequest struct {
 	State      review.RepositoryState
@@ -39,6 +34,12 @@ type GenerateResult struct {
 	Record storage.WalkthroughRecord
 	Cached bool
 }
+
+func NewWalkthroughService(store *storage.Store) *WalkthroughService {
+	return &WalkthroughService{store: store}
+}
+
+var ErrAnthropicNotConfigured = errors.New("anthropic api key not configured")
 
 // Generate runs the cache lookup, falls through to the LLM when the cache
 // is stale (or absent), and persists the new record. Caching failures are

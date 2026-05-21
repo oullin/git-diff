@@ -15,37 +15,37 @@ import { useAuthStore } from "@/stores/auth.store";
 // multiple stores -- the host listens to the @entered / @wiped events and
 // runs its own orchestration.
 const emit = defineEmits<{
-  entered: [response: AuthLoginResponse];
-  wiped: [];
+    entered: [response: AuthLoginResponse];
+    wiped: [];
 }>();
 
 const authStore = useAuthStore();
 const { mode, osUsername } = storeToRefs(authStore);
 
 function onCompleted(response: AuthLoginResponse): void {
-  authStore.complete(response);
-  emit("entered", response);
+    authStore.complete(response);
+    emit("entered", response);
 }
 
 function onWiped(): void {
-  authStore.markWiped();
-  emit("wiped");
+    authStore.markWiped();
+    emit("wiped");
 }
 </script>
 
 <template>
-  <div
-    v-if="mode === 'loading'"
-    class="grid h-screen place-items-center bg-background text-sm text-muted-foreground"
-  >
-    Loading…
-  </div>
-  <AuthSetup v-else-if="mode === 'setup'" :os-username="osUsername" @completed="onCompleted" />
-  <AuthLogin
-    v-else-if="mode === 'login'"
-    :os-username="osUsername"
-    @logged-in="onCompleted"
-    @wiped="onWiped"
-  />
-  <slot v-else />
+    <div
+        v-if="mode === 'loading'"
+        class="grid h-screen place-items-center bg-background text-sm text-muted-foreground"
+    >
+        Loading…
+    </div>
+    <AuthSetup v-else-if="mode === 'setup'" :os-username="osUsername" @completed="onCompleted" />
+    <AuthLogin
+        v-else-if="mode === 'login'"
+        :os-username="osUsername"
+        @logged-in="onCompleted"
+        @wiped="onWiped"
+    />
+    <slot v-else />
 </template>

@@ -7,30 +7,30 @@ import type { Repository } from "@git-diff/contracts";
 // openRepo, both of which want broader scope. Removal stays here because
 // the operation is bounded to the list itself.
 export interface UseRepositoryList {
-  items: Ref<Repository[]>;
-  loading: Ref<boolean>;
-  refresh: () => Promise<void>;
-  remove: (path: string) => Promise<void>;
+    items: Ref<Repository[]>;
+    loading: Ref<boolean>;
+    refresh: () => Promise<void>;
+    remove: (path: string) => Promise<void>;
 }
 
 export function useRepositoryList(): UseRepositoryList {
-  const items = ref<Repository[]>([]);
-  const loading = ref(false);
+    const items = ref<Repository[]>([]);
+    const loading = ref(false);
 
-  async function refresh(): Promise<void> {
-    loading.value = true;
+    async function refresh(): Promise<void> {
+        loading.value = true;
 
-    try {
-      items.value = await window.diffApp.listRepositories();
-    } finally {
-      loading.value = false;
+        try {
+            items.value = await window.diffApp.listRepositories();
+        } finally {
+            loading.value = false;
+        }
     }
-  }
 
-  async function remove(path: string): Promise<void> {
-    await window.diffApp.removeRepository(path);
-    await refresh();
-  }
+    async function remove(path: string): Promise<void> {
+        await window.diffApp.removeRepository(path);
+        await refresh();
+    }
 
-  return { items, loading, refresh, remove };
+    return { items, loading, refresh, remove };
 }

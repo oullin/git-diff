@@ -22,12 +22,12 @@ export function waitForReady(client, timeoutMs = 10000) {
                 .healthz()
                 .then(resolve)
                 .catch((error) => {
-                if (Date.now() >= deadline) {
-                    reject(error);
-                    return;
-                }
-                setTimeout(attempt, 100);
-            });
+                    if (Date.now() >= deadline) {
+                        reject(error);
+                        return;
+                    }
+                    setTimeout(attempt, 100);
+                });
         };
         attempt();
     });
@@ -41,7 +41,7 @@ class HttpWorkflowBridgeClient {
     constructor(target) {
         this.socketPath = target.socketPath;
     }
-    close() { }
+    close() {}
     healthz() {
         return systemClient.healthz(this.socketPath);
     }

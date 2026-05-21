@@ -10,11 +10,11 @@ const delegatedProps = reactiveOmit(props, "class");
 </script>
 
 <template>
-  <StepperDescription
-    data-slot="stepper-description"
-    v-bind="delegatedProps"
-    :class="cn('text-xs text-muted-foreground', props.class)"
-  >
-    <slot />
-  </StepperDescription>
+    <StepperDescription
+        data-slot="stepper-description"
+        v-bind="delegatedProps"
+        :class="cn('text-xs text-muted-foreground', props.class)"
+    >
+        <slot />
+    </StepperDescription>
 </template>

@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import type {
-  ChangedFile,
-  DiffSection,
-  RepositoryFile,
-  ReviewComment,
-} from "@git-diff/contracts";
+import type { ChangedFile, DiffSection, RepositoryFile, ReviewComment } from "@git-diff/contracts";
 import type { PatchLine } from "@lib/patch";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
@@ -23,87 +18,86 @@ import type { Tweaks } from "@composables/useTweaks";
 // flags, comments) is read from props; mutating actions are emitted up
 // so App.vue keeps a single source of truth.
 defineProps<{
-  files: ChangedFile[];
-  selectedPath: string;
-  selectedIsChanged: boolean;
-  selectedRepoFile: RepositoryFile | null;
-  selectedFileLoading: boolean;
-  selectedFileError: string;
-  collapsed: Record<string, boolean>;
-  splitRatios: Record<string, number>;
-  tweaks: Tweaks;
-  diffViewMode: DiffViewMode;
-  hideWhitespace: boolean;
-  reviewComments: ReviewComment[];
-  commentFeatures: RichTextFeatures;
-  isViewedFn: (file: ChangedFile) => boolean;
-  fileElementID: (path: string) => string;
+    files: ChangedFile[];
+    selectedPath: string;
+    selectedIsChanged: boolean;
+    selectedRepoFile: RepositoryFile | null;
+    selectedFileLoading: boolean;
+    selectedFileError: string;
+    collapsed: Record<string, boolean>;
+    splitRatios: Record<string, number>;
+    tweaks: Tweaks;
+    diffViewMode: DiffViewMode;
+    hideWhitespace: boolean;
+    reviewComments: ReviewComment[];
+    commentFeatures: RichTextFeatures;
+    isViewedFn: (file: ChangedFile) => boolean;
+    fileElementID: (path: string) => string;
 }>();
 
 const emit = defineEmits<{
-  "toggle-collapsed": [path: string];
-  "toggle-viewed": [file: ChangedFile];
-  "copy-path": [path: string];
-  "open-comment-for-line": [file: ChangedFile, section: DiffSection, line: PatchLine];
-  "delete-comment": [comment: ReviewComment];
-  "reply-comment": [parent: ReviewComment, bodyHtml: string];
-  "update:split-ratio": [path: string, ratio: number];
+    "toggle-collapsed": [path: string];
+    "toggle-viewed": [file: ChangedFile];
+    "copy-path": [path: string];
+    "open-comment-for-line": [file: ChangedFile, section: DiffSection, line: PatchLine];
+    "delete-comment": [comment: ReviewComment];
+    "reply-comment": [parent: ReviewComment, bodyHtml: string];
+    "update:split-ratio": [path: string, ratio: number];
 }>();
-
 </script>
 
 <template>
-  <FileContentViewer
-    v-if="selectedPath && !selectedIsChanged"
-    :file="selectedRepoFile"
-    :path="selectedPath"
-    :loading="selectedFileLoading"
-    :error="selectedFileError"
-  />
-  <div
-    v-else-if="files.length === 0"
-    class="grid h-full place-items-center text-sm"
-    :style="{ color: 'var(--gd-text-3)' }"
-  >
-    No changes detected. Edit some files and refresh.
-  </div>
-  <template v-else>
-    <article
-      v-for="file in files"
-      :id="fileElementID(file.path)"
-      :key="file.path"
-      :style="{
-        background: 'var(--gd-panel)',
-        borderRadius: '12px',
-        boxShadow: 'var(--gd-shadow-card)',
-        overflow: 'clip',
-        marginBottom: '18px',
-      }"
+    <FileContentViewer
+        v-if="selectedPath && !selectedIsChanged"
+        :file="selectedRepoFile"
+        :path="selectedPath"
+        :loading="selectedFileLoading"
+        :error="selectedFileError"
+    />
+    <div
+        v-else-if="files.length === 0"
+        class="grid h-full place-items-center text-sm"
+        :style="{ color: 'var(--gd-text-3)' }"
     >
-      <FileHeader
-        :file="file"
-        :collapsed="!!collapsed[file.path]"
-        :viewed="isViewedFn(file)"
-        @toggle-collapsed="emit('toggle-collapsed', file.path)"
-        @toggle-viewed="emit('toggle-viewed', file)"
-        @copy="(path: string) => emit('copy-path', path)"
-      />
-      <DiffBody
-        v-if="!collapsed[file.path]"
-        :file="file"
-        :view-mode="diffViewMode"
-        :diff-style="tweaks.diffStyle"
-        :density="tweaks.density"
-        :word-highlight="tweaks.wordHighlight"
-        :hide-whitespace="hideWhitespace"
-        :comments="reviewComments"
-        :reply-features="commentFeatures"
-        :split-ratio="splitRatios[file.path] ?? 0.5"
-        @add-comment="(section, line) => emit('open-comment-for-line', file, section, line)"
-        @delete-comment="(comment) => emit('delete-comment', comment)"
-        @reply-comment="(parent, bodyHtml) => emit('reply-comment', parent, bodyHtml)"
-        @update:split-ratio="(value: number) => emit('update:split-ratio', file.path, value)"
-      />
-    </article>
-  </template>
+        No changes detected. Edit some files and refresh.
+    </div>
+    <template v-else>
+        <article
+            v-for="file in files"
+            :id="fileElementID(file.path)"
+            :key="file.path"
+            :style="{
+                background: 'var(--gd-panel)',
+                overflow: 'clip',
+                borderBottom: '1px solid var(--gd-border)',
+            }"
+        >
+            <FileHeader
+                :file="file"
+                :collapsed="!!collapsed[file.path]"
+                :viewed="isViewedFn(file)"
+                @toggle-collapsed="emit('toggle-collapsed', file.path)"
+                @toggle-viewed="emit('toggle-viewed', file)"
+                @copy="(path: string) => emit('copy-path', path)"
+            />
+            <DiffBody
+                v-if="!collapsed[file.path]"
+                :file="file"
+                :view-mode="diffViewMode"
+                :diff-style="tweaks.diffStyle"
+                :density="tweaks.density"
+                :word-highlight="tweaks.wordHighlight"
+                :hide-whitespace="hideWhitespace"
+                :comments="reviewComments"
+                :reply-features="commentFeatures"
+                :split-ratio="splitRatios[file.path] ?? 0.5"
+                @add-comment="(section, line) => emit('open-comment-for-line', file, section, line)"
+                @delete-comment="(comment) => emit('delete-comment', comment)"
+                @reply-comment="(parent, bodyHtml) => emit('reply-comment', parent, bodyHtml)"
+                @update:split-ratio="
+                    (value: number) => emit('update:split-ratio', file.path, value)
+                "
+            />
+        </article>
+    </template>
 </template>

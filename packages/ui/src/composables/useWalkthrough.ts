@@ -7,45 +7,47 @@ import type { RepositoryState, WalkthroughRecord } from "@git-diff/contracts";
 // `generate` action snapshots the supplied repository state, so callers can
 // invoke it without re-deriving the request payload.
 export interface UseWalkthrough {
-  record: Ref<WalkthroughRecord | null>;
-  loading: Ref<boolean>;
-  error: Ref<string>;
-  generate: (refresh?: boolean) => Promise<void>;
-  dismiss: () => void;
+    record: Ref<WalkthroughRecord | null>;
+    loading: Ref<boolean>;
+    error: Ref<string>;
+    generate: (refresh?: boolean) => Promise<void>;
+    dismiss: () => void;
 }
 
 export function useWalkthrough(state: Ref<RepositoryState | null>): UseWalkthrough {
-  const record = ref<WalkthroughRecord | null>(null);
-  const loading = ref(false);
-  const error = ref("");
+    const record = ref<WalkthroughRecord | null>(null);
+    const loading = ref(false);
+    const error = ref("");
 
-  async function generate(refresh = false): Promise<void> {
-    const current = state.value;
+    async function generate(refresh = false): Promise<void> {
+        const current = state.value;
 
-    if (!current) return;
+        if (!current) {
+            return;
+        }
 
-    loading.value = true;
-    error.value = "";
+        loading.value = true;
+        error.value = "";
 
-    try {
-      record.value = await window.diffApp.generateWalkthrough({
-        path: current.root,
-        kind: current.mode,
-        sha: current.commitSha,
-        refresh,
-      });
-    } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : String(cause);
-      record.value = null;
-    } finally {
-      loading.value = false;
+        try {
+            record.value = await window.diffApp.generateWalkthrough({
+                path: current.root,
+                kind: current.mode,
+                sha: current.commitSha,
+                refresh,
+            });
+        } catch (cause) {
+            error.value = cause instanceof Error ? cause.message : String(cause);
+            record.value = null;
+        } finally {
+            loading.value = false;
+        }
     }
-  }
 
-  function dismiss(): void {
-    record.value = null;
-    error.value = "";
-  }
+    function dismiss(): void {
+        record.value = null;
+        error.value = "";
+    }
 
-  return { record, loading, error, generate, dismiss };
+    return { record, loading, error, generate, dismiss };
 }

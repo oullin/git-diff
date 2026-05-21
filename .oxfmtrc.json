@@ -1,0 +1,8 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "tabWidth": 4,
+    "useTabs": false,
+    "vueIndentScriptAndStyle": false,
+    "endOfLine": "lf",
+    "insertFinalNewline": true
+}

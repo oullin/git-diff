@@ -17,8 +17,7 @@ export function createBranch(socketPath, request) {
 }
 export function deleteBranch(socketPath, request) {
     const params = new URLSearchParams({ name: request.name });
-    if (request.path)
-        params.set("path", request.path);
+    if (request.path) params.set("path", request.path);
     return requestJson(socketPath, "DELETE", `/v1/repository/branches?${params.toString()}`);
 }
 export function lockBranch(socketPath, request) {

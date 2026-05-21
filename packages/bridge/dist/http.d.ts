@@ -6,5 +6,11 @@ export interface BridgeError extends Error {
     code?: string;
     files?: string[];
 }
-export declare function requestJson<Response>(socketPath: string, method: HttpMethod, path: string, body?: JsonBody, timeoutMs?: number): Promise<Response>;
+export declare function requestJson<Response>(
+    socketPath: string,
+    method: HttpMethod,
+    path: string,
+    body?: JsonBody,
+    timeoutMs?: number,
+): Promise<Response>;
 export declare function consumeBody(res: IncomingMessage): Promise<string>;

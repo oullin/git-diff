@@ -1,6 +1,12 @@
 import { request as httpRequest } from "node:http";
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
-export function requestJson(socketPath, method, path, body, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
+export function requestJson(
+    socketPath,
+    method,
+    path,
+    body,
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+) {
     return new Promise((resolve, reject) => {
         let settled = false;
         const headers = { Accept: "application/json" };
@@ -26,27 +32,30 @@ export function requestJson(socketPath, method, path, body, timeoutMs = DEFAULT_
         const req = httpRequest({ socketPath, method, path, headers }, (res) => {
             consumeBody(res)
                 .then((raw) => {
-                if ((res.statusCode === 200 || res.statusCode === 201) && isJsonResponse(res)) {
-                    try {
-                        succeed(JSON.parse(raw));
+                    if ((res.statusCode === 200 || res.statusCode === 201) && isJsonResponse(res)) {
+                        try {
+                            succeed(JSON.parse(raw));
+                        } catch (error) {
+                            fail(error instanceof Error ? error : new Error(String(error)));
+                        }
+                        return;
                     }
-                    catch (error) {
-                        fail(error instanceof Error ? error : new Error(String(error)));
+                    if (
+                        res.statusCode === 200 ||
+                        res.statusCode === 201 ||
+                        res.statusCode === 204
+                    ) {
+                        succeed(undefined);
+                        return;
                     }
-                    return;
-                }
-                if (res.statusCode === 200 || res.statusCode === 201 || res.statusCode === 204) {
-                    succeed(undefined);
-                    return;
-                }
-                const error = new Error(`${method} ${path} failed (${res.statusCode}): ${raw}`);
-                const bridgeError = error;
-                bridgeError.statusCode = res.statusCode;
-                if (isJsonResponse(res)) {
-                    applyJsonErrorPayload(bridgeError, raw);
-                }
-                fail(bridgeError);
-            })
+                    const error = new Error(`${method} ${path} failed (${res.statusCode}): ${raw}`);
+                    const bridgeError = error;
+                    bridgeError.statusCode = res.statusCode;
+                    if (isJsonResponse(res)) {
+                        applyJsonErrorPayload(bridgeError, raw);
+                    }
+                    fail(bridgeError);
+                })
                 .catch(fail);
         });
         req.setTimeout(timeoutMs, () => {
@@ -83,12 +92,14 @@ function applyJsonErrorPayload(error, raw) {
             if (typeof parsed.code === "string") {
                 error.code = parsed.code;
             }
-            if (Array.isArray(parsed.files) && parsed.files.every((entry) => typeof entry === "string")) {
+            if (
+                Array.isArray(parsed.files) &&
+                parsed.files.every((entry) => typeof entry === "string")
+            ) {
                 error.files = parsed.files;
             }
         }
-    }
-    catch {
+    } catch {
         // Fall through with the generic error message.
     }
 }

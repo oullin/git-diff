@@ -1,31 +1,34 @@
 {
-  "name": "@git-diff/bridge",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "imports": {
-    "#bridge/*.js": {
-      "types": "./src/*.ts",
-      "default": "./dist/*.js"
+    "name": "@git-diff/bridge",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "imports": {
+        "#bridge/*.js": {
+            "types": "./src/*.ts",
+            "default": "./dist/*.js"
+        }
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "pnpm run format && tsc -p tsconfig.json",
+        "format": "tsx ../../scripts/blank-lines.ts && oxfmt .",
+        "format:check": "tsx ../../scripts/blank-lines.ts --check && oxfmt --check .",
+        "lint": "oxlint ."
+    },
+    "dependencies": {
+        "@git-diff/contracts": "workspace:*"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.2",
+        "tsx": "^4.21.0",
+        "typescript": "^6.0.3"
     }
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
-  "scripts": {
-    "build": "pnpm run format && tsc -p tsconfig.json",
-    "format": "oxfmt --write src"
-  },
-  "dependencies": {
-    "@git-diff/contracts": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/node": "^25.6.2",
-    "typescript": "^6.0.3"
-  }
 }

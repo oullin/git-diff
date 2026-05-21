@@ -11,14 +11,14 @@ import { register as registerWalkthrough } from "#electron/ipc/walkthrough.ipc.j
 import type { IpcDeps } from "#electron/ipc/types.js";
 
 export function registerIpcHandlers(deps: IpcDeps): void {
-  registerRepository(deps);
-  registerRepositories();
-  registerBranches();
-  registerPullRequests();
-  registerWalkthrough();
-  registerPendingComments();
-  registerPreferences();
-  registerReviews();
-  registerAuth();
-  registerSystem(deps);
+    registerRepository(deps);
+    registerRepositories();
+    registerBranches();
+    registerPullRequests();
+    registerWalkthrough();
+    registerPendingComments();
+    registerPreferences();
+    registerReviews();
+    registerAuth();
+    registerSystem(deps);
 }

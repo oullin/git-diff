@@ -11,9 +11,9 @@ const forwarded = useForwardProps(delegatedProps);
 </script>
 
 <template>
-  <AccordionContent v-bind="forwarded" class="overflow-hidden text-sm">
-    <div :class="cn('pb-2 pt-0', props.class)">
-      <slot />
-    </div>
-  </AccordionContent>
+    <AccordionContent v-bind="forwarded" class="overflow-hidden text-sm">
+        <div :class="cn('pb-2 pt-0', props.class)">
+            <slot />
+        </div>
+    </AccordionContent>
 </template>

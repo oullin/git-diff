@@ -16,10 +16,18 @@ export function upsertRepository(socketPath, request) {
     });
 }
 export function removeRepository(socketPath, request) {
-    return requestJson(socketPath, "DELETE", `/v1/repositories?path=${encodeURIComponent(request.path)}`);
+    return requestJson(
+        socketPath,
+        "DELETE",
+        `/v1/repositories?path=${encodeURIComponent(request.path)}`,
+    );
 }
 export function listCollaborators(socketPath, request) {
-    return requestJson(socketPath, "GET", `/v1/repositories/collaborators?path=${encodeURIComponent(request.path)}`);
+    return requestJson(
+        socketPath,
+        "GET",
+        `/v1/repositories/collaborators?path=${encodeURIComponent(request.path)}`,
+    );
 }
 export function addCollaborator(socketPath, request) {
     return requestJson(socketPath, "POST", "/v1/repositories/collaborators", {

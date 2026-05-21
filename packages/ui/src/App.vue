@@ -17,19 +17,19 @@ import AddCommentDialog from "@entry/components/diff/AddCommentDialog.vue";
 import { sanitizeHtml } from "@ui/safe-html";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 import type {
-  AuthLoginResponse,
-  AuthUser,
-  ChangedFile,
-  DiffSection,
-  DiffViewMode,
-  FileSearchResult,
-  PullRequestSummary,
-  Repository,
-  RepositoryFile,
-  RepositoryState,
-  ReviewComment,
-  ReviewDetail,
-  ReviewSession,
+    AuthLoginResponse,
+    AuthUser,
+    ChangedFile,
+    DiffSection,
+    DiffViewMode,
+    FileSearchResult,
+    PullRequestSummary,
+    Repository,
+    RepositoryFile,
+    RepositoryState,
+    ReviewComment,
+    ReviewDetail,
+    ReviewSession,
 } from "@git-diff/contracts";
 import { PREF_KEYS, viewedPrefKey } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
@@ -38,10 +38,7 @@ import type { PatchLine } from "@lib/patch";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
 import { useToasts } from "@composables/useToasts";
 import { useStyleWatchers } from "@composables/useStyleWatchers";
-import {
-  useDiffNavigation,
-  useKeyboardShortcuts,
-} from "@composables/useDiffNavigation";
+import { useDiffNavigation, useKeyboardShortcuts } from "@composables/useDiffNavigation";
 import { useWalkthrough } from "@composables/useWalkthrough";
 import { useCommits } from "@composables/useCommits";
 import { usePullRequests } from "@composables/usePullRequests";
@@ -58,47 +55,33 @@ import { useRepoStore } from "@/stores/repo.store";
 import { useReviewsStore } from "@/stores/reviews.store";
 import { parseBridgeError } from "@lib/bridgeError";
 
-
 const commentFeatures: RichTextFeatures = {
-  checklist: false,
-  images: false,
-  markdownShortcuts: true,
-  mentions: false,
-  slashMenu: false,
-  tables: false,
+    checklist: false,
+    images: false,
+    markdownShortcuts: true,
+    mentions: false,
+    slashMenu: false,
+    tables: false,
 };
 
 const authStore = useAuthStore();
-const {
-  mode: authMode,
-  osUsername: authOSUsername,
-  currentUser,
-} = storeToRefs(authStore);
+const { mode: authMode, osUsername: authOSUsername, currentUser } = storeToRefs(authStore);
 
 const repoStore = useRepoStore();
-const {
-  state,
-  activeRepoPath,
-  loading,
-  error,
-} = storeToRefs(repoStore);
+const { state, activeRepoPath, loading, error } = storeToRefs(repoStore);
 
 const reviewsStore = useReviewsStore();
-const {
-  items: reviews,
-  active: activeReview,
-  summaryDraft,
-} = storeToRefs(reviewsStore);
+const { items: reviews, active: activeReview, summaryDraft } = storeToRefs(reviewsStore);
 
 const {
-  values: prefValues,
-  load: loadPreferences,
-  save: savePreferences,
-  reset: resetPreferences,
+    values: prefValues,
+    load: loadPreferences,
+    save: savePreferences,
+    reset: resetPreferences,
 } = usePreferences({
-  onSaveError: (cause) => {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  },
+    onSaveError: (cause) => {
+        error.value = cause instanceof Error ? cause.message : String(cause);
+    },
 });
 
 const prefs = computed(() => prefValues.value);
@@ -110,29 +93,29 @@ const hideWhitespace = computed(() => prefValues.value[PREF_KEYS.diffHideWhitesp
 const lastRepoRoot = computed(() => prefValues.value[PREF_KEYS.lastRepoRoot] ?? "");
 
 const {
-  items: repositories,
-  loading: repositoriesLoading,
-  refresh: refreshRepositoryList,
-  remove: removeRepositoryFromList,
+    items: repositories,
+    loading: repositoriesLoading,
+    refresh: refreshRepositoryList,
+    remove: removeRepositoryFromList,
 } = useRepositoryList();
 const selectedPath = ref("");
 const searchQuery = ref("");
 const { collapsed, splitRatios, toggleCollapsed, setSplitRatio } = useDiffLayout();
 const reviewPanelOpen = ref(false);
 const {
-  target: commentTarget,
-  draft: commentDraft,
-  open: commentDialogOpen,
-  begin: beginCommentDraft,
-  cancel: cancelCommentDraft,
-  close: closeCommentDraft,
+    target: commentTarget,
+    draft: commentDraft,
+    open: commentDialogOpen,
+    begin: beginCommentDraft,
+    cancel: cancelCommentDraft,
+    close: closeCommentDraft,
 } = useCommentDraft();
 const {
-  file: selectedRepoFile,
-  loading: selectedFileLoading,
-  error: selectedFileError,
-  load: loadSelectedFile,
-  reset: resetSelectedFile,
+    file: selectedRepoFile,
+    loading: selectedFileLoading,
+    error: selectedFileError,
+    load: loadSelectedFile,
+    reset: resetSelectedFile,
 } = useSelectedFile({ selectedPath });
 const repoScope = ref<"changed" | "all">("changed");
 const { items: commits, loading: commitsLoading, load: loadCommits } = useCommits(state);
@@ -140,96 +123,105 @@ const repoMode = computed<"working" | "commit">(() => state.value?.mode ?? "work
 const searchOpen = ref(false);
 
 const {
-  items: pullRequests,
-  loading: pullRequestsLoading,
-  active: activePullRequest,
-  load: loadPullRequests,
+    items: pullRequests,
+    loading: pullRequestsLoading,
+    active: activePullRequest,
+    load: loadPullRequests,
 } = usePullRequests({
-  state,
-  onLoadError: (cause) => {
-    showToast({
-      tone: "error",
-      title: "Could not load pull requests",
-      description: cause instanceof Error ? cause.message : String(cause),
-    });
-  },
+    state,
+    onLoadError: (cause) => {
+        showToast({
+            tone: "error",
+            title: "Could not load pull requests",
+            description: cause instanceof Error ? cause.message : String(cause),
+        });
+    },
 });
 
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
 
 const {
-  record: walkthrough,
-  loading: walkthroughLoading,
-  error: walkthroughError,
-  generate: generateWalkthrough,
+    record: walkthrough,
+    loading: walkthroughLoading,
+    error: walkthroughError,
+    generate: generateWalkthrough,
 } = useWalkthrough(state);
 
 const files = computed(() => state.value?.files ?? []);
 const changedByPath = computed(() => {
-  const map = new Map<string, ChangedFile>();
-  for (const file of files.value) {
-    map.set(file.path, file);
-  }
-  return map;
+    const map = new Map<string, ChangedFile>();
+
+    for (const file of files.value) {
+        map.set(file.path, file);
+    }
+
+    return map;
 });
 const changedPathsSet = computed(() => new Set(changedByPath.value.keys()));
 const trackedFiles = computed(() => state.value?.trackedFiles ?? []);
 const repoPaths = computed(() => {
-  const set = new Set<string>(trackedFiles.value);
-  for (const file of files.value) {
-    set.add(file.path);
-  }
-  return Array.from(set).sort();
+    const set = new Set<string>(trackedFiles.value);
+
+    for (const file of files.value) {
+        set.add(file.path);
+    }
+
+    return Array.from(set).sort();
 });
 const selectedFile = computed<ChangedFile | null>(
-  () => changedByPath.value.get(selectedPath.value) ?? files.value[0] ?? null,
+    () => changedByPath.value.get(selectedPath.value) ?? files.value[0] ?? null,
 );
 const selectedIsChanged = computed(
-  () => !!selectedPath.value && changedByPath.value.has(selectedPath.value),
+    () => !!selectedPath.value && changedByPath.value.has(selectedPath.value),
 );
 const reviewComments = computed<ReviewComment[]>(() => activeReview.value?.comments ?? []);
 const threadsByPath = computed(() => {
-  const counts = new Map<string, number>();
-  for (const comment of reviewComments.value) {
-    counts.set(comment.filePath, (counts.get(comment.filePath) ?? 0) + 1);
-  }
-  return counts;
+    const counts = new Map<string, number>();
+
+    for (const comment of reviewComments.value) {
+        counts.set(comment.filePath, (counts.get(comment.filePath) ?? 0) + 1);
+    }
+
+    return counts;
 });
 
 const userInitials = computed(() => {
-  const name = currentUser.value?.displayName ?? currentUser.value?.osUsername ?? "GO";
-  return (
-    name
-      .split(/[\s_-]+/)
-      .map((part) => part[0]?.toUpperCase() ?? "")
-      .slice(0, 2)
-      .join("") || "GO"
-  );
+    const name = currentUser.value?.displayName ?? currentUser.value?.osUsername ?? "GO";
+
+    return (
+        name
+            .split(/[\s_-]+/)
+            .map((part) => part[0]?.toUpperCase() ?? "")
+            .slice(0, 2)
+            .join("") || "GO"
+    );
 });
 
 const changedIndex = computed(() => files.value.findIndex((f) => f.path === selectedPath.value));
 
 watch(
-  files,
-  (list) => {
-    const seen = new Set<string>();
-    for (const file of list) {
-      const lang = languageFor(file.path);
-      if (lang && !seen.has(lang)) {
-        seen.add(lang);
-        void ensureLanguage(lang);
-      }
-    }
-  },
-  { immediate: true },
+    files,
+    (list) => {
+        const seen = new Set<string>();
+
+        for (const file of list) {
+            const lang = languageFor(file.path);
+
+            if (lang && !seen.has(lang)) {
+                seen.add(lang);
+                void ensureLanguage(lang);
+            }
+        }
+    },
+    { immediate: true },
 );
 
 useStyleWatchers(accent, tweaks);
 
 const { selectAdjacent, jumpToHunk } = useDiffNavigation({
-  files,
-  changedIndex,
-  onSelect: (path) => selectFile(path),
+    files,
+    changedIndex,
+    onSelect: (path) => selectFile(path),
 });
 
 const shortcutsEnabled = computed(() => authMode.value === "ready");
@@ -237,472 +229,527 @@ let unsubscribeShortcuts: (() => void) | null = null;
 let unsubscribeLaunchIntent: (() => void) | null = null;
 
 onMounted(async () => {
-  await bootstrapAuth();
-  unsubscribeShortcuts = useKeyboardShortcuts({
-    enabled: shortcutsEnabled,
-    onSelectAdjacent: selectAdjacent,
-    onJumpToHunk: jumpToHunk,
-    onToggleViewed: () => {
-      const file = selectedFile.value;
-      if (file && changedByPath.value.has(file.path)) {
-        void toggleViewed(file);
-      }
-    },
-    onStartReview: () => void startReview(),
-    onOpenSearch: () => {
-      searchOpen.value = true;
-    },
-  });
-  unsubscribeLaunchIntent = window.diffApp.onLaunchIntent(async (intent) => {
-    if (intent.kind === "help" || !intent.repoPath) {
-      return;
-    }
-    await openRepo(intent.repoPath);
-    if (intent.kind === "pull-request" && intent.prNumber && state.value) {
-      await openPullRequest(intent.prNumber);
-    } else if (intent.sha && state.value) {
-      await openCommit(intent.sha);
-    }
-  });
+    await bootstrapAuth();
+    unsubscribeShortcuts = useKeyboardShortcuts({
+        enabled: shortcutsEnabled,
+        onSelectAdjacent: selectAdjacent,
+        onJumpToHunk: jumpToHunk,
+        onToggleViewed: () => {
+            const file = selectedFile.value;
+
+            if (file && changedByPath.value.has(file.path)) {
+                void toggleViewed(file);
+            }
+        },
+        onStartReview: () => void startReview(),
+        onOpenSearch: () => {
+            searchOpen.value = true;
+        },
+    });
+    unsubscribeLaunchIntent = window.diffApp.onLaunchIntent(async (intent) => {
+        if (intent.kind === "help" || !intent.repoPath) {
+            return;
+        }
+
+        await openRepo(intent.repoPath);
+        if (intent.kind === "pull-request" && intent.prNumber && state.value) {
+            await openPullRequest(intent.prNumber);
+        } else if (intent.sha && state.value) {
+            await openCommit(intent.sha);
+        }
+    });
 });
 
 onUnmounted(() => {
-  unsubscribeShortcuts?.();
-  unsubscribeLaunchIntent?.();
+    unsubscribeShortcuts?.();
+    unsubscribeLaunchIntent?.();
 });
 
 async function bootstrapAuth() {
-  const { entered } = await authStore.bootstrap();
+    const { entered } = await authStore.bootstrap();
 
-  if (authStore.bootstrapError) {
-    error.value = authStore.bootstrapError;
-  }
+    if (authStore.bootstrapError) {
+        error.value = authStore.bootstrapError;
+    }
 
-  if (entered) {
-    await enterApp();
-  }
+    if (entered) {
+        await enterApp();
+    }
 }
 
 async function enterApp() {
-  await loadPreferences();
-  await refreshRepositoryList();
-  await applyLaunchIntent();
+    await loadPreferences();
+    await refreshRepositoryList();
+    await applyLaunchIntent();
 }
 
 async function applyLaunchIntent() {
-  let intent = null;
-  try {
-    intent = await window.diffApp.takeLaunchIntent();
-  } catch {
-    // No CLI in this build (browser fallback) — fall through to last-repo path.
-  }
+    let intent = null;
 
-  const initialPath =
-    intent?.repoPath ??
-    repositories.value.find((repo) => repo.path === lastRepoRoot.value)?.path ??
-    repositories.value[0]?.path ??
-    "";
+    try {
+        intent = await window.diffApp.takeLaunchIntent();
+    } catch {
+        // No CLI in this build (browser fallback) — fall through to last-repo path.
+    }
 
-  if (!initialPath) {
-    return;
-  }
+    const initialPath =
+        intent?.repoPath ??
+        repositories.value.find((repo) => repo.path === lastRepoRoot.value)?.path ??
+        repositories.value[0]?.path ??
+        "";
 
-  await openRepo(initialPath);
+    if (!initialPath) {
+        return;
+    }
 
-  if (intent?.kind === "pull-request" && intent.prNumber && state.value) {
-    await openPullRequest(intent.prNumber);
-  } else if (intent?.sha && state.value) {
-    await openCommit(intent.sha);
-  }
+    await openRepo(initialPath);
 
-  if (intent?.walkthrough) {
-    await generateWalkthrough();
-  }
+    if (intent?.kind === "pull-request" && intent.prNumber && state.value) {
+        await openPullRequest(intent.prNumber);
+    } else if (intent?.sha && state.value) {
+        await openCommit(intent.sha);
+    }
+
+    if (intent?.walkthrough) {
+        await generateWalkthrough();
+    }
 }
 
 async function handleAuthCompleted(response: AuthLoginResponse) {
-  authStore.complete(response);
-  await enterApp();
+    authStore.complete(response);
+    await enterApp();
 }
 
 async function handleAuthWiped() {
-  authStore.markWiped();
+    authStore.markWiped();
 }
 
 async function logOut() {
-  await authStore.logout();
-  resetPreferences();
-  state.value = null;
-  repositories.value = [];
-  activeRepoPath.value = "";
-  reviews.value = [];
-  activeReview.value = null;
-  selectedPath.value = "";
-  resetSelectedFile();
-  await bootstrapAuth();
+    await authStore.logout();
+    resetPreferences();
+    state.value = null;
+    repositories.value = [];
+    activeRepoPath.value = "";
+    reviews.value = [];
+    activeReview.value = null;
+    selectedPath.value = "";
+    resetSelectedFile();
+    await bootstrapAuth();
 }
 
 async function openRepo(path: string) {
-  activeRepoPath.value = path;
+    activeRepoPath.value = path;
 
-  await repoStore.withBusy(async () => {
-    try {
-      const opened = await window.diffApp.repositoryState(path);
-      state.value = opened;
-      selectedPath.value = opened.files[0]?.path ?? "";
-      resetSelectedFile();
-      const reviewResponse = await window.diffApp.listReviews(25);
-      reviews.value = reviewResponse.reviews.filter((review) => review.repoRoot === opened.root);
-      activeReview.value = reviews.value[0]
-        ? await window.diffApp.reviewDetail(reviews.value[0].id)
-        : null;
-      await loadPendingComments();
-      await savePreferences({ [PREF_KEYS.lastRepoRoot]: opened.root });
-      await window.diffApp.upsertRepository({ path: opened.root });
-      await refreshRepositoryList();
-      activeRepoPath.value = opened.root;
-    } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : String(cause);
-      state.value = null;
-    }
-  });
+    await repoStore.withBusy(async () => {
+        try {
+            const opened = await window.diffApp.repositoryState(path);
+
+            state.value = opened;
+            selectedPath.value = opened.files[0]?.path ?? "";
+            resetSelectedFile();
+            const reviewResponse = await window.diffApp.listReviews(25);
+
+            reviews.value = reviewResponse.reviews.filter(
+                (review) => review.repoRoot === opened.root,
+            );
+            activeReview.value = reviews.value[0]
+                ? await window.diffApp.reviewDetail(reviews.value[0].id)
+                : null;
+            await loadPendingComments();
+            await savePreferences({ [PREF_KEYS.lastRepoRoot]: opened.root });
+            await window.diffApp.upsertRepository({ path: opened.root });
+            await refreshRepositoryList();
+            activeRepoPath.value = opened.root;
+        } catch (cause) {
+            error.value = cause instanceof Error ? cause.message : String(cause);
+            state.value = null;
+        }
+    });
 }
 
 async function refresh() {
-  if (!state.value) {
-    if (activeRepoPath.value) {
-      await openRepo(activeRepoPath.value);
-    }
-    return;
-  }
+    if (!state.value) {
+        if (activeRepoPath.value) {
+            await openRepo(activeRepoPath.value);
+        }
 
-  await repoStore.withBusy(async () => {
-    try {
-      const current = state.value!;
-      const next =
-        current.mode === "commit" && current.commitSha
-          ? await window.diffApp.readCommit(current.commitSha, current.root)
-          : await window.diffApp.refreshRepository(current.root);
-      state.value = next;
-
-      if (!next.files.some((file) => file.path === selectedPath.value)) {
-        selectedPath.value = next.files[0]?.path ?? "";
-      }
-    } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : String(cause);
+        return;
     }
-  });
+
+    await repoStore.withBusy(async () => {
+        try {
+            const current = state.value!;
+            const next =
+                current.mode === "commit" && current.commitSha
+                    ? await window.diffApp.readCommit(current.commitSha, current.root)
+                    : await window.diffApp.refreshRepository(current.root);
+
+            state.value = next;
+
+            if (!next.files.some((file) => file.path === selectedPath.value)) {
+                selectedPath.value = next.files[0]?.path ?? "";
+            }
+        } catch (cause) {
+            error.value = cause instanceof Error ? cause.message : String(cause);
+        }
+    });
 }
 
 async function openCommit(sha: string) {
-  if (!state.value) return;
-
-  await repoStore.withBusy(async () => {
-    try {
-      state.value = await window.diffApp.readCommit(sha, state.value!.root);
-      selectedPath.value = state.value.files[0]?.path ?? "";
-      activeReview.value = null;
-      activePullRequest.value = null;
-    } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : String(cause);
+    if (!state.value) {
+        return;
     }
-  });
+
+    await repoStore.withBusy(async () => {
+        try {
+            state.value = await window.diffApp.readCommit(sha, state.value!.root);
+            selectedPath.value = state.value.files[0]?.path ?? "";
+            activeReview.value = null;
+            activePullRequest.value = null;
+        } catch (cause) {
+            error.value = cause instanceof Error ? cause.message : String(cause);
+        }
+    });
 }
 
 async function returnToWorkingTree() {
-  if (!state.value) return;
-  activePullRequest.value = null;
-  await openRepo(state.value.root);
+    if (!state.value) {
+        return;
+    }
+
+    activePullRequest.value = null;
+    await openRepo(state.value.root);
 }
 
 async function openPullRequest(number: number) {
-  if (!state.value) return;
-
-  await repoStore.withBusy(async () => {
-    try {
-      const opened = await window.diffApp.readPullRequest(number, state.value!.root);
-      state.value = opened;
-      selectedPath.value = opened.files[0]?.path ?? "";
-      activeReview.value = null;
-      activePullRequest.value = pullRequests.value.find((pr) => pr.number === number) ?? {
-        number,
-        title: "",
-        author: "",
-        state: "open",
-        baseRef: "",
-        headRef: opened.branch,
-        url: "",
-      };
-    } catch (cause) {
-      error.value = cause instanceof Error ? cause.message : String(cause);
+    if (!state.value) {
+        return;
     }
-  });
+
+    await repoStore.withBusy(async () => {
+        try {
+            const opened = await window.diffApp.readPullRequest(number, state.value!.root);
+
+            state.value = opened;
+            selectedPath.value = opened.files[0]?.path ?? "";
+            activeReview.value = null;
+            activePullRequest.value = pullRequests.value.find((pr) => pr.number === number) ?? {
+                number,
+                title: "",
+                author: "",
+                state: "open",
+                baseRef: "",
+                headRef: opened.branch,
+                url: "",
+            };
+        } catch (cause) {
+            error.value = cause instanceof Error ? cause.message : String(cause);
+        }
+    });
 }
 
 const creatingBranch = ref(false);
 const branchCreateError = ref("");
 
 async function switchBranch(branch: string) {
-  if (!state.value) return;
-
-  await repoStore.withBusy(async () => {
-    try {
-      const next = await window.diffApp.checkoutBranch(state.value!.root, branch);
-      state.value = next;
-
-      if (!next.files.some((file) => file.path === selectedPath.value)) {
-        selectedPath.value = next.files[0]?.path ?? "";
-      }
-    } catch (cause) {
-      const structured = parseBridgeError(cause);
-
-      if (structured?.code === "working_tree_dirty") {
-        const files = structured.files ?? [];
-        showToast(
-          {
-            tone: "error",
-            wide: true,
-            title: "Commit or stash your changes before switching branches",
-            description:
-              files.length > 0
-                ? `${files.length} file${files.length === 1 ? "" : "s"} would be overwritten by checkout: ${files.join(", ")}`
-                : undefined,
-          },
-          0,
-        );
+    if (!state.value) {
         return;
-      }
-
-      error.value =
-        structured?.message ?? (cause instanceof Error ? cause.message : String(cause));
     }
-  });
+
+    await repoStore.withBusy(async () => {
+        try {
+            const next = await window.diffApp.checkoutBranch(state.value!.root, branch);
+
+            state.value = next;
+
+            if (!next.files.some((file) => file.path === selectedPath.value)) {
+                selectedPath.value = next.files[0]?.path ?? "";
+            }
+        } catch (cause) {
+            const structured = parseBridgeError(cause);
+
+            if (structured?.code === "working_tree_dirty") {
+                const files = structured.files ?? [];
+
+                showToast(
+                    {
+                        tone: "error",
+                        wide: true,
+                        title: "Commit or stash your changes before switching branches",
+                        description:
+                            files.length > 0
+                                ? `${files.length} file${files.length === 1 ? "" : "s"} would be overwritten by checkout: ${files.join(", ")}`
+                                : undefined,
+                    },
+                    0,
+                );
+
+                return;
+            }
+
+            error.value =
+                structured?.message ?? (cause instanceof Error ? cause.message : String(cause));
+        }
+    });
 }
 
 async function createBranch(name: string) {
-  if (!state.value) return;
-  creatingBranch.value = true;
-  branchCreateError.value = "";
-  try {
-    state.value = await window.diffApp.createBranch(state.value.root, name);
-    if (!state.value.files.some((file) => file.path === selectedPath.value)) {
-      selectedPath.value = state.value.files[0]?.path ?? "";
+    if (!state.value) {
+        return;
     }
-  } catch (cause) {
-    branchCreateError.value = cause instanceof Error ? cause.message : String(cause);
-  } finally {
-    creatingBranch.value = false;
-  }
+
+    creatingBranch.value = true;
+    branchCreateError.value = "";
+    try {
+        state.value = await window.diffApp.createBranch(state.value.root, name);
+        if (!state.value.files.some((file) => file.path === selectedPath.value)) {
+            selectedPath.value = state.value.files[0]?.path ?? "";
+        }
+    } catch (cause) {
+        branchCreateError.value = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+        creatingBranch.value = false;
+    }
 }
 
 async function addRepository() {
-  const chosen = await window.diffApp.chooseRepository(activeRepoPath.value || lastRepoRoot.value);
-  if (chosen) {
-    await openRepo(chosen);
-  }
+    const chosen = await window.diffApp.chooseRepository(
+        activeRepoPath.value || lastRepoRoot.value,
+    );
+
+    if (chosen) {
+        await openRepo(chosen);
+    }
 }
 
 async function removeRepository(path: string) {
-  await removeRepositoryFromList(path);
-  if (activeRepoPath.value === path) {
-    activeRepoPath.value = "";
-    state.value = null;
-    activeReview.value = null;
-    reviews.value = [];
-    selectedPath.value = "";
-    resetSelectedFile();
-    reviewPanelOpen.value = false;
-  }
+    await removeRepositoryFromList(path);
+    if (activeRepoPath.value === path) {
+        activeRepoPath.value = "";
+        state.value = null;
+        activeReview.value = null;
+        reviews.value = [];
+        selectedPath.value = "";
+        resetSelectedFile();
+        reviewPanelOpen.value = false;
+    }
 }
 
 async function startReview() {
-  if (!state.value) return;
-  const ctx = state.value;
-  const review = await window.diffApp.createReview({
-    repoRoot: ctx.root,
-    branch: ctx.branch,
-    headSha: ctx.headSha,
-    title:
-      ctx.mode === "commit"
-        ? `Review commit ${ctx.branch || ctx.commitSha?.slice(0, 7) || ctx.headSha}`
-        : `Review ${ctx.branch || ctx.headSha || "local changes"}`,
-    summary: sanitizeHtml(summaryDraft.value),
-    filesChanged: ctx.files.length,
-    additions: ctx.additions,
-    deletions: ctx.deletions,
-    contextKind: ctx.mode,
-    contextSha: ctx.commitSha,
-  });
-  // Promote any drafts that were taken before the review session existed.
-  try {
-    await window.diffApp.promotePendingComments(review.id);
-  } catch {
-    // Promotion failure shouldn't abort review start.
-  }
-  clearPendingComments();
+    if (!state.value) {
+        return;
+    }
 
-  activeReview.value = await window.diffApp.reviewDetail(review.id);
-  reviews.value = [review, ...reviews.value.filter((item) => item.id !== review.id)];
-  summaryDraft.value = "";
-  reviewPanelOpen.value = false;
+    const ctx = state.value;
+    const review = await window.diffApp.createReview({
+        repoRoot: ctx.root,
+        branch: ctx.branch,
+        headSha: ctx.headSha,
+        title:
+            ctx.mode === "commit"
+                ? `Review commit ${ctx.branch || ctx.commitSha?.slice(0, 7) || ctx.headSha}`
+                : `Review ${ctx.branch || ctx.headSha || "local changes"}`,
+        summary: sanitizeHtml(summaryDraft.value),
+        filesChanged: ctx.files.length,
+        additions: ctx.additions,
+        deletions: ctx.deletions,
+        contextKind: ctx.mode,
+        contextSha: ctx.commitSha,
+    });
+    // Promote any drafts that were taken before the review session existed.
+    try {
+        await window.diffApp.promotePendingComments(review.id);
+    } catch {
+        // Promotion failure shouldn't abort review start.
+    }
+
+    clearPendingComments();
+
+    activeReview.value = await window.diffApp.reviewDetail(review.id);
+    reviews.value = [review, ...reviews.value.filter((item) => item.id !== review.id)];
+    summaryDraft.value = "";
+    reviewPanelOpen.value = false;
 }
 
 async function toggleViewed(file: ChangedFile) {
-  if (!state.value) return;
-  const key = viewedPrefKey(state.value.root, file.path);
-  const currentlyViewed = isViewed(file);
-  await savePreferences({ [key]: currentlyViewed ? "" : file.fingerprint });
+    if (!state.value) {
+        return;
+    }
 
-  if (activeReview.value) {
-    await window.diffApp.addReviewEvent({
-      reviewId: activeReview.value.review.id,
-      type: currentlyViewed ? "file_unviewed" : "file_viewed",
-      filePath: file.path,
-      message: currentlyViewed ? "Marked unviewed" : "Marked viewed",
-    });
-    activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
-  }
+    const key = viewedPrefKey(state.value.root, file.path);
+    const currentlyViewed = isViewed(file);
+
+    await savePreferences({ [key]: currentlyViewed ? "" : file.fingerprint });
+
+    if (activeReview.value) {
+        await window.diffApp.addReviewEvent({
+            reviewId: activeReview.value.review.id,
+            type: currentlyViewed ? "file_unviewed" : "file_viewed",
+            filePath: file.path,
+            message: currentlyViewed ? "Marked unviewed" : "Marked viewed",
+        });
+        activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
+    }
 }
 
 function isViewed(file: ChangedFile): boolean {
-  if (!state.value) return false;
-  return prefValues.value[viewedPrefKey(state.value.root, file.path)] === file.fingerprint;
+    if (!state.value) {
+        return false;
+    }
+
+    return prefValues.value[viewedPrefKey(state.value.root, file.path)] === file.fingerprint;
 }
 
 function threadsForFile(path: string): number {
-  return threadsByPath.value.get(path) ?? 0;
+    return threadsByPath.value.get(path) ?? 0;
 }
 
 async function openSearchResult(result: FileSearchResult) {
-  if (result.repoPath && result.repoPath !== activeRepoPath.value) {
-    await openRepo(result.repoPath);
-  }
+    if (result.repoPath && result.repoPath !== activeRepoPath.value) {
+        await openRepo(result.repoPath);
+    }
 
-  selectFile(result.filePath);
+    selectFile(result.filePath);
 }
 
 function selectFile(path: string) {
-  selectedPath.value = path;
-  if (changedByPath.value.has(path)) {
-    resetSelectedFile();
-    nextTick(() =>
-      document.getElementById(fileElementID(path))?.scrollIntoView({ block: "start" }),
-    );
-    return;
-  }
-  if (state.value) {
-    void loadSelectedFile(state.value.root, path);
-  } else {
-    resetSelectedFile();
-  }
+    selectedPath.value = path;
+    if (changedByPath.value.has(path)) {
+        resetSelectedFile();
+        nextTick(() =>
+            document.getElementById(fileElementID(path))?.scrollIntoView({ block: "start" }),
+        );
+
+        return;
+    }
+
+    if (state.value) {
+        void loadSelectedFile(state.value.root, path);
+    } else {
+        resetSelectedFile();
+    }
 }
 
 function openCommentForLine(file: ChangedFile, section: DiffSection, line: PatchLine) {
-  const lineNumber = line.newLine ?? line.oldLine;
-  if (!lineNumber || !activeReview.value) {
-    reviewPanelOpen.value = true;
-    return;
-  }
-  beginCommentDraft({
-    file,
-    section,
-    line: lineNumber,
-    side: line.newLine ? "right" : "left",
-  });
+    const lineNumber = line.newLine ?? line.oldLine;
+
+    if (!lineNumber || !activeReview.value) {
+        reviewPanelOpen.value = true;
+
+        return;
+    }
+
+    beginCommentDraft({
+        file,
+        section,
+        line: lineNumber,
+        side: line.newLine ? "right" : "left",
+    });
 }
 
 async function saveComment() {
-  if (!commentTarget.value || !commentDraft.value.trim() || !state.value) {
-    return;
-  }
-  const target = commentTarget.value;
-  const author = currentUser.value?.displayName || currentUser.value?.osUsername || "You";
-  const body = sanitizeHtml(commentDraft.value);
+    if (!commentTarget.value || !commentDraft.value.trim() || !state.value) {
+        return;
+    }
 
-  if (activeReview.value) {
-    await window.diffApp.createReviewComment({
-      reviewId: activeReview.value.review.id,
-      filePath: target.file.path,
-      diffSection: target.section.kind,
-      side: target.side,
-      lineNumber: target.line,
-      authorLabel: author,
-      bodyHtml: body,
-    });
-    activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
-  } else {
-    // No active review yet — store as a draft. On startReview, draft comments
-    // for this (repo, context) are promoted into the new review session.
-    await window.diffApp.createPendingComment({
-      repoRoot: state.value.root,
-      contextKind: state.value.mode,
-      contextSha: state.value.commitSha,
-      filePath: target.file.path,
-      diffSection: target.section.kind,
-      side: target.side,
-      lineNumber: target.line,
-      authorLabel: author,
-      bodyHtml: body,
-    });
-    await loadPendingComments();
-  }
+    const target = commentTarget.value;
+    const author = currentUser.value?.displayName || currentUser.value?.osUsername || "You";
+    const body = sanitizeHtml(commentDraft.value);
 
-  closeCommentDraft();
+    if (activeReview.value) {
+        await window.diffApp.createReviewComment({
+            reviewId: activeReview.value.review.id,
+            filePath: target.file.path,
+            diffSection: target.section.kind,
+            side: target.side,
+            lineNumber: target.line,
+            authorLabel: author,
+            bodyHtml: body,
+        });
+        activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
+    } else {
+        // No active review yet — store as a draft. On startReview, draft comments
+        // for this (repo, context) are promoted into the new review session.
+        await window.diffApp.createPendingComment({
+            repoRoot: state.value.root,
+            contextKind: state.value.mode,
+            contextSha: state.value.commitSha,
+            filePath: target.file.path,
+            diffSection: target.section.kind,
+            side: target.side,
+            lineNumber: target.line,
+            authorLabel: author,
+            bodyHtml: body,
+        });
+        await loadPendingComments();
+    }
+
+    closeCommentDraft();
 }
 
 const {
-  items: pendingComments,
-  reload: loadPendingComments,
-  clear: clearPendingComments,
+    items: pendingComments,
+    reload: loadPendingComments,
+    clear: clearPendingComments,
 } = usePendingComments(state);
 
 function cancelComment() {
-  cancelCommentDraft();
+    cancelCommentDraft();
 }
 
 async function deleteComment(comment: ReviewComment) {
-  if (!activeReview.value) return;
-  await window.diffApp.deleteReviewComment({
-    reviewId: activeReview.value.review.id,
-    commentId: comment.id,
-  });
-  activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
+    if (!activeReview.value) {
+        return;
+    }
+
+    await window.diffApp.deleteReviewComment({
+        reviewId: activeReview.value.review.id,
+        commentId: comment.id,
+    });
+    activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
 }
 
 async function replyToComment(parent: ReviewComment, bodyHtml: string) {
-  if (!activeReview.value) return;
-  await window.diffApp.createReviewComment({
-    reviewId: activeReview.value.review.id,
-    filePath: parent.filePath,
-    diffSection: parent.diffSection,
-    side: parent.side,
-    lineNumber: parent.lineNumber,
-    authorLabel: currentUser.value?.displayName || currentUser.value?.osUsername || "You",
-    bodyHtml: sanitizeHtml(bodyHtml),
-  });
-  activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
+    if (!activeReview.value) {
+        return;
+    }
+
+    await window.diffApp.createReviewComment({
+        reviewId: activeReview.value.review.id,
+        filePath: parent.filePath,
+        diffSection: parent.diffSection,
+        side: parent.side,
+        lineNumber: parent.lineNumber,
+        authorLabel: currentUser.value?.displayName || currentUser.value?.osUsername || "You",
+        bodyHtml: sanitizeHtml(bodyHtml),
+    });
+    activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
 }
 
 async function updateTweak<K extends keyof Tweaks>(key: K, value: Tweaks[K]) {
-  await savePreferences(tweakPrefPatch(key, value));
+    await savePreferences(tweakPrefPatch(key, value));
 }
 
 function fileElementID(path: string): string {
-  return `file-${path.replace(/[^a-z0-9_-]/gi, "-")}`;
+    return `file-${path.replace(/[^a-z0-9_-]/gi, "-")}`;
 }
 
 function copyPath(path: string) {
-  if (path) void navigator.clipboard.writeText(path);
+    if (path) {
+        void navigator.clipboard.writeText(path);
+    }
 }
 
 const { state: copyReviewState, copy: copyActiveReviewAsMarkdown } = useReviewMarkdownCopy({
-  onError: (cause) => {
-    error.value = cause instanceof Error ? cause.message : String(cause);
-  },
+    onError: (cause) => {
+        error.value = cause instanceof Error ? cause.message : String(cause);
+    },
 });
 
 async function copyReviewAsMarkdown() {
-  if (activeReview.value) await copyActiveReviewAsMarkdown(activeReview.value);
+    if (activeReview.value) {
+        await copyActiveReviewAsMarkdown(activeReview.value);
+    }
 }
 
 void TWEAK_DEFAULTS;
@@ -710,160 +757,160 @@ void ACCENTS;
 </script>
 
 <template>
-  <AuthGate @entered="handleAuthCompleted" @wiped="handleAuthWiped">
-    <div
-      class="flex h-screen flex-col overflow-hidden"
-    :style="{
-      background: 'var(--gd-bloom), var(--gd-bg)',
-      color: 'var(--gd-text)',
-    }"
-  >
-    <TitleBar
-      :state="state"
-      :repositories="repositories"
-      :repositories-loading="repositoriesLoading"
-      :active-repo-path="activeRepoPath"
-      @select-repo="openRepo"
-      @add-repo="addRepository"
-      @remove-repo="removeRepository"
-      @refresh-repos="refreshRepositoryList"
-    />
-    <TopBar
-      :state="state"
-      :current-user="currentUser"
-      :user-initials="userInitials"
-      :tweaks="tweaks"
-      :creating-branch="creatingBranch"
-      :branch-create-error="branchCreateError"
-      @update:tweak="updateTweak"
-      @refresh="refresh"
-      @log-out="logOut"
-      @switch-branch="switchBranch"
-      @create-branch="createBranch"
-      @select-result="openSearchResult"
-    />
-
-    <RepoToolbar
-      v-if="state"
-      :state="state"
-      :commits="commits"
-      :commits-loading="commitsLoading"
-      :repo-mode="repoMode"
-      :pull-requests="pullRequests"
-      :pull-requests-loading="pullRequestsLoading"
-      :active-pull-request="activePullRequest"
-      :walkthrough-loading="walkthroughLoading"
-      :has-walkthrough="walkthrough != null"
-      :has-active-review="activeReview != null"
-      :copy-review-state="copyReviewState"
-      @load-commits="loadCommits()"
-      @open-commit="openCommit"
-      @back-to-working="returnToWorkingTree"
-      @load-pull-requests="loadPullRequests()"
-      @open-pull-request="openPullRequest"
-      @generate-walkthrough="generateWalkthrough(walkthrough != null)"
-      @copy-review-as-markdown="copyReviewAsMarkdown"
-    />
-    <WalkthroughPanel :record="walkthrough" :error="walkthroughError" />
-
-    <main class="flex flex-1 min-h-0">
-      <template v-if="!activeRepoPath || loading || error || !state">
-        <RepoEmptyStates
-          :kind="!activeRepoPath ? 'hero' : loading ? 'loading' : 'error'"
-          :last-repo-root="lastRepoRoot"
-          :error="error"
-          @add-repository="addRepository"
-          @open-last-repo="openRepo(lastRepoRoot)"
-        />
-      </template>
-      <template v-else>
-        <Sidebar
-          :files="files"
-          :selected-path="selectedPath"
-          :search-query="searchQuery"
-          :scope="repoScope"
-          :is-viewed="isViewed"
-          :threads-for-file="threadsForFile"
-          :all-paths="repoPaths"
-          :changed-paths-set="changedPathsSet"
-          :comments="reviewComments"
-          @update:scope="(value) => (repoScope = value)"
-          @update:search-query="(value) => (searchQuery = value)"
-          @select="selectFile"
-          @toggle-viewed="toggleViewed"
-          @start-review="startReview"
-          @open-review-panel="reviewPanelOpen = true"
-        />
-
-        <section class="flex flex-col flex-1 min-w-0 relative">
-          <div class="flex-1 overflow-auto min-h-0" style="padding: 16px 18px 24px">
-            <DiffList
-              :files="files"
-              :selected-path="selectedPath"
-              :selected-is-changed="selectedIsChanged"
-              :selected-repo-file="selectedRepoFile"
-              :selected-file-loading="selectedFileLoading"
-              :selected-file-error="selectedFileError"
-              :collapsed="collapsed"
-              :split-ratios="splitRatios"
-              :tweaks="tweaks"
-              :diff-view-mode="diffViewMode"
-              :hide-whitespace="hideWhitespace"
-              :review-comments="reviewComments"
-              :comment-features="commentFeatures"
-              :is-viewed-fn="isViewed"
-              :file-element-i-d="fileElementID"
-              @toggle-collapsed="toggleCollapsed"
-              @toggle-viewed="toggleViewed"
-              @copy-path="copyPath"
-              @open-comment-for-line="openCommentForLine"
-              @delete-comment="deleteComment"
-              @reply-comment="replyToComment"
-              @update:split-ratio="setSplitRatio"
+    <AuthGate @entered="handleAuthCompleted" @wiped="handleAuthWiped">
+        <div
+            class="flex h-screen flex-col overflow-hidden"
+            :style="{
+                background: 'var(--gd-bloom), var(--gd-bg)',
+                color: 'var(--gd-text)',
+            }"
+        >
+            <TitleBar
+                :state="state"
+                :repositories="repositories"
+                :repositories-loading="repositoriesLoading"
+                :active-repo-path="activeRepoPath"
+                @select-repo="openRepo"
+                @add-repo="addRepository"
+                @remove-repo="removeRepository"
+                @refresh-repos="refreshRepositoryList"
             />
-          </div>
+            <TopBar
+                :state="state"
+                :current-user="currentUser"
+                :user-initials="userInitials"
+                :tweaks="tweaks"
+                :creating-branch="creatingBranch"
+                :branch-create-error="branchCreateError"
+                @update:tweak="updateTweak"
+                @refresh="refresh"
+                @log-out="logOut"
+                @switch-branch="switchBranch"
+                @create-branch="createBranch"
+                @select-result="openSearchResult"
+            />
 
-          <JumpNav
-            v-if="tweaks.showMinimap && files.length > 0"
-            :index="changedIndex"
-            :total="files.length"
-            @prev="selectAdjacent(-1)"
-            @next="selectAdjacent(1)"
-          />
-        </section>
+            <RepoToolbar
+                v-if="state"
+                :state="state"
+                :commits="commits"
+                :commits-loading="commitsLoading"
+                :repo-mode="repoMode"
+                :pull-requests="pullRequests"
+                :pull-requests-loading="pullRequestsLoading"
+                :active-pull-request="activePullRequest"
+                :walkthrough-loading="walkthroughLoading"
+                :has-walkthrough="walkthrough != null"
+                :has-active-review="activeReview != null"
+                :copy-review-state="copyReviewState"
+                @load-commits="loadCommits()"
+                @open-commit="openCommit"
+                @back-to-working="returnToWorkingTree"
+                @load-pull-requests="loadPullRequests()"
+                @open-pull-request="openPullRequest"
+                @generate-walkthrough="generateWalkthrough(walkthrough != null)"
+                @copy-review-as-markdown="copyReviewAsMarkdown"
+            />
+            <WalkthroughPanel :record="walkthrough" :error="walkthroughError" />
 
-        <ReviewPanel
-          :open="reviewPanelOpen"
-          :summary-draft="summaryDraft"
-          :features="commentFeatures"
-          @close="reviewPanelOpen = false"
-          @update:summary-draft="(value) => (summaryDraft = value)"
-          @start-review="startReview"
-        />
-      </template>
-    </main>
+            <main class="flex flex-1 min-h-0">
+                <template v-if="!activeRepoPath || loading || error || !state">
+                    <RepoEmptyStates
+                        :kind="!activeRepoPath ? 'hero' : loading ? 'loading' : 'error'"
+                        :last-repo-root="lastRepoRoot"
+                        :error="error"
+                        @add-repository="addRepository"
+                        @open-last-repo="openRepo(lastRepoRoot)"
+                    />
+                </template>
+                <template v-else>
+                    <Sidebar
+                        :files="files"
+                        :selected-path="selectedPath"
+                        :search-query="searchQuery"
+                        :scope="repoScope"
+                        :is-viewed="isViewed"
+                        :threads-for-file="threadsForFile"
+                        :all-paths="repoPaths"
+                        :changed-paths-set="changedPathsSet"
+                        :comments="reviewComments"
+                        @update:scope="(value) => (repoScope = value)"
+                        @update:search-query="(value) => (searchQuery = value)"
+                        @select="selectFile"
+                        @toggle-viewed="toggleViewed"
+                        @start-review="startReview"
+                        @open-review-panel="reviewPanelOpen = true"
+                    />
 
-    <StatusBar
-      v-if="tweaks.showStatusBar"
-      :file-path="selectedFile?.path ?? ''"
-      :viewed-count="files.filter((f) => isViewed(f)).length"
-      :total="files.length"
-    />
+                    <section class="flex flex-col flex-1 min-w-0 relative">
+                        <div class="flex-1 overflow-auto min-h-0">
+                            <DiffList
+                                :files="files"
+                                :selected-path="selectedPath"
+                                :selected-is-changed="selectedIsChanged"
+                                :selected-repo-file="selectedRepoFile"
+                                :selected-file-loading="selectedFileLoading"
+                                :selected-file-error="selectedFileError"
+                                :collapsed="collapsed"
+                                :split-ratios="splitRatios"
+                                :tweaks="tweaks"
+                                :diff-view-mode="diffViewMode"
+                                :hide-whitespace="hideWhitespace"
+                                :review-comments="reviewComments"
+                                :comment-features="commentFeatures"
+                                :is-viewed-fn="isViewed"
+                                :file-element-i-d="fileElementID"
+                                @toggle-collapsed="toggleCollapsed"
+                                @toggle-viewed="toggleViewed"
+                                @copy-path="copyPath"
+                                @open-comment-for-line="openCommentForLine"
+                                @delete-comment="deleteComment"
+                                @reply-comment="replyToComment"
+                                @update:split-ratio="setSplitRatio"
+                            />
+                        </div>
 
-    <AddCommentDialog
-      :open="commentDialogOpen"
-      :file-path="commentTarget?.file.path"
-      :line-number="commentTarget?.line"
-      :model-value="commentDraft"
-      :features="commentFeatures"
-      @update:model-value="(value) => (commentDraft = value)"
-      @save="saveComment"
-      @cancel="cancelComment"
-    />
+                        <JumpNav
+                            v-if="tweaks.showMinimap && files.length > 0"
+                            :index="changedIndex"
+                            :total="files.length"
+                            @prev="selectAdjacent(-1)"
+                            @next="selectAdjacent(1)"
+                        />
+                    </section>
 
-    <SearchBar :open="searchOpen" @close="searchOpen = false" />
+                    <ReviewPanel
+                        :open="reviewPanelOpen"
+                        :summary-draft="summaryDraft"
+                        :features="commentFeatures"
+                        @close="reviewPanelOpen = false"
+                        @update:summary-draft="(value) => (summaryDraft = value)"
+                        @start-review="startReview"
+                    />
+                </template>
+            </main>
 
-    <ToastViewport :toasts="toasts" @dismiss="dismissToast" />
-    </div>
-  </AuthGate>
+            <StatusBar
+                v-if="tweaks.showStatusBar"
+                :file-path="selectedFile?.path ?? ''"
+                :viewed-count="files.filter((f) => isViewed(f)).length"
+                :total="files.length"
+            />
+
+            <AddCommentDialog
+                :open="commentDialogOpen"
+                :file-path="commentTarget?.file.path"
+                :line-number="commentTarget?.line"
+                :model-value="commentDraft"
+                :features="commentFeatures"
+                @update:model-value="(value) => (commentDraft = value)"
+                @save="saveComment"
+                @cancel="cancelComment"
+            />
+
+            <SearchBar :open="searchOpen" @close="searchOpen = false" />
+
+            <ToastViewport :toasts="toasts" @dismiss="dismissToast" />
+        </div>
+    </AuthGate>
 </template>

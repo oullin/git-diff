@@ -7,19 +7,19 @@ const PR_NUMBER_PATTERN = /^[0-9]{1,7}$/;
 export type LaunchIntentKind = "working" | "commit" | "pull-request" | "help";
 
 export interface LaunchIntent {
-  kind: LaunchIntentKind;
-  /** Resolved absolute path of the repository the UI should open, when known. */
-  repoPath?: string;
-  /** Commit SHA (raw, as passed) when kind === "commit". */
-  sha?: string;
-  /** PR number when kind === "pull-request". */
-  prNumber?: number;
-  /** True when the -w / --walkthrough flag was set. */
-  walkthrough: boolean;
-  /** Set when --help / -h / help was requested. Renderer should not consume. */
-  helpText?: string;
-  /** Raw positional arg from argv, for diagnostics. */
-  raw?: string;
+    kind: LaunchIntentKind;
+    /** Resolved absolute path of the repository the UI should open, when known. */
+    repoPath?: string;
+    /** Commit SHA (raw, as passed) when kind === "commit". */
+    sha?: string;
+    /** PR number when kind === "pull-request". */
+    prNumber?: number;
+    /** True when the -w / --walkthrough flag was set. */
+    walkthrough: boolean;
+    /** Set when --help / -h / help was requested. Renderer should not consume. */
+    helpText?: string;
+    /** Raw positional arg from argv, for diagnostics. */
+    raw?: string;
 }
 
 const USAGE_TEXT = `git-diff serves the local diff review UI.
@@ -47,102 +47,102 @@ Usage:
  * @param cwd       The working directory to resolve relative paths against.
  */
 export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string): LaunchIntent {
-  const userArgs = argv.slice(isPackaged ? 1 : 2).filter((arg) => !isElectronInternal(arg));
+    const userArgs = argv.slice(isPackaged ? 1 : 2).filter((arg) => !isElectronInternal(arg));
 
-  let walkthrough = false;
-  const positionals: string[] = [];
+    let walkthrough = false;
+    const positionals: string[] = [];
 
-  for (const arg of userArgs) {
-    if (arg === "-h" || arg === "--help" || arg === "help") {
-      return { kind: "help", walkthrough: false, helpText: USAGE_TEXT };
+    for (const arg of userArgs) {
+        if (arg === "-h" || arg === "--help" || arg === "help") {
+            return { kind: "help", walkthrough: false, helpText: USAGE_TEXT };
+        }
+
+        if (arg === "-w" || arg === "--walkthrough") {
+            walkthrough = true;
+            continue;
+        }
+
+        if (arg.startsWith("-")) {
+            // Unknown flag — fall through to help so the user gets immediate feedback.
+            return {
+                kind: "help",
+                walkthrough: false,
+                helpText: `Unknown flag: ${arg}\n\n${USAGE_TEXT}`,
+            };
+        }
+
+        positionals.push(arg);
     }
 
-    if (arg === "-w" || arg === "--walkthrough") {
-      walkthrough = true;
-      continue;
+    if (positionals[0] === "pr") {
+        if (positionals.length !== 2 || !PR_NUMBER_PATTERN.test(positionals[1]!)) {
+            return {
+                kind: "help",
+                walkthrough: false,
+                helpText: `\`pr\` subcommand requires a numeric PR id.\n\n${USAGE_TEXT}`,
+            };
+        }
+        return {
+            kind: "pull-request",
+            prNumber: Number(positionals[1]),
+            repoPath: cwd,
+            walkthrough,
+        };
     }
 
-    if (arg.startsWith("-")) {
-      // Unknown flag — fall through to help so the user gets immediate feedback.
-      return {
-        kind: "help",
-        walkthrough: false,
-        helpText: `Unknown flag: ${arg}\n\n${USAGE_TEXT}`,
-      };
+    if (positionals.length === 0) {
+        return { kind: "working", walkthrough };
     }
 
-    positionals.push(arg);
-  }
-
-  if (positionals[0] === "pr") {
-    if (positionals.length !== 2 || !PR_NUMBER_PATTERN.test(positionals[1]!)) {
-      return {
-        kind: "help",
-        walkthrough: false,
-        helpText: `\`pr\` subcommand requires a numeric PR id.\n\n${USAGE_TEXT}`,
-      };
+    if (positionals.length > 1) {
+        return {
+            kind: "help",
+            walkthrough: false,
+            helpText: `Too many arguments. Expected at most one path or commit SHA.\n\n${USAGE_TEXT}`,
+        };
     }
-    return {
-      kind: "pull-request",
-      prNumber: Number(positionals[1]),
-      repoPath: cwd,
-      walkthrough,
-    };
-  }
 
-  if (positionals.length === 0) {
-    return { kind: "working", walkthrough };
-  }
-
-  if (positionals.length > 1) {
-    return {
-      kind: "help",
-      walkthrough: false,
-      helpText: `Too many arguments. Expected at most one path or commit SHA.\n\n${USAGE_TEXT}`,
-    };
-  }
-
-  return classifyPositional(positionals[0]!, cwd, walkthrough);
+    return classifyPositional(positionals[0]!, cwd, walkthrough);
 }
 
 function classifyPositional(arg: string, cwd: string, walkthrough: boolean): LaunchIntent {
-  // A real directory always wins over the SHA pattern, even if its name looks
-  // hex. This matches what users expect when they `cd into-a-dir; git-diff .`.
-  const resolved = isAbsolute(arg) ? arg : resolve(cwd, arg);
+    // A real directory always wins over the SHA pattern, even if its name looks
+    // hex. This matches what users expect when they `cd into-a-dir; git-diff .`.
+    const resolved = isAbsolute(arg) ? arg : resolve(cwd, arg);
 
-  if (existsSync(resolved)) {
-    try {
-      if (statSync(resolved).isDirectory()) {
-        return { kind: "working", repoPath: resolved, walkthrough, raw: arg };
-      }
-    } catch {
-      // fall through to SHA classification
+    if (existsSync(resolved)) {
+        try {
+            if (statSync(resolved).isDirectory()) {
+                return { kind: "working", repoPath: resolved, walkthrough, raw: arg };
+            }
+        } catch {
+            // fall through to SHA classification
+        }
     }
-  }
 
-  if (SHA_PATTERN.test(arg)) {
-    // SHA argument — repoPath stays unset; renderer uses the currently active
-    // repo or, when launched fresh, the cwd.
-    return { kind: "commit", sha: arg, repoPath: cwd, walkthrough, raw: arg };
-  }
+    if (SHA_PATTERN.test(arg)) {
+        // SHA argument — repoPath stays unset; renderer uses the currently active
+        // repo or, when launched fresh, the cwd.
+        return { kind: "commit", sha: arg, repoPath: cwd, walkthrough, raw: arg };
+    }
 
-  // Neither an existing path nor a SHA — surface help.
-  return {
-    kind: "help",
-    walkthrough: false,
-    helpText: `Could not resolve "${arg}" as a path or commit SHA.\n\n${USAGE_TEXT}`,
-  };
+    // Neither an existing path nor a SHA — surface help.
+    return {
+        kind: "help",
+        walkthrough: false,
+        helpText: `Could not resolve "${arg}" as a path or commit SHA.\n\n${USAGE_TEXT}`,
+    };
 }
 
 function isElectronInternal(arg: string): boolean {
-  // Electron forwards these to the renderer; they're not user arguments.
-  return (
-    arg.startsWith("--remote-debugging-") ||
-    arg.startsWith("--inspect") ||
-    arg.startsWith("--enable-") ||
-    arg.startsWith("--disable-") ||
-    arg.startsWith("--user-data-dir") ||
-    arg.startsWith("--no-sandbox") ||
-    arg === "--squirrel-firstrun"
-  );
+    // Electron forwards these to the renderer; they're not user arguments.
+    return (
+        arg.startsWith("--remote-debugging-") ||
+        arg.startsWith("--inspect") ||
+        arg.startsWith("--enable-") ||
+        arg.startsWith("--disable-") ||
+        arg.startsWith("--user-data-dir") ||
+        arg.startsWith("--no-sandbox") ||
+        arg === "--squirrel-firstrun"
+    );
 }

@@ -5,25 +5,25 @@ import { defineConfig } from "vite";
 const projectDir = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
-  cacheDir: resolve(projectDir, "../../.turbo/vite/ui-electron"),
-  resolve: {
-    alias: [
-      {
-        find: /^#electron\/(.+)\.js$/u,
-        replacement: resolve(projectDir, "electron/$1.ts"),
-      },
-    ],
-  },
-  build: {
-    emptyOutDir: false,
-    lib: {
-      entry: resolve(projectDir, "electron/preload.ts"),
-      formats: ["cjs"],
-      fileName: () => "preload.cjs",
+    cacheDir: resolve(projectDir, "../../.turbo/vite/ui-electron"),
+    resolve: {
+        alias: [
+            {
+                find: /^#electron\/(.+)\.js$/u,
+                replacement: resolve(projectDir, "electron/$1.ts"),
+            },
+        ],
     },
-    outDir: "dist-electron",
-    rollupOptions: {
-      external: ["electron"],
+    build: {
+        emptyOutDir: false,
+        lib: {
+            entry: resolve(projectDir, "electron/preload.ts"),
+            formats: ["cjs"],
+            fileName: () => "preload.cjs",
+        },
+        outDir: "dist-electron",
+        rollupOptions: {
+            external: ["electron"],
+        },
     },
-  },
 });

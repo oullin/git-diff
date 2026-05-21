@@ -16,17 +16,11 @@ type BranchService struct {
 	store *storage.Store
 }
 
-func NewBranchService(store *storage.Store) *BranchService {
-	return &BranchService{store: store}
-}
-
 // ErrBranchNameRequired signals that a delete or lock request omitted the
 // branch name; handlers translate it to 400.
-var ErrBranchNameRequired = errors.New("name is required")
 
 // ErrBranchAlreadyLocked signals that a delete was refused because the
 // branch is locked; handlers translate it to 409.
-var ErrBranchAlreadyLocked = errors.New("branch is locked")
 
 // ListResult bundles the git-side branch names with the optional DB-backed
 // records (only present when the store sync succeeded).
@@ -34,6 +28,14 @@ type ListResult struct {
 	Names   []string         `json:"branches"`
 	Records []storage.Branch `json:"records,omitempty"`
 }
+
+func NewBranchService(store *storage.Store) *BranchService {
+	return &BranchService{store: store}
+}
+
+var ErrBranchNameRequired = errors.New("name is required")
+
+var ErrBranchAlreadyLocked = errors.New("branch is locked")
 
 // List reads the git branch names for `path`, syncs them into the DB
 // branches table, and returns both the names and the lock records. If the
