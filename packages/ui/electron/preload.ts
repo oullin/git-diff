@@ -44,6 +44,13 @@ contextBridge.exposeInMainWorld("diffApp", {
         ipcRenderer.invoke("pending-comments:promote", reviewId),
     readRepositoryFile: (root: string, path: string) =>
         ipcRenderer.invoke("repository:file:read", root, path),
+    readRepositoryFileRange: (request: {
+        root: string;
+        path: string;
+        ref?: string;
+        startLine: number;
+        endLine: number;
+    }) => ipcRenderer.invoke("repository:file:range", request),
     listBranches: (path?: string) => ipcRenderer.invoke("repository:branches", path),
     checkoutBranch: (path: string, branch: string) =>
         ipcRenderer.invoke("repository:checkout", path, branch),

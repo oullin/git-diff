@@ -858,6 +858,8 @@ void ACCENTS;
                                 :hide-whitespace="hideWhitespace"
                                 :review-comments="reviewComments"
                                 :comment-features="commentFeatures"
+                                :repo-root="state?.root ?? ''"
+                                :commit-ref="state?.commitSha"
                                 :is-viewed-fn="isViewed"
                                 :file-element-i-d="fileElementID"
                                 @toggle-collapsed="toggleCollapsed"

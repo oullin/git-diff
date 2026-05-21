@@ -18,6 +18,7 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("GET /v1/repository/commit", s.repositoryCommit)
 	mux.HandleFunc("GET /v1/repository/log", s.repositoryLog)
 	mux.HandleFunc("GET /v1/repository/file", s.repositoryFile)
+	mux.HandleFunc("GET /v1/repository/file-range", s.repositoryFileRange)
 	mux.HandleFunc("GET /v1/repository/pull-requests", s.repositoryPullRequests)
 	mux.HandleFunc("GET /v1/repository/pull-request", s.repositoryPullRequest)
 	mux.HandleFunc("POST /v1/walkthrough", s.walkthroughGenerate)

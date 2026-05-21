@@ -31,6 +31,8 @@ defineProps<{
     hideWhitespace: boolean;
     reviewComments: ReviewComment[];
     commentFeatures: RichTextFeatures;
+    repoRoot: string;
+    commitRef?: string;
     isViewedFn: (file: ChangedFile) => boolean;
     fileElementID: (path: string) => string;
 }>();
@@ -90,6 +92,8 @@ const emit = defineEmits<{
                 :hide-whitespace="hideWhitespace"
                 :comments="reviewComments"
                 :reply-features="commentFeatures"
+                :repo-root="repoRoot"
+                :commit-ref="commitRef"
                 :split-ratio="splitRatios[file.path] ?? 0.5"
                 @add-comment="(section, line) => emit('open-comment-for-line', file, section, line)"
                 @delete-comment="(comment) => emit('delete-comment', comment)"

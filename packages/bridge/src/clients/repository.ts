@@ -1,4 +1,9 @@
-import type { CommitSummary, RepositoryFile, RepositoryState } from "@git-diff/contracts";
+import type {
+    CommitSummary,
+    RepositoryFile,
+    RepositoryFileRange,
+    RepositoryState,
+} from "@git-diff/contracts";
 import { requestJson } from "#bridge/http.js";
 
 export function repositoryState(
@@ -75,4 +80,26 @@ export function readRepositoryFile(
     const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
 
     return requestJson<RepositoryFile>(socketPath, "GET", `/v1/repository/file${query}`);
+}
+
+export function readRepositoryFileRange(
+    socketPath: string,
+    request: { root: string; path: string; ref?: string; startLine: number; endLine: number },
+): Promise<RepositoryFileRange> {
+    const parts = [
+        `root=${encodeURIComponent(request.root)}`,
+        `path=${encodeURIComponent(request.path)}`,
+        `startLine=${request.startLine}`,
+        `endLine=${request.endLine}`,
+    ];
+
+    if (request.ref) {
+        parts.push(`ref=${encodeURIComponent(request.ref)}`);
+    }
+
+    return requestJson<RepositoryFileRange>(
+        socketPath,
+        "GET",
+        `/v1/repository/file-range?${parts.join("&")}`,
+    );
 }

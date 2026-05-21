@@ -143,3 +143,130 @@ func ReadRepositoryFile(ctx context.Context, launchPath, relPath string) (Reposi
 		Size:    size,
 	}, nil
 }
+
+// ReadRepositoryFileRange returns the lines of relPath in the half-open range
+// [startLine, endLine]. When ref is empty the working tree is read; otherwise
+// the file is materialised via `git show ref:path`. Both line numbers are
+// 1-indexed. The response is capped at maxFileRangeLines.
+func ReadRepositoryFileRange(
+	ctx context.Context,
+	launchPath, relPath, ref string,
+	startLine, endLine int,
+) (RepositoryFileRange, error) {
+	if relPath == "" {
+		return RepositoryFileRange{}, errors.New("path is required")
+	}
+
+	if startLine < 1 {
+		startLine = 1
+	}
+
+	if endLine < startLine {
+		return RepositoryFileRange{}, fmt.Errorf("endLine must be >= startLine")
+	}
+
+	if endLine-startLine+1 > maxFileRangeLines {
+		endLine = startLine + maxFileRangeLines - 1
+	}
+
+	rootRaw, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+
+	if err != nil {
+		return RepositoryFileRange{}, fmt.Errorf("resolve git root: %w", err)
+	}
+
+	root, err := filepath.EvalSymlinks(strings.TrimSpace(rootRaw))
+
+	if err != nil {
+		return RepositoryFileRange{}, fmt.Errorf("resolve git root: %w", err)
+	}
+
+	clean := filepath.Clean(filepath.FromSlash(relPath))
+
+	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return RepositoryFileRange{}, fmt.Errorf("invalid path: %s", relPath)
+	}
+
+	var content []byte
+
+	if ref == "" {
+		fullPath := filepath.Join(root, clean)
+		resolved, err := filepath.EvalSymlinks(fullPath)
+
+		if err != nil {
+			return RepositoryFileRange{}, fmt.Errorf("read file: %w", err)
+		}
+
+		rel, err := filepath.Rel(root, resolved)
+
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return RepositoryFileRange{}, fmt.Errorf("path escapes repository root: %s", relPath)
+		}
+
+		info, err := os.Stat(resolved)
+
+		if err != nil {
+			return RepositoryFileRange{}, fmt.Errorf("stat file: %w", err)
+		}
+
+		if info.IsDir() {
+			return RepositoryFileRange{}, fmt.Errorf("path is a directory: %s", relPath)
+		}
+
+		content, err = os.ReadFile(resolved)
+
+		if err != nil {
+			return RepositoryFileRange{}, fmt.Errorf("read file: %w", err)
+		}
+	} else {
+		raw, err := gitBytes(ctx, root, "show", ref+":"+filepath.ToSlash(clean))
+
+		if err != nil {
+			return RepositoryFileRange{}, fmt.Errorf("git show %s: %w", ref, err)
+		}
+
+		content = raw
+	}
+
+	if !utf8.Valid(content) {
+		return RepositoryFileRange{}, fmt.Errorf("file is not valid UTF-8: %s", relPath)
+	}
+
+	allLines := strings.Split(string(content), "\n")
+
+	// A trailing newline produces a final empty element; ignore it so totalLines
+	// matches what users would see in an editor.
+	totalLines := len(allLines)
+
+	if totalLines > 0 && allLines[totalLines-1] == "" {
+		totalLines--
+	}
+
+	if startLine > totalLines {
+		return RepositoryFileRange{
+			Path:      filepath.ToSlash(clean),
+			StartLine: startLine,
+			EndLine:   startLine - 1,
+			Lines:     []string{},
+			EOF:       true,
+		}, nil
+	}
+
+	if endLine > totalLines {
+		endLine = totalLines
+	}
+
+	lines := make([]string, 0, endLine-startLine+1)
+
+	for i := startLine - 1; i < endLine; i++ {
+		lines = append(lines, allLines[i])
+	}
+
+	return RepositoryFileRange{
+		Path:      filepath.ToSlash(clean),
+		StartLine: startLine,
+		EndLine:   endLine,
+		Lines:     lines,
+		EOF:       endLine >= totalLines,
+	}, nil
+}

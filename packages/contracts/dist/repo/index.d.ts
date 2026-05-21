@@ -38,6 +38,13 @@ export interface RepositoryFile {
     truncated: boolean;
     size: number;
 }
+export interface RepositoryFileRange {
+    path: string;
+    startLine: number;
+    endLine: number;
+    lines: string[];
+    eof: boolean;
+}
 export interface Repository {
     path: string;
     name: string;

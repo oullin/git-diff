@@ -10,6 +10,7 @@ import type {
     Repository,
     RepositoryCollaborator,
     RepositoryFile,
+    RepositoryFileRange,
     RepositoryState,
     ReviewComment,
     ReviewDetail,
@@ -137,6 +138,16 @@ class HttpWorkflowBridgeClient implements WorkflowBridgeClient {
 
     readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile> {
         return repositoryClient.readRepositoryFile(this.socketPath, request);
+    }
+
+    readRepositoryFileRange(request: {
+        root: string;
+        path: string;
+        ref?: string;
+        startLine: number;
+        endLine: number;
+    }): Promise<RepositoryFileRange> {
+        return repositoryClient.readRepositoryFileRange(this.socketPath, request);
     }
 
     generateWalkthrough(request: {

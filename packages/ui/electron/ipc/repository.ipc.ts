@@ -28,6 +28,20 @@ export function register(deps: IpcDeps): void {
         (await client()).readRepositoryFile({ root, path }),
     );
 
+    ipcMain.handle(
+        "repository:file:range",
+        async (
+            _event,
+            request: {
+                root: string;
+                path: string;
+                ref?: string;
+                startLine: number;
+                endLine: number;
+            },
+        ) => (await client()).readRepositoryFileRange(request),
+    );
+
     ipcMain.handle("repository:choose", async (_event, defaultPath?: string) => {
         const options: OpenDialogOptions = {
             defaultPath,

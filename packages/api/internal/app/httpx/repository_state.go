@@ -153,3 +153,66 @@ func (s Server) repositoryFile(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, file)
 }
+
+func (s Server) repositoryFileRange(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	root := query.Get("root")
+	path := query.Get("path")
+	ref := query.Get("ref")
+	startParam := query.Get("startLine")
+	endParam := query.Get("endLine")
+
+	if root == "" {
+		root = s.Repo
+	}
+
+	if root == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("root is required"))
+
+		return
+	}
+
+	if path == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("path is required"))
+
+		return
+	}
+
+	if startParam == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("startLine is required"))
+
+		return
+	}
+
+	if endParam == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("endLine is required"))
+
+		return
+	}
+
+	startLine, err := strconv.Atoi(startParam)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid 'startLine': %w", err))
+
+		return
+	}
+
+	endLine, err := strconv.Atoi(endParam)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("invalid 'endLine': %w", err))
+
+		return
+	}
+
+	result, err := review.ReadRepositoryFileRange(r.Context(), root, path, ref, startLine, endLine)
+
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}

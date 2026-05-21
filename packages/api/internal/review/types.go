@@ -53,6 +53,17 @@ type RepositoryFile struct {
 	Size      int64  `json:"size"`
 }
 
+// RepositoryFileRange returns a contiguous slice of a file's lines. Used by
+// context expansion in the diff viewer to fetch lines that were suppressed by
+// the unified diff format around hunks.
+type RepositoryFileRange struct {
+	Path      string   `json:"path"`
+	StartLine int      `json:"startLine"`
+	EndLine   int      `json:"endLine"`
+	Lines     []string `json:"lines"`
+	EOF       bool     `json:"eof"`
+}
+
 // WorkingTreeDirtyError signals that a checkout was refused because the
 // working tree has uncommitted changes that would be overwritten.
 type WorkingTreeDirtyError struct {
@@ -87,6 +98,10 @@ const (
 )
 
 const maxFileReadBytes = 2 * 1024 * 1024
+
+// maxFileRangeLines caps a single ReadRepositoryFileRange response. Clients
+// asking for more must paginate by re-requesting with an adjusted start line.
+const maxFileRangeLines = 500
 
 func (e *WorkingTreeDirtyError) Error() string {
 	return "working tree has uncommitted changes"

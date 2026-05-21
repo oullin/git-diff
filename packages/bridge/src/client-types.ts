@@ -10,6 +10,7 @@ import type {
     Repository,
     RepositoryCollaborator,
     RepositoryFile,
+    RepositoryFileRange,
     RepositoryMode,
     RepositoryState,
     ReviewComment,
@@ -77,6 +78,13 @@ export interface WorkflowBridgeClient {
     deletePendingComment(request: { id: string }): Promise<void>;
     promotePendingComments(request: { reviewId: string }): Promise<{ promoted: number }>;
     readRepositoryFile(request: { root: string; path: string }): Promise<RepositoryFile>;
+    readRepositoryFileRange(request: {
+        root: string;
+        path: string;
+        ref?: string;
+        startLine: number;
+        endLine: number;
+    }): Promise<RepositoryFileRange>;
     listBranches(request: { path?: string }): Promise<{ branches: string[]; records?: Branch[] }>;
     checkoutBranch(request: { path: string; branch: string }): Promise<RepositoryState>;
     createBranch(request: { path: string; name: string }): Promise<RepositoryState>;

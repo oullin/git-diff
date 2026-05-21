@@ -11,6 +11,7 @@ import type {
     Repository,
     RepositoryCollaborator,
     RepositoryFile,
+    RepositoryFileRange,
     RepositoryMode,
     RepositoryState,
     ReviewComment,
@@ -62,6 +63,13 @@ export interface DiffAppApi {
     deletePendingComment(id: string): Promise<void>;
     promotePendingComments(reviewId: string): Promise<{ promoted: number }>;
     readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
+    readRepositoryFileRange(request: {
+        root: string;
+        path: string;
+        ref?: string;
+        startLine: number;
+        endLine: number;
+    }): Promise<RepositoryFileRange>;
     listBranches(path?: string): Promise<{ branches: string[]; records?: Branch[] }>;
     checkoutBranch(path: string, branch: string): Promise<RepositoryState>;
     createBranch(path: string, name: string): Promise<RepositoryState>;

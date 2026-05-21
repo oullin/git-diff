@@ -143,6 +143,13 @@ export function installBrowserFallback() {
             truncated: false,
             size: 0,
         }),
+        readRepositoryFileRange: async (request) => ({
+            path: request.path,
+            startLine: request.startLine,
+            endLine: request.startLine - 1,
+            lines: [],
+            eof: true,
+        }),
         listBranches: async () => ({ branches: [state.branch] }),
         checkoutBranch: async () => state,
         createBranch: async (_path: string, name: string) => ({ ...state, branch: name }),

@@ -1,1 +1,1 @@
-{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../src/branch/index.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,MAAM;IACrB,IAAI,EAAE,MAAM,CAAC;IACb,MAAM,EAAE,OAAO,CAAC;IAChB,QAAQ,CAAC,EAAE,MAAM,CAAC;IAClB,QAAQ,CAAC,EAAE,MAAM,CAAC;IAClB,UAAU,EAAE,MAAM,CAAC;CACpB"}
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../src/branch/index.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,MAAM;IACnB,IAAI,EAAE,MAAM,CAAC;IACb,MAAM,EAAE,OAAO,CAAC;IAChB,QAAQ,CAAC,EAAE,MAAM,CAAC;IAClB,QAAQ,CAAC,EAAE,MAAM,CAAC;IAClB,UAAU,EAAE,MAAM,CAAC;CACtB"}

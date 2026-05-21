@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { ChevronDown, ChevronUp, Plus } from "lucide-vue-next";
+import { ChevronDown, ChevronUp, Loader2, Plus } from "lucide-vue-next";
 import { highlighterRev, highlightLine, languageFor } from "@lib/highlight";
 import { diffBgs, type DiffStyleColors } from "@lib/accent";
-import { parsePatch, splitPatch, type PatchLine, type SplitRow } from "@lib/patch";
+import {
+    applyExpansions,
+    getHunkInfos,
+    parsePatch,
+    splitPatchLines,
+    type HunkInfo,
+    type PatchLine,
+    type SplitRow,
+} from "@lib/patch";
 import { computeWordHi, type Range } from "@lib/wordHi";
+import { useContextExpansion } from "@composables/useContextExpansion";
 import CommentThread from "./CommentThread.vue";
 import SplitHandle from "./SplitHandle.vue";
 import type {
@@ -26,10 +35,14 @@ const props = withDefaults(
         hideWhitespace: boolean;
         comments: ReviewComment[];
         replyFeatures: RichTextFeatures;
+        repoRoot: string;
+        commitRef?: string;
         splitRatio?: number;
     }>(),
-    { splitRatio: 0.5 },
+    { splitRatio: 0.5, commitRef: undefined },
 );
+
+const { getExpansions, isInflight, isDownwardEof, expandUp, expandDown } = useContextExpansion();
 
 const emit = defineEmits<{
     "add-comment": [section: DiffSection, line: PatchLine];
@@ -60,6 +73,128 @@ function setSectionRef(id: string) {
 const lineH = computed(() => (props.density === "compact" ? 22 : 24));
 const colors = computed<DiffStyleColors>(() => diffBgs(props.diffStyle));
 const lang = computed(() => languageFor(props.file.path));
+
+function patchLines(section: DiffSection): PatchLine[] {
+    const base = parsePatch(section, props.hideWhitespace);
+
+    return applyExpansions(base, getExpansions(section.id));
+}
+
+function splitRows(section: DiffSection): SplitRow[] {
+    return splitPatchLines(patchLines(section));
+}
+
+const hunkInfoCache = new Map<string, HunkInfo[]>();
+
+function hunksFor(section: DiffSection): HunkInfo[] {
+    // parsePatch is deterministic given (section, hideWhitespace); cache per
+    // section id + whitespace toggle to avoid rewalking the patch each render.
+    const cacheKey = `${section.id}:${props.hideWhitespace ? "h" : "v"}`;
+    const cached = hunkInfoCache.get(cacheKey);
+
+    if (cached) {
+        return cached;
+    }
+
+    const infos = getHunkInfos(parsePatch(section, props.hideWhitespace));
+
+    hunkInfoCache.set(cacheKey, infos);
+    return infos;
+}
+
+function findHunk(section: DiffSection, metaId: string): HunkInfo | null {
+    return hunksFor(section).find((h) => h.metaId === metaId) ?? null;
+}
+
+function nextHunkOldStart(section: DiffSection, hunk: HunkInfo): number | null {
+    const infos = hunksFor(section);
+    const index = infos.findIndex((h) => h.metaId === hunk.metaId);
+
+    if (index < 0 || index === infos.length - 1) {
+        return null;
+    }
+
+    return infos[index + 1]!.oldStart;
+}
+
+function expansionRequest(section: DiffSection) {
+    return {
+        sectionId: section.id,
+        repoRoot: props.repoRoot,
+        filePath: props.file.path,
+        ref: props.commitRef,
+    };
+}
+
+function onExpandUp(section: DiffSection, hunk: HunkInfo | null): void {
+    if (!hunk || !props.repoRoot) {
+        return;
+    }
+
+    void expandUp(expansionRequest(section), hunk);
+}
+
+function onExpandDown(section: DiffSection, hunk: HunkInfo | null): void {
+    if (!hunk || !props.repoRoot) {
+        return;
+    }
+
+    void expandDown(expansionRequest(section), hunk, nextHunkOldStart(section, hunk));
+}
+
+function canExpandUp(section: DiffSection, hunk: HunkInfo | null): boolean {
+    if (!hunk) {
+        return false;
+    }
+
+    const lowest = lowestVisibleAbove(section, hunk);
+
+    return lowest > hunk.prevOldEnd + 1;
+}
+
+function canExpandDown(section: DiffSection, hunk: HunkInfo | null): boolean {
+    if (!hunk) {
+        return false;
+    }
+
+    const next = nextHunkOldStart(section, hunk);
+    const highest = highestVisibleBelow(section, hunk, next);
+
+    if (next != null) {
+        return highest < next - 1;
+    }
+
+    return !isDownwardEof(section.id);
+}
+
+function lowestVisibleAbove(section: DiffSection, hunk: HunkInfo): number {
+    let lowest = hunk.oldStart;
+
+    for (const exp of getExpansions(section.id)) {
+        if (exp.oldLine > hunk.prevOldEnd && exp.oldLine < hunk.oldStart && exp.oldLine < lowest) {
+            lowest = exp.oldLine;
+        }
+    }
+
+    return lowest;
+}
+
+function highestVisibleBelow(
+    section: DiffSection,
+    hunk: HunkInfo,
+    nextStart: number | null,
+): number {
+    let highest = hunk.oldEnd;
+    const upper = nextStart ?? Number.POSITIVE_INFINITY;
+
+    for (const exp of getExpansions(section.id)) {
+        if (exp.oldLine > hunk.oldEnd && exp.oldLine < upper && exp.oldLine > highest) {
+            highest = exp.oldLine;
+        }
+    }
+
+    return highest;
+}
 
 function commentsForLine(section: DiffSection, line: PatchLine | undefined): ReviewComment[] {
     if (!line) {
@@ -240,7 +375,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                         @update:ratio="(value) => emit('update:splitRatio', value)"
                     />
                     <template v-if="viewMode === 'split'">
-                        <template v-for="row in splitPatch(section, hideWhitespace)" :key="row.id">
+                        <template v-for="row in splitRows(section)" :key="row.id">
                             <template v-if="row.kind === 'meta'">
                                 <div
                                     v-if="row.line.text.startsWith('@@')"
@@ -272,6 +407,10 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                     <button
                                         type="button"
                                         title="Expand context up"
+                                        :disabled="
+                                            !canExpandUp(section, findHunk(section, row.line.id)) ||
+                                            isInflight(section.id, 'up', row.line.id)
+                                        "
                                         :style="{
                                             width: '26px',
                                             height: '26px',
@@ -283,14 +422,38 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             padding: 0,
-                                            cursor: 'pointer',
+                                            cursor:
+                                                canExpandUp(
+                                                    section,
+                                                    findHunk(section, row.line.id),
+                                                ) && !isInflight(section.id, 'up', row.line.id)
+                                                    ? 'pointer'
+                                                    : 'not-allowed',
+                                            opacity: canExpandUp(
+                                                section,
+                                                findHunk(section, row.line.id),
+                                            )
+                                                ? 1
+                                                : 0.35,
                                         }"
+                                        @click="onExpandUp(section, findHunk(section, row.line.id))"
                                     >
-                                        <ChevronUp :size="12" />
+                                        <Loader2
+                                            v-if="isInflight(section.id, 'up', row.line.id)"
+                                            :size="12"
+                                            class="animate-spin"
+                                        />
+                                        <ChevronUp v-else :size="12" />
                                     </button>
                                     <button
                                         type="button"
                                         title="Expand context down"
+                                        :disabled="
+                                            !canExpandDown(
+                                                section,
+                                                findHunk(section, row.line.id),
+                                            ) || isInflight(section.id, 'down', row.line.id)
+                                        "
                                         :style="{
                                             width: '26px',
                                             height: '26px',
@@ -302,10 +465,30 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             padding: 0,
-                                            cursor: 'pointer',
+                                            cursor:
+                                                canExpandDown(
+                                                    section,
+                                                    findHunk(section, row.line.id),
+                                                ) && !isInflight(section.id, 'down', row.line.id)
+                                                    ? 'pointer'
+                                                    : 'not-allowed',
+                                            opacity: canExpandDown(
+                                                section,
+                                                findHunk(section, row.line.id),
+                                            )
+                                                ? 1
+                                                : 0.35,
                                         }"
+                                        @click="
+                                            onExpandDown(section, findHunk(section, row.line.id))
+                                        "
                                     >
-                                        <ChevronDown :size="12" />
+                                        <Loader2
+                                            v-if="isInflight(section.id, 'down', row.line.id)"
+                                            :size="12"
+                                            class="animate-spin"
+                                        />
+                                        <ChevronDown v-else :size="12" />
                                     </button>
                                 </div>
                             </template>
@@ -589,10 +772,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                         </template>
                     </template>
                     <template v-else>
-                        <template
-                            v-for="line in parsePatch(section, hideWhitespace)"
-                            :key="line.id"
-                        >
+                        <template v-for="line in patchLines(section)" :key="line.id">
                             <div
                                 v-if="line.type === 'meta' && line.text.startsWith('@@')"
                                 class="flex items-center"
@@ -619,6 +799,79 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                 <span :style="{ color: 'var(--gd-text-3)' }">{{
                                     hunkHeaderText(line.text).trailer
                                 }}</span>
+                                <div class="flex-1" />
+                                <button
+                                    type="button"
+                                    title="Expand context up"
+                                    :disabled="
+                                        !canExpandUp(section, findHunk(section, line.id)) ||
+                                        isInflight(section.id, 'up', line.id)
+                                    "
+                                    :style="{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        border: '1px solid transparent',
+                                        background: 'transparent',
+                                        color: 'var(--gd-text-3)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: 0,
+                                        cursor:
+                                            canExpandUp(section, findHunk(section, line.id)) &&
+                                            !isInflight(section.id, 'up', line.id)
+                                                ? 'pointer'
+                                                : 'not-allowed',
+                                        opacity: canExpandUp(section, findHunk(section, line.id))
+                                            ? 1
+                                            : 0.35,
+                                    }"
+                                    @click="onExpandUp(section, findHunk(section, line.id))"
+                                >
+                                    <Loader2
+                                        v-if="isInflight(section.id, 'up', line.id)"
+                                        :size="12"
+                                        class="animate-spin"
+                                    />
+                                    <ChevronUp v-else :size="12" />
+                                </button>
+                                <button
+                                    type="button"
+                                    title="Expand context down"
+                                    :disabled="
+                                        !canExpandDown(section, findHunk(section, line.id)) ||
+                                        isInflight(section.id, 'down', line.id)
+                                    "
+                                    :style="{
+                                        width: '26px',
+                                        height: '26px',
+                                        borderRadius: '6px',
+                                        border: '1px solid transparent',
+                                        background: 'transparent',
+                                        color: 'var(--gd-text-3)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: 0,
+                                        cursor:
+                                            canExpandDown(section, findHunk(section, line.id)) &&
+                                            !isInflight(section.id, 'down', line.id)
+                                                ? 'pointer'
+                                                : 'not-allowed',
+                                        opacity: canExpandDown(section, findHunk(section, line.id))
+                                            ? 1
+                                            : 0.35,
+                                    }"
+                                    @click="onExpandDown(section, findHunk(section, line.id))"
+                                >
+                                    <Loader2
+                                        v-if="isInflight(section.id, 'down', line.id)"
+                                        :size="12"
+                                        class="animate-spin"
+                                    />
+                                    <ChevronDown v-else :size="12" />
+                                </button>
                             </div>
                             <template v-else-if="line.type !== 'meta'">
                                 <div
