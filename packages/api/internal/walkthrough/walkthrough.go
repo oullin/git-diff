@@ -4,23 +4,18 @@
 package walkthrough
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gocanto/git-diff/internal/review"
 )
-
-// per-file truncation; keeps the prompt cheap
 
 // Walkthrough is the structured output the renderer consumes. Order lists
 // every file path the LLM recommends reviewing, in order; Notes maps each
@@ -42,25 +37,11 @@ type Request struct {
 	State   review.RepositoryState
 }
 
-// ErrMissingAPIKey is returned when no Anthropic API key was provided. The
-// HTTP layer translates this to a 412 Precondition Failed so the UI knows to
-// surface the settings panel.
-
-// FingerprintForState returns a deterministic hash of the file paths and
-// per-file fingerprints in the state. Two RepositoryStates with the same
-// fingerprint should yield the same walkthrough; this powers the cache key
-// for the storage layer.
-
-// Generate calls the Anthropic Messages API with a structured prompt built
-// from the repository state and returns a parsed Walkthrough.
-
 type parsedOutput struct {
 	Order   []string          `json:"order"`
 	Notes   map[string]string `json:"notes"`
 	Summary string            `json:"summary"`
 }
-
-// The model occasionally wraps the JSON in a ```json fence. Strip that.
 
 type anthropicResponse struct {
 	Content []struct {
@@ -80,6 +61,10 @@ const (
 
 var ErrMissingAPIKey = errors.New("anthropic api key is required")
 
+// FingerprintForState returns a deterministic hash of the file paths and
+// per-file fingerprints in the state. Two RepositoryStates with the same
+// fingerprint should yield the same walkthrough; this powers the cache key
+// for the storage layer.
 func FingerprintForState(state review.RepositoryState) string {
 	hash := sha1.New()
 	hash.Write([]byte(state.Mode))
@@ -94,74 +79,38 @@ func FingerprintForState(state review.RepositoryState) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
+// Generate builds the prompt from the repository state, asks the configured
+// AnthropicClient for completions, and parses the JSON walkthrough out of
+// the response.
 func Generate(ctx context.Context, req Request) (Walkthrough, error) {
 	if strings.TrimSpace(req.APIKey) == "" {
 		return Walkthrough{}, ErrMissingAPIKey
 	}
 
+	modelID := resolveModelID(req.ModelID)
+
 	if len(req.State.Files) == 0 {
 		return Walkthrough{
 			Order:       []string{},
 			Notes:       map[string]string{},
-			ModelID:     resolveModelID(req.ModelID),
+			ModelID:     modelID,
 			GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
 			Fingerprint: FingerprintForState(req.State),
 		}, nil
 	}
 
-	prompt := buildPrompt(req.State)
-	modelID := resolveModelID(req.ModelID)
-
-	payload := map[string]any{
-		"model":      modelID,
-		"max_tokens": defaultMaxTokens,
-		"messages": []map[string]any{
-			{"role": "user", "content": prompt},
-		},
-	}
-
-	body, err := json.Marshal(payload)
-
-	if err != nil {
-		return Walkthrough{}, fmt.Errorf("encode walkthrough request: %w", err)
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiEndpoint, bytes.NewReader(body))
-
-	if err != nil {
-		return Walkthrough{}, fmt.Errorf("build walkthrough request: %w", err)
-	}
-
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("anthropic-version", apiVersion)
-	httpReq.Header.Set("x-api-key", req.APIKey)
-
-	client := &http.Client{Timeout: 60 * time.Second}
-	resp, err := client.Do(httpReq)
-
-	if err != nil {
-		return Walkthrough{}, fmt.Errorf("call anthropic messages: %w", err)
-	}
-
-	defer resp.Body.Close()
-
-	raw, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		return Walkthrough{}, fmt.Errorf("read walkthrough response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return Walkthrough{}, fmt.Errorf("anthropic messages returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
-	}
-
-	text, err := extractText(raw)
+	resp, err := client.Messages(ctx, MessagesRequest{
+		APIKey:    req.APIKey,
+		ModelID:   modelID,
+		MaxTokens: defaultMaxTokens,
+		Prompt:    buildPrompt(req.State),
+	})
 
 	if err != nil {
 		return Walkthrough{}, err
 	}
 
-	parsed, err := parseModelOutput(text, req.State)
+	parsed, err := parseModelOutput(resp.Text, req.State)
 
 	if err != nil {
 		return Walkthrough{}, err
@@ -293,20 +242,4 @@ func parseModelOutput(text string, state review.RepositoryState) (parsedOutput, 
 	}
 
 	return parsed, nil
-}
-
-func extractText(body []byte) (string, error) {
-	var resp anthropicResponse
-
-	if err := json.Unmarshal(body, &resp); err != nil {
-		return "", fmt.Errorf("decode anthropic response: %w", err)
-	}
-
-	for _, block := range resp.Content {
-		if block.Type == "text" && strings.TrimSpace(block.Text) != "" {
-			return block.Text, nil
-		}
-	}
-
-	return "", errors.New("anthropic response had no text content")
 }

@@ -1,7 +1,6 @@
 package review
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -87,58 +86,6 @@ func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositorySta
 	}
 
 	return state, nil
-}
-
-func parseDiffTreeNameStatus(raw []byte) []commitDiffEntry {
-	parts := bytes.Split(raw, []byte{0})
-	entries := []commitDiffEntry{}
-
-	for i := 0; i < len(parts); i++ {
-		field := string(parts[i])
-
-		if field == "" {
-			continue
-		}
-
-		status := field[0]
-		entry := commitDiffEntry{}
-
-		switch status {
-		case 'A':
-			entry.status = StatusAdded
-		case 'D':
-			entry.status = StatusDeleted
-		case 'R', 'C':
-			entry.status = StatusRenamed
-		default:
-			entry.status = StatusModified
-		}
-
-		if status == 'R' || status == 'C' {
-			if i+2 >= len(parts) {
-				return entries
-			}
-
-			entry.old = string(parts[i+1])
-			entry.path = string(parts[i+2])
-			i += 2
-		} else {
-			if i+1 >= len(parts) {
-				return entries
-			}
-
-			entry.path = string(parts[i+1])
-			i++
-		}
-
-		if entry.path == "" {
-			continue
-		}
-
-		entries = append(entries, entry)
-	}
-
-	return entries
 }
 
 func commitFilePatch(ctx context.Context, root, sha, path, oldPath string) (string, bool) {

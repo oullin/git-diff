@@ -96,35 +96,6 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 	return state, nil
 }
 
-func parseStatus(raw []byte) []statusEntry {
-	parts := bytes.Split(raw, []byte{0})
-	entries := []statusEntry{}
-
-	for i := 0; i < len(parts); i++ {
-		part := parts[i]
-
-		if len(part) < 4 {
-			continue
-		}
-
-		entry := statusEntry{index: part[0], work: part[1], path: string(part[3:])}
-
-		if entry.index == 'R' || entry.index == 'C' {
-			entry.rename = true
-
-			if i+1 < len(parts) {
-				i++
-				entry.old = entry.path
-				entry.path = string(parts[i])
-			}
-		}
-
-		entries = append(entries, entry)
-	}
-
-	return entries
-}
-
 func statusFromEntry(entry statusEntry) GitFileStatus {
 	if entry.index == '?' && entry.work == '?' {
 		return StatusUntracked
