@@ -1,8 +1,8 @@
-import { ipcMain } from "electron";
 import { client } from "#electron/bridge.js";
+import type { IpcRouter } from "#electron/ipc/router.js";
 
-export function register(): void {
-    ipcMain.handle(
+export function register(router: IpcRouter): void {
+    router.on(
         "walkthrough:generate",
         async (
             _event,

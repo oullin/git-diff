@@ -1,4 +1,3 @@
-import { ipcMain } from "electron";
 import type {
     AuthLoginRequest,
     AuthSetupRequest,
@@ -7,16 +6,17 @@ import type {
     AuthWipeRequest,
 } from "@git-diff/contracts";
 import { client } from "#electron/bridge.js";
+import type { IpcRouter } from "#electron/ipc/router.js";
 import {
     clearSessionToken,
     readSessionToken,
     writeSessionToken,
 } from "#electron/ipc/session-token.js";
 
-export function register(): void {
-    ipcMain.handle("auth:state", async () => (await client()).auth.getState());
+export function register(router: IpcRouter): void {
+    router.on("auth:state", async () => (await client()).auth.getState());
 
-    ipcMain.handle("auth:setup", async (_event, request: AuthSetupRequest) => {
+    router.on("auth:setup", async (_event, request: AuthSetupRequest) => {
         const response = await (await client()).auth.setup(request);
 
         if (response.token) {
@@ -26,7 +26,7 @@ export function register(): void {
         return response;
     });
 
-    ipcMain.handle("auth:login", async (_event, request: AuthLoginRequest) => {
+    router.on("auth:login", async (_event, request: AuthLoginRequest) => {
         const response = await (await client()).auth.login(request);
 
         if (request.remember && response.token) {
@@ -38,19 +38,19 @@ export function register(): void {
         return response;
     });
 
-    ipcMain.handle("auth:logout", async () => {
+    router.on("auth:logout", async () => {
         clearSessionToken();
 
         await (await client()).auth.logout();
     });
 
-    ipcMain.handle("auth:wipe", async (_event, request: AuthWipeRequest = {}) => {
+    router.on("auth:wipe", async (_event, request: AuthWipeRequest = {}) => {
         clearSessionToken();
 
         await (await client()).auth.wipe({ osUsername: request.osUsername });
     });
 
-    ipcMain.handle(
+    router.on(
         "auth:bootstrap",
         async (): Promise<{ user: AuthUser | null; state: AuthStateResponse }> => {
             const token = readSessionToken();
