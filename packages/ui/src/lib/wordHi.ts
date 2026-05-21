@@ -4,8 +4,17 @@
 
 export type Range = [number, number];
 
+// Past this length the prefix/suffix walk starts to dominate render cost on
+// pathological lines (minified bundles, generated code). Skipping the highlight
+// is preferable to blocking the main thread.
+export const MAX_LINE_WORD_DIFF_LENGTH = 2000;
+
 export function computeWordHi(left: string, right: string): { hiL: Range[]; hiR: Range[] } {
     if (left === right || !left || !right) {
+        return { hiL: [], hiR: [] };
+    }
+
+    if (left.length > MAX_LINE_WORD_DIFF_LENGTH || right.length > MAX_LINE_WORD_DIFF_LENGTH) {
         return { hiL: [], hiR: [] };
     }
 
