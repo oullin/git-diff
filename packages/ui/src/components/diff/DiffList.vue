@@ -5,6 +5,7 @@ import type { RichTextFeatures } from "@ui/rich-text-editor";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import FileContentViewer from "@entry/components/FileContentViewer.vue";
+import MarkdownPreview from "@entry/components/diff/MarkdownPreview.vue";
 import type { DiffViewMode } from "@git-diff/contracts";
 import type { Tweaks } from "@composables/useTweaks";
 
@@ -33,6 +34,7 @@ defineProps<{
     commentFeatures: RichTextFeatures;
     repoRoot: string;
     commitRef?: string;
+    previewing: Record<string, boolean>;
     isViewedFn: (file: ChangedFile) => boolean;
     fileElementID: (path: string) => string;
 }>();
@@ -40,6 +42,7 @@ defineProps<{
 const emit = defineEmits<{
     "toggle-collapsed": [path: string];
     "toggle-viewed": [file: ChangedFile];
+    "toggle-preview": [path: string];
     "copy-path": [path: string];
     "open-comment-for-line": [file: ChangedFile, section: DiffSection, line: PatchLine];
     "delete-comment": [comment: ReviewComment];
@@ -78,12 +81,20 @@ const emit = defineEmits<{
                 :file="file"
                 :collapsed="!!collapsed[file.path]"
                 :viewed="isViewedFn(file)"
+                :previewing="!!previewing[file.path]"
                 @toggle-collapsed="emit('toggle-collapsed', file.path)"
                 @toggle-viewed="emit('toggle-viewed', file)"
+                @toggle-preview="emit('toggle-preview', file.path)"
                 @copy="(path: string) => emit('copy-path', path)"
             />
+            <MarkdownPreview
+                v-if="!collapsed[file.path] && previewing[file.path]"
+                :file="file"
+                :repo-root="repoRoot"
+                :commit-ref="commitRef"
+            />
             <DiffBody
-                v-if="!collapsed[file.path]"
+                v-else-if="!collapsed[file.path]"
                 :file="file"
                 :view-mode="diffViewMode"
                 :diff-style="tweaks.diffStyle"

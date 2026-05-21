@@ -100,7 +100,8 @@ const {
 } = useRepositoryList();
 const selectedPath = ref("");
 const searchQuery = ref("");
-const { collapsed, splitRatios, toggleCollapsed, setSplitRatio } = useDiffLayout();
+const { collapsed, splitRatios, previewing, toggleCollapsed, setSplitRatio, togglePreview } =
+    useDiffLayout();
 const reviewPanelOpen = ref(false);
 const {
     target: commentTarget,
@@ -860,10 +861,12 @@ void ACCENTS;
                                 :comment-features="commentFeatures"
                                 :repo-root="state?.root ?? ''"
                                 :commit-ref="state?.commitSha"
+                                :previewing="previewing"
                                 :is-viewed-fn="isViewed"
                                 :file-element-i-d="fileElementID"
                                 @toggle-collapsed="toggleCollapsed"
                                 @toggle-viewed="toggleViewed"
+                                @toggle-preview="togglePreview"
                                 @copy-path="copyPath"
                                 @open-comment-for-line="openCommentForLine"
                                 @delete-comment="deleteComment"

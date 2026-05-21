@@ -1,24 +1,30 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Check, ChevronDown, ChevronRight, Copy } from "lucide-vue-next";
+import { Check, ChevronDown, ChevronRight, Copy, Eye } from "lucide-vue-next";
 import StatusBadge from "./StatusBadge.vue";
+import { isMarkdownPath } from "@lib/markdownPreview";
 import type { ChangedFile, DiffSection } from "@git-diff/contracts";
 
 const props = defineProps<{
     file: ChangedFile;
     collapsed: boolean;
     viewed: boolean;
+    previewing?: boolean;
 }>();
 
 const emit = defineEmits<{
     "toggle-collapsed": [];
     "toggle-viewed": [];
+    "toggle-preview": [];
     copy: [path: string];
 }>();
 
 const parts = computed(() => props.file.path.split("/"));
 const hasUnstaged = computed(() =>
     props.file.sections.some((s: DiffSection) => s.kind === "unstaged" || s.kind === "untracked"),
+);
+const canPreview = computed(
+    () => isMarkdownPath(props.file.path) && props.file.status !== "deleted",
 );
 </script>
 
@@ -93,6 +99,30 @@ const hasUnstaged = computed(() =>
 
         <div class="flex-1" />
 
+        <button
+            v-if="canPreview"
+            type="button"
+            :style="{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                height: '28px',
+                padding: '0 10px',
+                borderRadius: '7px',
+                background: previewing ? 'var(--gd-accent-soft)' : 'var(--gd-panel-2)',
+                border: '1px solid',
+                borderColor: previewing ? 'var(--gd-accent-strong)' : 'var(--gd-border)',
+                color: previewing ? 'var(--gd-accent)' : 'var(--gd-text-2)',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+            }"
+            :title="previewing ? 'Show diff' : 'Preview rendered markdown'"
+            @click="emit('toggle-preview')"
+        >
+            <Eye :size="13" />
+            {{ previewing ? "Diff" : "Preview" }}
+        </button>
         <button
             type="button"
             :style="{
