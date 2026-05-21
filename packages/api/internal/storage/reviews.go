@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 type ReviewSessionStart struct {
@@ -62,12 +64,30 @@ type ReviewDetail struct {
 	Comments []ReviewComment `json:"comments"`
 }
 
-func (s *Store) CreateReview(ctx context.Context, userID int64, review ReviewSessionStart) (ReviewSession, error) {
+// ReviewEventWriter is the slice of the review repository that other repos
+// need to log timeline events as side effects (e.g. CommentRepo writing
+// "comment_added"). Defined as an interface so consumers depend on the one
+// method they call, not the full repo.
+type ReviewEventWriter interface {
+	AddReviewEvent(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error)
+}
+
+type ReviewRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
+
+func newReviewRepo(conn *sql.DB, queries *db.Queries, clk *clock) *ReviewRepo {
+	return &ReviewRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review ReviewSessionStart) (ReviewSession, error) {
 	if userID == 0 {
 		return ReviewSession{}, errors.New("user id is required")
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 	title := review.Title
 
 	if title == "" {
@@ -80,7 +100,7 @@ func (s *Store) CreateReview(ctx context.Context, userID int64, review ReviewSes
 		contextKind = "working"
 	}
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO review_sessions (
 			id, repo_root, user_id, branch, head_sha, status, title, summary,
 			files_changed, additions, deletions, started_at, context_kind, context_sha
@@ -91,7 +111,7 @@ func (s *Store) CreateReview(ctx context.Context, userID int64, review ReviewSes
 		return ReviewSession{}, err
 	}
 
-	if _, err := s.AddReviewEvent(ctx, review.ID, ReviewEventInput{
+	if _, err := r.AddReviewEvent(ctx, review.ID, ReviewEventInput{
 		Type:    "review_started",
 		Message: title,
 	}); err != nil {
@@ -116,7 +136,7 @@ func (s *Store) CreateReview(ctx context.Context, userID int64, review ReviewSes
 	}, nil
 }
 
-func (s *Store) ListReviews(ctx context.Context, userID int64, limit int64) ([]ReviewSession, error) {
+func (r *ReviewRepo) ListReviews(ctx context.Context, userID int64, limit int64) ([]ReviewSession, error) {
 	if userID == 0 {
 		return nil, errors.New("user id is required")
 	}
@@ -125,7 +145,7 @@ func (s *Store) ListReviews(ctx context.Context, userID int64, limit int64) ([]R
 		limit = 50
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
 			files_changed, additions, deletions, started_at, completed_at,
 			context_kind, context_sha
@@ -156,44 +176,53 @@ func (s *Store) ListReviews(ctx context.Context, userID int64, limit int64) ([]R
 	return reviews, rows.Err()
 }
 
-func (s *Store) ReviewDetail(ctx context.Context, id string) (ReviewDetail, error) {
-	row := s.db.QueryRowContext(ctx, `
+// GetReviewByID returns the bare review session, without events or comments.
+func (r *ReviewRepo) GetReviewByID(ctx context.Context, id string) (ReviewSession, error) {
+	row := r.db.QueryRowContext(ctx, `
 		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
 			files_changed, additions, deletions, started_at, completed_at,
 			context_kind, context_sha
 		FROM review_sessions
 		WHERE id = ?
 	`, id)
-	review, err := scanReview(row)
 
-	if err != nil {
-		return ReviewDetail{}, err
-	}
-
-	events, err := s.ListReviewEvents(ctx, id)
-
-	if err != nil {
-		return ReviewDetail{}, err
-	}
-
-	comments, err := s.ListReviewComments(ctx, id)
-
-	if err != nil {
-		return ReviewDetail{}, err
-	}
-
-	return ReviewDetail{Review: review, Events: events, Comments: comments}, nil
+	return scanReview(row)
 }
 
-func (s *Store) AddReviewEvent(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error) {
-	now := s.now().UTC().Format(time.RFC3339Nano)
+// ReviewDetail composes the review session with its timeline events and
+// non-deleted comments. CommentRepo is passed explicitly so the two repos
+// stay independently constructible.
+func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id string) (ReviewDetail, error) {
+	review, err := r.GetReviewByID(ctx, id)
+
+	if err != nil {
+		return ReviewDetail{}, err
+	}
+
+	events, err := r.ListReviewEvents(ctx, id)
+
+	if err != nil {
+		return ReviewDetail{}, err
+	}
+
+	commentList, err := comments.ListReviewComments(ctx, id)
+
+	if err != nil {
+		return ReviewDetail{}, err
+	}
+
+	return ReviewDetail{Review: review, Events: events, Comments: commentList}, nil
+}
+
+func (r *ReviewRepo) AddReviewEvent(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error) {
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 	metadata := input.Metadata
 
 	if metadata == "" {
 		metadata = "{}"
 	}
 
-	result, err := s.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO review_events (review_id, event_type, file_path, message, metadata, created_at)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`, reviewID, input.Type, input.FilePath, input.Message, metadata, now)
@@ -211,8 +240,8 @@ func (s *Store) AddReviewEvent(ctx context.Context, reviewID string, input Revie
 	return ReviewEvent{ID: id, ReviewID: reviewID, Type: input.Type, FilePath: input.FilePath, Message: input.Message, Metadata: metadata, CreatedAt: now}, nil
 }
 
-func (s *Store) ListReviewEvents(ctx context.Context, reviewID string) ([]ReviewEvent, error) {
-	rows, err := s.db.QueryContext(ctx, `
+func (r *ReviewRepo) ListReviewEvents(ctx context.Context, reviewID string) ([]ReviewEvent, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, review_id, event_type, file_path, message, metadata, created_at
 		FROM review_events
 		WHERE review_id = ?

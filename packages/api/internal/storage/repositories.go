@@ -6,6 +6,8 @@ import (
 	"errors"
 	"path/filepath"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 type Repository struct {
@@ -25,6 +27,15 @@ type RepositoryCollaborator struct {
 	GrantedAt   string `json:"grantedAt"`
 }
 
+// RepoRepo owns repositories and their collaborator membership. The
+// historical files repositories.go and repository_users.go now share one
+// type so callers can manage ownership and access in one place.
+type RepoRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
+
 const (
 	RepoRoleOwner = "owner"
 	RepoRoleWrite = "write"
@@ -33,12 +44,16 @@ const (
 
 var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
 
-func (s *Store) ListRepositoriesForUser(ctx context.Context, userID int64) ([]Repository, error) {
+func newRepoRepo(conn *sql.DB, queries *db.Queries, clk *clock) *RepoRepo {
+	return &RepoRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *RepoRepo) ListRepositoriesForUser(ctx context.Context, userID int64) ([]Repository, error) {
 	if userID == 0 {
 		return nil, errors.New("user id is required")
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
 			CASE WHEN r.owner_id = ?1 THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
@@ -74,7 +89,7 @@ func (s *Store) ListRepositoriesForUser(ctx context.Context, userID int64) ([]Re
 	return repos, rows.Err()
 }
 
-func (s *Store) GetRepository(ctx context.Context, userID int64, path string) (Repository, error) {
+func (r *RepoRepo) GetRepository(ctx context.Context, userID int64, path string) (Repository, error) {
 	if userID == 0 {
 		return Repository{}, errors.New("user id is required")
 	}
@@ -83,7 +98,7 @@ func (s *Store) GetRepository(ctx context.Context, userID int64, path string) (R
 		return Repository{}, errors.New("repository path is required")
 	}
 
-	row := s.db.QueryRowContext(ctx, `
+	row := r.db.QueryRowContext(ctx, `
 		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
 			CASE WHEN r.owner_id = ?1 THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
@@ -107,7 +122,7 @@ func (s *Store) GetRepository(ctx context.Context, userID int64, path string) (R
 	return repo, nil
 }
 
-func (s *Store) UpsertRepository(ctx context.Context, ownerID int64, path string, name string) (Repository, error) {
+func (r *RepoRepo) UpsertRepository(ctx context.Context, ownerID int64, path string, name string) (Repository, error) {
 	if ownerID == 0 {
 		return Repository{}, errors.New("owner id is required")
 	}
@@ -120,8 +135,8 @@ func (s *Store) UpsertRepository(ctx context.Context, ownerID int64, path string
 		name = filepath.Base(path)
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
-	_, err := s.db.ExecContext(ctx, `
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO repositories (path, name, owner_id, added_at, last_opened_at)
 		VALUES (?, ?, ?, ?, ?)
 		ON CONFLICT(path) DO UPDATE SET
@@ -133,10 +148,10 @@ func (s *Store) UpsertRepository(ctx context.Context, ownerID int64, path string
 		return Repository{}, err
 	}
 
-	return s.GetRepository(ctx, ownerID, path)
+	return r.GetRepository(ctx, ownerID, path)
 }
 
-func (s *Store) RemoveRepository(ctx context.Context, userID int64, path string) error {
+func (r *RepoRepo) RemoveRepository(ctx context.Context, userID int64, path string) error {
 	if userID == 0 {
 		return errors.New("user id is required")
 	}
@@ -145,7 +160,7 @@ func (s *Store) RemoveRepository(ctx context.Context, userID int64, path string)
 		return errors.New("repository path is required")
 	}
 
-	result, err := s.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		DELETE FROM repositories WHERE path = ? AND owner_id = ?
 	`, path, userID)
 

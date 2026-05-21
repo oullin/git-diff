@@ -2,13 +2,22 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 type UIPreferences struct {
 	Values    map[string]string `json:"values"`
 	UpdatedAt string            `json:"updatedAt,omitempty"`
+}
+
+type PreferenceRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
 }
 
 const DefaultTheme = "light"
@@ -26,8 +35,12 @@ const (
 	PrefKeyAnthropicModel     = "llm.anthropicModel"
 )
 
-func (s *Store) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
-	rows, err := s.db.QueryContext(ctx, `
+func newPreferenceRepo(conn *sql.DB, queries *db.Queries, clk *clock) *PreferenceRepo {
+	return &PreferenceRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *PreferenceRepo) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT key, value, updated_at
 		FROM ui_preferences
 		WHERE user_id = ?
@@ -62,12 +75,12 @@ func (s *Store) GetUIPreferences(ctx context.Context, userID int64) (UIPreferenc
 	return prefs, rows.Err()
 }
 
-func (s *Store) SaveUIPreferences(ctx context.Context, userID int64, patch map[string]string) (UIPreferences, error) {
+func (r *PreferenceRepo) SaveUIPreferences(ctx context.Context, userID int64, patch map[string]string) (UIPreferences, error) {
 	if len(patch) == 0 {
-		return s.GetUIPreferences(ctx, userID)
+		return r.GetUIPreferences(ctx, userID)
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTx(ctx, nil)
 
 	if err != nil {
 		return UIPreferences{}, err
@@ -75,7 +88,7 @@ func (s *Store) SaveUIPreferences(ctx context.Context, userID int64, patch map[s
 
 	defer tx.Rollback()
 
-	updatedAt := s.now().UTC().Format(time.RFC3339Nano)
+	updatedAt := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	for key, value := range patch {
 		key = strings.TrimSpace(key)
@@ -109,5 +122,5 @@ func (s *Store) SaveUIPreferences(ctx context.Context, userID int64, patch map[s
 		return UIPreferences{}, err
 	}
 
-	return s.GetUIPreferences(ctx, userID)
+	return r.GetUIPreferences(ctx, userID)
 }

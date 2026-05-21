@@ -16,7 +16,8 @@ import (
 // and the request parameters; the service returns the resulting record
 // plus a flag indicating whether it came from cache.
 type WalkthroughService struct {
-	store *storage.Store
+	walkthroughs *storage.WalkthroughRepo
+	preferences  *storage.PreferenceRepo
 }
 
 // ErrAnthropicNotConfigured signals that no API key was found in env vars
@@ -35,8 +36,8 @@ type GenerateResult struct {
 	Cached bool
 }
 
-func NewWalkthroughService(store *storage.Store) *WalkthroughService {
-	return &WalkthroughService{store: store}
+func NewWalkthroughService(walkthroughs *storage.WalkthroughRepo, preferences *storage.PreferenceRepo) *WalkthroughService {
+	return &WalkthroughService{walkthroughs: walkthroughs, preferences: preferences}
 }
 
 var ErrAnthropicNotConfigured = errors.New("anthropic api key not configured")
@@ -48,7 +49,7 @@ func (s *WalkthroughService) Generate(
 	ctx context.Context,
 	req GenerateRequest,
 ) (GenerateResult, error) {
-	cached, found, err := s.store.GetWalkthrough(ctx, req.State.Root, req.Kind, req.ContextSHA)
+	cached, found, err := s.walkthroughs.GetWalkthrough(ctx, req.State.Root, req.Kind, req.ContextSHA)
 
 	if err != nil {
 		return GenerateResult{}, err
@@ -88,7 +89,7 @@ func (s *WalkthroughService) Generate(
 		GeneratedAt: result.GeneratedAt,
 	}
 
-	_ = s.store.UpsertWalkthrough(ctx, record)
+	_ = s.walkthroughs.UpsertWalkthrough(ctx, record)
 
 	return GenerateResult{Record: record}, nil
 }
@@ -105,7 +106,7 @@ func (s *WalkthroughService) credentials(ctx context.Context, userID int64) (str
 		return "", ""
 	}
 
-	prefs, err := s.store.GetUIPreferences(ctx, userID)
+	prefs, err := s.preferences.GetUIPreferences(ctx, userID)
 
 	if err != nil {
 		return "", ""

@@ -13,7 +13,7 @@ import (
 // lock table. The service hides the two-step coordination and the
 // resolve-then-act pattern that every handler was duplicating.
 type BranchService struct {
-	store *storage.Store
+	branches *storage.BranchRepo
 }
 
 // ErrBranchNameRequired signals that a delete or lock request omitted the
@@ -29,8 +29,8 @@ type ListResult struct {
 	Records []storage.Branch `json:"records,omitempty"`
 }
 
-func NewBranchService(store *storage.Store) *BranchService {
-	return &BranchService{store: store}
+func NewBranchService(branches *storage.BranchRepo) *BranchService {
+	return &BranchService{branches: branches}
 }
 
 var ErrBranchNameRequired = errors.New("name is required")
@@ -54,9 +54,9 @@ func (s *BranchService) List(ctx context.Context, path string) (ListResult, erro
 		return ListResult{Names: names}, nil
 	}
 
-	_ = s.store.SyncBranches(ctx, root, names)
+	_ = s.branches.SyncBranches(ctx, root, names)
 
-	records, err := s.store.ListBranches(ctx, root)
+	records, err := s.branches.ListBranches(ctx, root)
 
 	if err != nil {
 		return ListResult{Names: names}, nil
@@ -80,11 +80,11 @@ func (s *BranchService) Lock(
 		return nil, err
 	}
 
-	if err := s.store.LockBranch(ctx, root, name, userID); err != nil {
+	if err := s.branches.LockBranch(ctx, root, name, userID); err != nil {
 		return nil, err
 	}
 
-	return s.store.ListBranches(ctx, root)
+	return s.branches.ListBranches(ctx, root)
 }
 
 func (s *BranchService) Unlock(
@@ -102,11 +102,11 @@ func (s *BranchService) Unlock(
 		return nil, err
 	}
 
-	if err := s.store.UnlockBranch(ctx, root, name); err != nil {
+	if err := s.branches.UnlockBranch(ctx, root, name); err != nil {
 		return nil, err
 	}
 
-	return s.store.ListBranches(ctx, root)
+	return s.branches.ListBranches(ctx, root)
 }
 
 func (s *BranchService) Delete(ctx context.Context, userID int64, path, name string) error {
@@ -124,7 +124,7 @@ func (s *BranchService) Delete(ctx context.Context, userID int64, path, name str
 		return err
 	}
 
-	locked, err := s.store.IsBranchLocked(ctx, root, name)
+	locked, err := s.branches.IsBranchLocked(ctx, root, name)
 
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func (s *BranchService) Delete(ctx context.Context, userID int64, path, name str
 		return err
 	}
 
-	_ = s.store.DeleteBranchRow(ctx, root, name)
+	_ = s.branches.DeleteBranchRow(ctx, root, name)
 
 	return nil
 }

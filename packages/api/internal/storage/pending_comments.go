@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 // PendingComment is a draft comment that exists before a review session has
@@ -43,19 +45,29 @@ type PendingCommentInput struct {
 	BodyHTML        string `json:"bodyHtml"`
 }
 
-func (s *Store) CreatePendingComment(ctx context.Context, userID int64, id string, input PendingCommentInput) (PendingComment, error) {
+type PendingCommentRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
+
+func newPendingCommentRepo(conn *sql.DB, queries *db.Queries, clk *clock) *PendingCommentRepo {
+	return &PendingCommentRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID int64, id string, input PendingCommentInput) (PendingComment, error) {
 	if userID == 0 {
 		return PendingComment{}, errors.New("user id is required")
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 	kind := input.ContextKind
 
 	if kind == "" {
 		kind = "working"
 	}
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO pending_comments (
 			id, user_id, repo_root, context_kind, context_sha,
 			file_path, diff_section, side, line_number,
@@ -90,10 +102,10 @@ func (s *Store) CreatePendingComment(ctx context.Context, userID int64, id strin
 	}, nil
 }
 
-func (s *Store) UpdatePendingComment(ctx context.Context, userID int64, id, bodyHTML string) (PendingComment, error) {
-	now := s.now().UTC().Format(time.RFC3339Nano)
+func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID int64, id, bodyHTML string) (PendingComment, error) {
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
-	result, err := s.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		UPDATE pending_comments SET body_html = ?, updated_at = ?
 		WHERE id = ? AND user_id = ?
 	`, bodyHTML, now, id, userID)
@@ -108,11 +120,11 @@ func (s *Store) UpdatePendingComment(ctx context.Context, userID int64, id, body
 		return PendingComment{}, sql.ErrNoRows
 	}
 
-	return s.GetPendingComment(ctx, userID, id)
+	return r.GetPendingComment(ctx, userID, id)
 }
 
-func (s *Store) GetPendingComment(ctx context.Context, userID int64, id string) (PendingComment, error) {
-	row := s.db.QueryRowContext(ctx, `
+func (r *PendingCommentRepo) GetPendingComment(ctx context.Context, userID int64, id string) (PendingComment, error) {
+	row := r.db.QueryRowContext(ctx, `
 		SELECT id, user_id, repo_root, context_kind, context_sha,
 			file_path, diff_section, side, line_number,
 			start_line_number, start_side,
@@ -124,18 +136,18 @@ func (s *Store) GetPendingComment(ctx context.Context, userID int64, id string) 
 	return scanPendingComment(row)
 }
 
-func (s *Store) DeletePendingComment(ctx context.Context, userID int64, id string) error {
-	_, err := s.db.ExecContext(ctx, "DELETE FROM pending_comments WHERE id = ? AND user_id = ?", id, userID)
+func (r *PendingCommentRepo) DeletePendingComment(ctx context.Context, userID int64, id string) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM pending_comments WHERE id = ? AND user_id = ?", id, userID)
 
 	return err
 }
 
-func (s *Store) ListPendingComments(ctx context.Context, userID int64, repoRoot, contextKind, contextSHA string) ([]PendingComment, error) {
+func (r *PendingCommentRepo) ListPendingComments(ctx context.Context, userID int64, repoRoot, contextKind, contextSHA string) ([]PendingComment, error) {
 	if contextKind == "" {
 		contextKind = "working"
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, user_id, repo_root, context_kind, context_sha,
 			file_path, diff_section, side, line_number,
 			start_line_number, start_side,
@@ -169,8 +181,8 @@ func (s *Store) ListPendingComments(ctx context.Context, userID int64, repoRoot,
 // PromotePendingComments moves every matching pending comment into
 // review_comments under the given review session. Runs in a single
 // transaction so a crash mid-promotion can't leave partial state.
-func (s *Store) PromotePendingComments(ctx context.Context, userID int64, reviewID string) (int, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
+func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID int64, reviewID string) (int, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
 
 	if err != nil {
 		return 0, err
@@ -192,7 +204,7 @@ func (s *Store) PromotePendingComments(ctx context.Context, userID int64, review
 		return 0, err
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	rows, err := tx.QueryContext(ctx, `
 		SELECT id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html

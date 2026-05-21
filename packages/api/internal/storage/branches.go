@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 type Branch struct {
@@ -15,12 +17,22 @@ type Branch struct {
 	LastSeenAt string `json:"lastSeenAt"`
 }
 
-func (s *Store) SyncBranches(ctx context.Context, path string, names []string) error {
+type BranchRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
+
+func newBranchRepo(conn *sql.DB, queries *db.Queries, clk *clock) *BranchRepo {
+	return &BranchRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *BranchRepo) SyncBranches(ctx context.Context, path string, names []string) error {
 	if path == "" {
 		return errors.New("repository path is required")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := r.db.BeginTx(ctx, nil)
 
 	if err != nil {
 		return err
@@ -28,7 +40,7 @@ func (s *Store) SyncBranches(ctx context.Context, path string, names []string) e
 
 	defer tx.Rollback()
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	for _, name := range names {
 		if name == "" {
@@ -54,12 +66,12 @@ func (s *Store) SyncBranches(ctx context.Context, path string, names []string) e
 	return tx.Commit()
 }
 
-func (s *Store) ListBranches(ctx context.Context, path string) ([]Branch, error) {
+func (r *BranchRepo) ListBranches(ctx context.Context, path string) ([]Branch, error) {
 	if path == "" {
 		return nil, errors.New("repository path is required")
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT name, locked, locked_by, locked_at, last_seen_at
 		FROM branches
 		WHERE repo_path = ?
@@ -99,7 +111,7 @@ func (s *Store) ListBranches(ctx context.Context, path string) ([]Branch, error)
 	return branches, rows.Err()
 }
 
-func (s *Store) LockBranch(ctx context.Context, path, name string, userID int64) error {
+func (r *BranchRepo) LockBranch(ctx context.Context, path, name string, userID int64) error {
 	if path == "" || name == "" {
 		return errors.New("repository path and branch name are required")
 	}
@@ -108,8 +120,8 @@ func (s *Store) LockBranch(ctx context.Context, path, name string, userID int64)
 		return errors.New("user id is required")
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
-	result, err := s.db.ExecContext(ctx, `
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.ExecContext(ctx, `
 		UPDATE branches
 		SET locked = 1, locked_by = ?, locked_at = ?
 		WHERE repo_path = ? AND name = ?
@@ -132,12 +144,12 @@ func (s *Store) LockBranch(ctx context.Context, path, name string, userID int64)
 	return nil
 }
 
-func (s *Store) UnlockBranch(ctx context.Context, path, name string) error {
+func (r *BranchRepo) UnlockBranch(ctx context.Context, path, name string) error {
 	if path == "" || name == "" {
 		return errors.New("repository path and branch name are required")
 	}
 
-	result, err := s.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		UPDATE branches
 		SET locked = 0, locked_by = NULL, locked_at = NULL
 		WHERE repo_path = ? AND name = ?
@@ -160,9 +172,9 @@ func (s *Store) UnlockBranch(ctx context.Context, path, name string) error {
 	return nil
 }
 
-func (s *Store) IsBranchLocked(ctx context.Context, path, name string) (bool, error) {
+func (r *BranchRepo) IsBranchLocked(ctx context.Context, path, name string) (bool, error) {
 	var locked int
-	err := s.db.QueryRowContext(ctx, `
+	err := r.db.QueryRowContext(ctx, `
 		SELECT locked FROM branches WHERE repo_path = ? AND name = ?
 	`, path, name).Scan(&locked)
 
@@ -177,8 +189,8 @@ func (s *Store) IsBranchLocked(ctx context.Context, path, name string) (bool, er
 	return locked != 0, nil
 }
 
-func (s *Store) DeleteBranchRow(ctx context.Context, path, name string) error {
-	_, err := s.db.ExecContext(ctx, `
+func (r *BranchRepo) DeleteBranchRow(ctx context.Context, path, name string) error {
+	_, err := r.db.ExecContext(ctx, `
 		DELETE FROM branches WHERE repo_path = ? AND name = ?
 	`, path, name)
 

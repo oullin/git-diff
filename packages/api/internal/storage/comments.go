@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 type ReviewCommentInput struct {
@@ -34,14 +36,28 @@ type ReviewComment struct {
 	DeletedAt       string `json:"deletedAt,omitempty"`
 }
 
-func (s *Store) CreateReviewComment(ctx context.Context, reviewID string, commentID string, input ReviewCommentInput) (ReviewComment, error) {
-	now := s.now().UTC().Format(time.RFC3339Nano)
+// CommentRepo owns review_comments. It also writes timeline events as side
+// effects via a ReviewEventWriter so comment mutations and review-event
+// inserts stay consistent without coupling to the concrete ReviewRepo.
+type CommentRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+	events  ReviewEventWriter
+}
+
+func newCommentRepo(conn *sql.DB, queries *db.Queries, clk *clock, events ReviewEventWriter) *CommentRepo {
+	return &CommentRepo{db: conn, queries: queries, clk: clk, events: events}
+}
+
+func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, commentID string, input ReviewCommentInput) (ReviewComment, error) {
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	if input.AuthorLabel == "" {
 		input.AuthorLabel = "You"
 	}
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO review_comments (
 			id, review_id, file_path, diff_section, side, line_number,
 			start_line_number, start_side,
@@ -55,7 +71,7 @@ func (s *Store) CreateReviewComment(ctx context.Context, reviewID string, commen
 		return ReviewComment{}, err
 	}
 
-	_, _ = s.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_added", FilePath: input.FilePath, Message: fmt.Sprintf("Commented on line %d", input.LineNumber)})
+	_, _ = r.events.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_added", FilePath: input.FilePath, Message: fmt.Sprintf("Commented on line %d", input.LineNumber)})
 
 	return ReviewComment{
 		ID: commentID, ReviewID: reviewID, FilePath: input.FilePath, DiffSection: input.DiffSection,
@@ -65,9 +81,9 @@ func (s *Store) CreateReviewComment(ctx context.Context, reviewID string, commen
 	}, nil
 }
 
-func (s *Store) UpdateReviewComment(ctx context.Context, reviewID string, commentID string, bodyHTML string) (ReviewComment, error) {
-	now := s.now().UTC().Format(time.RFC3339Nano)
-	_, err := s.db.ExecContext(ctx, `
+func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID string, commentID string, bodyHTML string) (ReviewComment, error) {
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE review_comments
 		SET body_html = ?, updated_at = ?, deleted_at = NULL
 		WHERE id = ? AND review_id = ?
@@ -77,21 +93,21 @@ func (s *Store) UpdateReviewComment(ctx context.Context, reviewID string, commen
 		return ReviewComment{}, err
 	}
 
-	comment, err := s.GetReviewComment(ctx, reviewID, commentID)
+	comment, err := r.GetReviewComment(ctx, reviewID, commentID)
 
 	if err != nil {
 		return ReviewComment{}, err
 	}
 
-	_, _ = s.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_edited", FilePath: comment.FilePath, Message: fmt.Sprintf("Edited comment on line %d", comment.LineNumber)})
+	_, _ = r.events.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_edited", FilePath: comment.FilePath, Message: fmt.Sprintf("Edited comment on line %d", comment.LineNumber)})
 
 	return comment, nil
 }
 
-func (s *Store) DeleteReviewComment(ctx context.Context, reviewID string, commentID string) error {
-	now := s.now().UTC().Format(time.RFC3339Nano)
-	comment, _ := s.GetReviewComment(ctx, reviewID, commentID)
-	_, err := s.db.ExecContext(ctx, `
+func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID string, commentID string) error {
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	comment, _ := r.GetReviewComment(ctx, reviewID, commentID)
+	_, err := r.db.ExecContext(ctx, `
 		UPDATE review_comments
 		SET deleted_at = ?, updated_at = ?
 		WHERE id = ? AND review_id = ?
@@ -102,14 +118,14 @@ func (s *Store) DeleteReviewComment(ctx context.Context, reviewID string, commen
 	}
 
 	if comment.ID != "" {
-		_, _ = s.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_deleted", FilePath: comment.FilePath, Message: fmt.Sprintf("Deleted comment on line %d", comment.LineNumber)})
+		_, _ = r.events.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_deleted", FilePath: comment.FilePath, Message: fmt.Sprintf("Deleted comment on line %d", comment.LineNumber)})
 	}
 
 	return nil
 }
 
-func (s *Store) GetReviewComment(ctx context.Context, reviewID string, commentID string) (ReviewComment, error) {
-	row := s.db.QueryRowContext(ctx, `
+func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID string, commentID string) (ReviewComment, error) {
+	row := r.db.QueryRowContext(ctx, `
 		SELECT id, review_id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html, created_at, updated_at, deleted_at
 		FROM review_comments
 		WHERE id = ? AND review_id = ?
@@ -118,8 +134,8 @@ func (s *Store) GetReviewComment(ctx context.Context, reviewID string, commentID
 	return scanComment(row)
 }
 
-func (s *Store) ListReviewComments(ctx context.Context, reviewID string) ([]ReviewComment, error) {
-	rows, err := s.db.QueryContext(ctx, `
+func (r *CommentRepo) ListReviewComments(ctx context.Context, reviewID string) ([]ReviewComment, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, review_id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html, created_at, updated_at, deleted_at
 		FROM review_comments
 		WHERE review_id = ? AND deleted_at IS NULL

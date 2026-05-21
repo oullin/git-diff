@@ -46,23 +46,23 @@ func Serve(args []string, cfg ServeConfig) int {
 
 	osUsername := resolveOSUsername()
 
-	if _, err := store.EnsureUser(context.Background(), osUsername); err != nil {
+	if _, err := store.Users.EnsureUser(context.Background(), osUsername); err != nil {
 		fmt.Fprintf(cfg.Stderr, "seed os user %q: %v\n", osUsername, err)
 
 		return 1
 	}
 
-	authSvc := service.NewAuthService(store, service.AuthConfig{
+	authSvc := service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
 		BcryptCost:        bcryptCost,
 		SessionTTL:        sessionTTL,
 		MinPasswordLength: minPasswordLength,
 	})
-	reviewSvc := service.NewReviewService(store)
-	pendingCommentSvc := service.NewPendingCommentService(store)
-	repositorySvc := service.NewRepositoryService(store)
-	preferenceSvc := service.NewPreferenceService(store)
-	branchSvc := service.NewBranchService(store)
-	walkthroughSvc := service.NewWalkthroughService(store)
+	reviewSvc := service.NewReviewService(store.Reviews, store.Comments)
+	pendingCommentSvc := service.NewPendingCommentService(store.PendingComments)
+	repositorySvc := service.NewRepositoryService(store.Repos)
+	preferenceSvc := service.NewPreferenceService(store.Preferences)
+	branchSvc := service.NewBranchService(store.Branches)
+	walkthroughSvc := service.NewWalkthroughService(store.Walkthroughs, store.Preferences)
 
 	appServer := Server{
 		Home:                  cfg.Home,

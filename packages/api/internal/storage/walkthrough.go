@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 // WalkthroughRecord is the cached output of an LLM walkthrough for a specific
@@ -24,8 +26,18 @@ type WalkthroughRecord struct {
 	GeneratedAt string            `json:"generatedAt"`
 }
 
-func (s *Store) GetWalkthrough(ctx context.Context, repoRoot, contextKind, contextSHA string) (WalkthroughRecord, bool, error) {
-	row := s.db.QueryRowContext(ctx, `
+type WalkthroughRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
+
+func newWalkthroughRepo(conn *sql.DB, queries *db.Queries, clk *clock) *WalkthroughRepo {
+	return &WalkthroughRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *WalkthroughRepo) GetWalkthrough(ctx context.Context, repoRoot, contextKind, contextSHA string) (WalkthroughRecord, bool, error) {
+	row := r.db.QueryRowContext(ctx, `
 		SELECT repo_root, context_kind, context_sha, fingerprint, model_id, order_json, notes_json, summary, generated_at
 		FROM walkthroughs
 		WHERE repo_root = ? AND context_kind = ? AND context_sha = ?
@@ -66,7 +78,7 @@ func (s *Store) GetWalkthrough(ctx context.Context, repoRoot, contextKind, conte
 	return record, true, nil
 }
 
-func (s *Store) UpsertWalkthrough(ctx context.Context, record WalkthroughRecord) error {
+func (r *WalkthroughRepo) UpsertWalkthrough(ctx context.Context, record WalkthroughRecord) error {
 	orderJSON, err := json.Marshal(record.Order)
 
 	if err != nil {
@@ -79,7 +91,7 @@ func (s *Store) UpsertWalkthrough(ctx context.Context, record WalkthroughRecord)
 		return fmt.Errorf("encode walkthrough notes: %w", err)
 	}
 
-	_, err = s.db.ExecContext(ctx, `
+	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO walkthroughs (
 			repo_root, context_kind, context_sha, fingerprint, model_id,
 			order_json, notes_json, summary, generated_at

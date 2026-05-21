@@ -11,11 +11,11 @@ import (
 // behaviour; the service exists so handlers can drop the store-handle
 // boilerplate.
 type PreferenceService struct {
-	store *storage.Store
+	preferences *storage.PreferenceRepo
 }
 
-func NewPreferenceService(store *storage.Store) *PreferenceService {
-	return &PreferenceService{store: store}
+func NewPreferenceService(preferences *storage.PreferenceRepo) *PreferenceService {
+	return &PreferenceService{preferences: preferences}
 }
 
 func (s *PreferenceService) Get(ctx context.Context, userID int64) (storage.UIPreferences, error) {
@@ -23,7 +23,7 @@ func (s *PreferenceService) Get(ctx context.Context, userID int64) (storage.UIPr
 		return storage.UIPreferences{}, ErrAuthenticationRequired
 	}
 
-	return s.store.GetUIPreferences(ctx, userID)
+	return s.preferences.GetUIPreferences(ctx, userID)
 }
 
 func (s *PreferenceService) Save(
@@ -35,5 +35,5 @@ func (s *PreferenceService) Save(
 		return storage.UIPreferences{}, ErrAuthenticationRequired
 	}
 
-	return s.store.SaveUIPreferences(ctx, userID, patch)
+	return s.preferences.SaveUIPreferences(ctx, userID, patch)
 }

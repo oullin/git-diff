@@ -10,12 +10,12 @@ import (
 
 var ErrRepositoryNotFound = errors.New("repository not found")
 
-func (s *Store) ListRepositoryCollaborators(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
-	if err := s.assertRepositoryOwner(ctx, ownerID, path); err != nil {
+func (r *RepoRepo) ListRepositoryCollaborators(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
+	if err := r.assertRepositoryOwner(ctx, ownerID, path); err != nil {
 		return nil, err
 	}
 
-	rows, err := s.db.QueryContext(ctx, `
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT ru.user_id, u.os_username, u.display_name, ru.role, ru.granted_at
 		FROM repository_users ru
 		JOIN users u ON u.id = ru.user_id
@@ -44,7 +44,7 @@ func (s *Store) ListRepositoryCollaborators(ctx context.Context, ownerID int64, 
 	return collaborators, rows.Err()
 }
 
-func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64, role string) (RepositoryCollaborator, error) {
+func (r *RepoRepo) GrantRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64, role string) (RepositoryCollaborator, error) {
 	if userID == 0 {
 		return RepositoryCollaborator{}, errors.New("user id is required")
 	}
@@ -53,7 +53,7 @@ func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path s
 		return RepositoryCollaborator{}, fmt.Errorf("invalid role %q", role)
 	}
 
-	if err := s.assertRepositoryOwner(ctx, ownerID, path); err != nil {
+	if err := r.assertRepositoryOwner(ctx, ownerID, path); err != nil {
 		return RepositoryCollaborator{}, err
 	}
 
@@ -61,9 +61,9 @@ func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path s
 		return RepositoryCollaborator{}, errors.New("owner cannot also be a collaborator")
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
-	if _, err := s.db.ExecContext(ctx, `
+	if _, err := r.db.ExecContext(ctx, `
 		INSERT INTO repository_users (repo_path, user_id, role, granted_at)
 		VALUES (?, ?, ?, ?)
 		ON CONFLICT(repo_path, user_id) DO UPDATE SET
@@ -73,7 +73,7 @@ func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path s
 		return RepositoryCollaborator{}, err
 	}
 
-	row := s.db.QueryRowContext(ctx, `
+	row := r.db.QueryRowContext(ctx, `
 		SELECT ru.user_id, u.os_username, u.display_name, ru.role, ru.granted_at
 		FROM repository_users ru
 		JOIN users u ON u.id = ru.user_id
@@ -89,23 +89,23 @@ func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path s
 	return collaborator, nil
 }
 
-func (s *Store) RevokeRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64) error {
+func (r *RepoRepo) RevokeRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64) error {
 	if userID == 0 {
 		return errors.New("user id is required")
 	}
 
-	if err := s.assertRepositoryOwner(ctx, ownerID, path); err != nil {
+	if err := r.assertRepositoryOwner(ctx, ownerID, path); err != nil {
 		return err
 	}
 
-	_, err := s.db.ExecContext(ctx, `
+	_, err := r.db.ExecContext(ctx, `
 		DELETE FROM repository_users WHERE repo_path = ? AND user_id = ?
 	`, path, userID)
 
 	return err
 }
 
-func (s *Store) assertRepositoryOwner(ctx context.Context, ownerID int64, path string) error {
+func (r *RepoRepo) assertRepositoryOwner(ctx context.Context, ownerID int64, path string) error {
 	if ownerID == 0 {
 		return errors.New("user id is required")
 	}
@@ -115,7 +115,7 @@ func (s *Store) assertRepositoryOwner(ctx context.Context, ownerID int64, path s
 	}
 
 	var actualOwner int64
-	err := s.db.QueryRowContext(ctx, `SELECT owner_id FROM repositories WHERE path = ?`, path).Scan(&actualOwner)
+	err := r.db.QueryRowContext(ctx, `SELECT owner_id FROM repositories WHERE path = ?`, path).Scan(&actualOwner)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrRepositoryNotFound

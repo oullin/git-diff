@@ -15,11 +15,12 @@ import (
 // the auto-event side effects so handlers can stay thin (decode -> dispatch
 // -> writeJSON).
 type ReviewService struct {
-	store *storage.Store
+	reviews  *storage.ReviewRepo
+	comments *storage.CommentRepo
 }
 
-func NewReviewService(store *storage.Store) *ReviewService {
-	return &ReviewService{store: store}
+func NewReviewService(reviews *storage.ReviewRepo, comments *storage.CommentRepo) *ReviewService {
+	return &ReviewService{reviews: reviews, comments: comments}
 }
 
 // ErrAuthenticationRequired signals that an action needs a logged-in user;
@@ -42,7 +43,7 @@ func (s *ReviewService) Create(
 		input.ID = randomID("review")
 	}
 
-	return s.store.CreateReview(ctx, userID, input)
+	return s.reviews.CreateReview(ctx, userID, input)
 }
 
 // List returns up to `limit` review sessions owned by `userID`, most
@@ -60,12 +61,12 @@ func (s *ReviewService) List(
 		limit = 50
 	}
 
-	return s.store.ListReviews(ctx, userID, limit)
+	return s.reviews.ListReviews(ctx, userID, limit)
 }
 
 // Detail returns the session, its events, and its comments by review id.
 func (s *ReviewService) Detail(ctx context.Context, id string) (storage.ReviewDetail, error) {
-	return s.store.ReviewDetail(ctx, id)
+	return s.reviews.ReviewDetail(ctx, s.comments, id)
 }
 
 // AddEvent appends a review-timeline event to the session.
@@ -74,7 +75,7 @@ func (s *ReviewService) AddEvent(
 	reviewID string,
 	input storage.ReviewEventInput,
 ) (storage.ReviewEvent, error) {
-	return s.store.AddReviewEvent(ctx, reviewID, input)
+	return s.reviews.AddReviewEvent(ctx, reviewID, input)
 }
 
 // CreateComment posts a new comment under the review session and
@@ -85,7 +86,7 @@ func (s *ReviewService) CreateComment(
 	reviewID string,
 	input storage.ReviewCommentInput,
 ) (storage.ReviewComment, error) {
-	return s.store.CreateReviewComment(ctx, reviewID, randomID("comment"), input)
+	return s.comments.CreateReviewComment(ctx, reviewID, randomID("comment"), input)
 }
 
 // UpdateComment rewrites the body of an existing comment and emits a
@@ -94,12 +95,12 @@ func (s *ReviewService) UpdateComment(
 	ctx context.Context,
 	reviewID, commentID, bodyHTML string,
 ) (storage.ReviewComment, error) {
-	return s.store.UpdateReviewComment(ctx, reviewID, commentID, bodyHTML)
+	return s.comments.UpdateReviewComment(ctx, reviewID, commentID, bodyHTML)
 }
 
 // DeleteComment soft-deletes the comment and emits a "comment_deleted" event.
 func (s *ReviewService) DeleteComment(ctx context.Context, reviewID, commentID string) error {
-	return s.store.DeleteReviewComment(ctx, reviewID, commentID)
+	return s.comments.DeleteReviewComment(ctx, reviewID, commentID)
 }
 
 func randomID(prefix string) string {

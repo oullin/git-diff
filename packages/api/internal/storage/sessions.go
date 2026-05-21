@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 type Session struct {
@@ -21,19 +23,29 @@ type Session struct {
 	LastUsedAt string `json:"lastUsedAt"`
 }
 
-func (s *Store) CreateSession(ctx context.Context, userID int64, ttl time.Duration) (Session, error) {
+type SessionRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
+
+func newSessionRepo(conn *sql.DB, queries *db.Queries, clk *clock) *SessionRepo {
+	return &SessionRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *SessionRepo) CreateSession(ctx context.Context, userID int64, ttl time.Duration) (Session, error) {
 	rawToken, err := generateToken(32)
 
 	if err != nil {
 		return Session{}, fmt.Errorf("generate session token: %w", err)
 	}
 
-	now := s.now().UTC()
+	now := r.clk.now().UTC()
 	created := now.Format(time.RFC3339Nano)
 	expires := now.Add(ttl).Format(time.RFC3339Nano)
 	stored := hashToken(rawToken)
 
-	if _, err := s.db.ExecContext(ctx, `
+	if _, err := r.db.ExecContext(ctx, `
 		INSERT INTO user_sessions (token, user_id, created_at, expires_at, last_used_at)
 		VALUES (?, ?, ?, ?, ?)
 	`, stored, userID, created, expires, created); err != nil {
@@ -49,7 +61,10 @@ func (s *Store) CreateSession(ctx context.Context, userID int64, ttl time.Durati
 	}, nil
 }
 
-func (s *Store) ResumeSession(ctx context.Context, rawToken string) (User, error) {
+// ResumeSession verifies the token, updates last_used_at, and returns the
+// associated user. The UserRepo is provided so callers wire the lookup
+// explicitly instead of through a god-object Store.
+func (r *SessionRepo) ResumeSession(ctx context.Context, users *UserRepo, rawToken string) (User, error) {
 	rawToken = strings.TrimSpace(rawToken)
 
 	if rawToken == "" {
@@ -57,7 +72,7 @@ func (s *Store) ResumeSession(ctx context.Context, rawToken string) (User, error
 	}
 
 	stored := hashToken(rawToken)
-	row := s.db.QueryRowContext(ctx, `
+	row := r.db.QueryRowContext(ctx, `
 		SELECT user_id, expires_at
 		FROM user_sessions
 		WHERE token = ?
@@ -77,29 +92,29 @@ func (s *Store) ResumeSession(ctx context.Context, rawToken string) (User, error
 
 	expiry, err := time.Parse(time.RFC3339Nano, expiresAt)
 
-	if err == nil && s.now().After(expiry) {
-		_, _ = s.db.ExecContext(ctx, `DELETE FROM user_sessions WHERE token = ?`, stored)
+	if err == nil && r.clk.now().After(expiry) {
+		_, _ = r.db.ExecContext(ctx, `DELETE FROM user_sessions WHERE token = ?`, stored)
 
 		return User{}, ErrSessionNotFound
 	}
 
-	if _, err := s.db.ExecContext(ctx, `
+	if _, err := r.db.ExecContext(ctx, `
 		UPDATE user_sessions SET last_used_at = ? WHERE token = ?
-	`, s.now().UTC().Format(time.RFC3339Nano), stored); err != nil {
+	`, r.clk.now().UTC().Format(time.RFC3339Nano), stored); err != nil {
 		return User{}, err
 	}
 
-	return s.GetUserByID(ctx, userID)
+	return users.GetUserByID(ctx, userID)
 }
 
-func (s *Store) DeleteSession(ctx context.Context, rawToken string) error {
+func (r *SessionRepo) DeleteSession(ctx context.Context, rawToken string) error {
 	rawToken = strings.TrimSpace(rawToken)
 
 	if rawToken == "" {
 		return nil
 	}
 
-	_, err := s.db.ExecContext(ctx, `DELETE FROM user_sessions WHERE token = ?`, hashToken(rawToken))
+	_, err := r.db.ExecContext(ctx, `DELETE FROM user_sessions WHERE token = ?`, hashToken(rawToken))
 
 	return err
 }

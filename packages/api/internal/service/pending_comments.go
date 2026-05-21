@@ -15,11 +15,11 @@ import (
 // proxies to it but normalises validation + id generation so handlers
 // stop hand-rolling them.
 type PendingCommentService struct {
-	store *storage.Store
+	pending *storage.PendingCommentRepo
 }
 
-func NewPendingCommentService(store *storage.Store) *PendingCommentService {
-	return &PendingCommentService{store: store}
+func NewPendingCommentService(pending *storage.PendingCommentRepo) *PendingCommentService {
+	return &PendingCommentService{pending: pending}
 }
 
 // ErrInvalidCommentInput signals that filePath or diffSection were missing
@@ -39,7 +39,7 @@ func (s *PendingCommentService) List(
 		return nil, ErrAuthenticationRequired
 	}
 
-	return s.store.ListPendingComments(ctx, userID, repoRoot, kind, sha)
+	return s.pending.ListPendingComments(ctx, userID, repoRoot, kind, sha)
 }
 
 func (s *PendingCommentService) Create(
@@ -60,7 +60,7 @@ func (s *PendingCommentService) Create(
 		return storage.PendingComment{}, ErrInvalidCommentInput
 	}
 
-	return s.store.CreatePendingComment(ctx, userID, "pending-"+randID(8), input)
+	return s.pending.CreatePendingComment(ctx, userID, "pending-"+randID(8), input)
 }
 
 func (s *PendingCommentService) Update(
@@ -72,7 +72,7 @@ func (s *PendingCommentService) Update(
 		return storage.PendingComment{}, ErrAuthenticationRequired
 	}
 
-	return s.store.UpdatePendingComment(ctx, userID, id, bodyHTML)
+	return s.pending.UpdatePendingComment(ctx, userID, id, bodyHTML)
 }
 
 func (s *PendingCommentService) Delete(ctx context.Context, userID int64, id string) error {
@@ -80,7 +80,7 @@ func (s *PendingCommentService) Delete(ctx context.Context, userID int64, id str
 		return ErrAuthenticationRequired
 	}
 
-	return s.store.DeletePendingComment(ctx, userID, id)
+	return s.pending.DeletePendingComment(ctx, userID, id)
 }
 
 func (s *PendingCommentService) Promote(
@@ -96,7 +96,7 @@ func (s *PendingCommentService) Promote(
 		return 0, ErrReviewIDRequired
 	}
 
-	return s.store.PromotePendingComments(ctx, userID, reviewID)
+	return s.pending.PromotePendingComments(ctx, userID, reviewID)
 }
 
 func randID(n int) string {

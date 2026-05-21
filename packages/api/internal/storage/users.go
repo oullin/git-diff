@@ -2,10 +2,13 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
 type User struct {
@@ -18,27 +21,37 @@ type User struct {
 	PasswordHash string `json:"-"`
 }
 
-func (s *Store) EnsureUser(ctx context.Context, osUsername string) (User, error) {
+type UserRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
+
+func newUserRepo(conn *sql.DB, queries *db.Queries, clk *clock) *UserRepo {
+	return &UserRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, error) {
 	osUsername = strings.TrimSpace(osUsername)
 
 	if osUsername == "" {
 		return User{}, errors.New("os username is required")
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
-	if _, err := s.db.ExecContext(ctx, `
+	if _, err := r.db.ExecContext(ctx, `
 		INSERT OR IGNORE INTO users (os_username, display_name, password_hash, created_at, last_login_at)
 		VALUES (?, ?, '', ?, '')
 	`, osUsername, osUsername, now); err != nil {
 		return User{}, fmt.Errorf("seed user: %w", err)
 	}
 
-	return s.GetUserByOSUsername(ctx, osUsername)
+	return r.GetUserByOSUsername(ctx, osUsername)
 }
 
-func (s *Store) GetUserByOSUsername(ctx context.Context, osUsername string) (User, error) {
-	row := s.db.QueryRowContext(ctx, `
+func (r *UserRepo) GetUserByOSUsername(ctx context.Context, osUsername string) (User, error) {
+	row := r.db.QueryRowContext(ctx, `
 		SELECT id, os_username, display_name, password_hash, created_at, last_login_at
 		FROM users
 		WHERE os_username = ?
@@ -47,8 +60,8 @@ func (s *Store) GetUserByOSUsername(ctx context.Context, osUsername string) (Use
 	return scanUser(row)
 }
 
-func (s *Store) GetUserByID(ctx context.Context, id int64) (User, error) {
-	row := s.db.QueryRowContext(ctx, `
+func (r *UserRepo) GetUserByID(ctx context.Context, id int64) (User, error) {
+	row := r.db.QueryRowContext(ctx, `
 		SELECT id, os_username, display_name, password_hash, created_at, last_login_at
 		FROM users
 		WHERE id = ?
@@ -57,21 +70,21 @@ func (s *Store) GetUserByID(ctx context.Context, id int64) (User, error) {
 	return scanUser(row)
 }
 
-func (s *Store) SetPasswordHash(ctx context.Context, userID int64, hash string) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
+func (r *UserRepo) SetPasswordHash(ctx context.Context, userID int64, hash string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
 
 	return err
 }
 
-func (s *Store) TouchUserLogin(ctx context.Context, userID int64) error {
-	now := s.now().UTC().Format(time.RFC3339Nano)
-	_, err := s.db.ExecContext(ctx, `UPDATE users SET last_login_at = ? WHERE id = ?`, now, userID)
+func (r *UserRepo) TouchUserLogin(ctx context.Context, userID int64) error {
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	_, err := r.db.ExecContext(ctx, `UPDATE users SET last_login_at = ? WHERE id = ?`, now, userID)
 
 	return err
 }
 
-func (s *Store) WipeUser(ctx context.Context, userID int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
+func (r *UserRepo) WipeUser(ctx context.Context, userID int64) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
 
 	return err
 }

@@ -12,11 +12,11 @@ import (
 // management lives alongside since both surfaces share the owner-check
 // contract enforced by the storage layer.
 type RepositoryService struct {
-	store *storage.Store
+	repos *storage.RepoRepo
 }
 
-func NewRepositoryService(store *storage.Store) *RepositoryService {
-	return &RepositoryService{store: store}
+func NewRepositoryService(repos *storage.RepoRepo) *RepositoryService {
+	return &RepositoryService{repos: repos}
 }
 
 // ErrRepositoryPathRequired signals that a path query parameter was
@@ -31,7 +31,7 @@ func (s *RepositoryService) List(
 		return nil, ErrAuthenticationRequired
 	}
 
-	return s.store.ListRepositoriesForUser(ctx, userID)
+	return s.repos.ListRepositoriesForUser(ctx, userID)
 }
 
 func (s *RepositoryService) Upsert(
@@ -43,7 +43,7 @@ func (s *RepositoryService) Upsert(
 		return storage.Repository{}, ErrAuthenticationRequired
 	}
 
-	return s.store.UpsertRepository(ctx, userID, path, name)
+	return s.repos.UpsertRepository(ctx, userID, path, name)
 }
 
 func (s *RepositoryService) Remove(ctx context.Context, userID int64, path string) error {
@@ -55,7 +55,7 @@ func (s *RepositoryService) Remove(ctx context.Context, userID int64, path strin
 		return ErrRepositoryPathRequired
 	}
 
-	return s.store.RemoveRepository(ctx, userID, path)
+	return s.repos.RemoveRepository(ctx, userID, path)
 }
 
 func (s *RepositoryService) ListCollaborators(
@@ -67,7 +67,7 @@ func (s *RepositoryService) ListCollaborators(
 		return nil, ErrAuthenticationRequired
 	}
 
-	return s.store.ListRepositoryCollaborators(ctx, userID, path)
+	return s.repos.ListRepositoryCollaborators(ctx, userID, path)
 }
 
 func (s *RepositoryService) GrantCollaborator(
@@ -81,7 +81,7 @@ func (s *RepositoryService) GrantCollaborator(
 		return storage.RepositoryCollaborator{}, ErrAuthenticationRequired
 	}
 
-	return s.store.GrantRepositoryAccess(ctx, userID, path, targetUserID, role)
+	return s.repos.GrantRepositoryAccess(ctx, userID, path, targetUserID, role)
 }
 
 func (s *RepositoryService) RevokeCollaborator(
@@ -94,5 +94,5 @@ func (s *RepositoryService) RevokeCollaborator(
 		return ErrAuthenticationRequired
 	}
 
-	return s.store.RevokeRepositoryAccess(ctx, userID, path, targetUserID)
+	return s.repos.RevokeRepositoryAccess(ctx, userID, path, targetUserID)
 }
