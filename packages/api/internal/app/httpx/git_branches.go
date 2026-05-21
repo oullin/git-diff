@@ -15,7 +15,7 @@ func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 		path = s.Repo
 	}
 
-	result, err := s.BranchService.List(r.Context(), path)
+	result, err := s.Services.Branches().List(r.Context(), path)
 
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)

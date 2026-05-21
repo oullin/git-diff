@@ -37,7 +37,7 @@ func (s Server) lockBranch(w http.ResponseWriter, r *http.Request) {
 		body.Path = s.Repo
 	}
 
-	branches, err := s.BranchService.Lock(r.Context(), s.Auth.CurrentUserID(), body.Path, body.Name)
+	branches, err := s.Services.Branches().Lock(r.Context(), s.Auth.CurrentUserID(), body.Path, body.Name)
 
 	if err != nil {
 		s.handleBranchError(w, err)
@@ -64,7 +64,7 @@ func (s Server) unlockBranch(w http.ResponseWriter, r *http.Request) {
 		body.Path = s.Repo
 	}
 
-	branches, err := s.BranchService.Unlock(r.Context(), s.Auth.CurrentUserID(), body.Path, body.Name)
+	branches, err := s.Services.Branches().Unlock(r.Context(), s.Auth.CurrentUserID(), body.Path, body.Name)
 
 	if err != nil {
 		s.handleBranchError(w, err)
@@ -82,7 +82,7 @@ func (s Server) deleteBranch(w http.ResponseWriter, r *http.Request) {
 		path = s.Repo
 	}
 
-	err := s.BranchService.Delete(
+	err := s.Services.Branches().Delete(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		path,

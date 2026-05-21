@@ -56,7 +56,7 @@ func (s Server) walkthroughGenerate(w http.ResponseWriter, r *http.Request) {
 		userID = s.Auth.CurrentUserID()
 	}
 
-	result, err := s.WalkthroughService.Generate(r.Context(), service.GenerateRequest{
+	result, err := s.Services.Walkthroughs().Generate(r.Context(), service.GenerateRequest{
 		State:      state,
 		Kind:       req.Kind,
 		ContextSHA: req.SHA,

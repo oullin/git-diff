@@ -53,7 +53,7 @@ func userToResponse(user storage.User) authUserResponse {
 }
 
 func (s Server) requireAuthSetup(w http.ResponseWriter) bool {
-	if s.Auth == nil || s.AuthService == nil {
+	if s.Auth == nil || s.Services.Auth() == nil {
 		writeError(w, http.StatusInternalServerError, errors.New("auth not initialized"))
 
 		return false
@@ -67,7 +67,7 @@ func (s Server) authState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.AuthService.State(r.Context(), s.Auth.OSUsername())
+	user, err := s.Services.Auth().State(r.Context(), s.Auth.OSUsername())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("read user: %w", err))
@@ -95,7 +95,7 @@ func (s Server) authSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, session, err := s.AuthService.Setup(r.Context(), s.Auth.OSUsername(), req.Password)
+	user, session, err := s.Services.Auth().Setup(r.Context(), s.Auth.OSUsername(), req.Password)
 
 	switch {
 	case errors.Is(err, service.ErrPasswordTooShort):
@@ -133,7 +133,7 @@ func (s Server) authLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, session, err := s.AuthService.Login(r.Context(), s.Auth.OSUsername(), req.Password, req.Remember)
+	user, session, err := s.Services.Auth().Login(r.Context(), s.Auth.OSUsername(), req.Password, req.Remember)
 
 	switch {
 	case errors.Is(err, service.ErrPasswordNotSet):
@@ -175,7 +175,7 @@ func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.AuthService.Resume(r.Context(), req.Token)
+	user, err := s.Services.Auth().Resume(r.Context(), req.Token)
 
 	switch {
 	case errors.Is(err, storage.ErrSessionNotFound):
@@ -198,7 +198,7 @@ func (s Server) authLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = s.AuthService.Logout(r.Context(), s.Auth.CurrentToken())
+	_ = s.Services.Auth().Logout(r.Context(), s.Auth.CurrentToken())
 	s.Auth.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
@@ -217,7 +217,7 @@ func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.AuthService.Wipe(r.Context(), s.Auth.OSUsername(), req.OSUsername)
+	err := s.Services.Auth().Wipe(r.Context(), s.Auth.OSUsername(), req.OSUsername)
 
 	switch {
 	case errors.Is(err, service.ErrCannotWipeOtherUser):

@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/gocanto/git-diff/internal/app/setting"
-	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
@@ -52,30 +51,14 @@ func Serve(args []string, cfg ServeConfig) int {
 		return 1
 	}
 
-	authSvc := service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
-		BcryptCost:        bcryptCost,
-		SessionTTL:        sessionTTL,
-		MinPasswordLength: minPasswordLength,
-	})
-	reviewSvc := service.NewReviewService(store.Reviews, store.Comments)
-	pendingCommentSvc := service.NewPendingCommentService(store.PendingComments)
-	repositorySvc := service.NewRepositoryService(store.Repos)
-	preferenceSvc := service.NewPreferenceService(store.Preferences)
-	branchSvc := service.NewBranchService(store.Branches)
-	walkthroughSvc := service.NewWalkthroughService(store.Walkthroughs, store.Preferences)
+	registry := newServiceRegistry(store)
 
 	appServer := Server{
-		Home:                  cfg.Home,
-		Repo:                  settings.RepoRoot,
-		Settings:              settings,
-		Auth:                  NewAuthState(osUsername),
-		AuthService:           authSvc,
-		ReviewService:         reviewSvc,
-		PendingCommentService: pendingCommentSvc,
-		RepositoryService:     repositorySvc,
-		PreferenceService:     preferenceSvc,
-		BranchService:         branchSvc,
-		WalkthroughService:    walkthroughSvc,
+		Home:     cfg.Home,
+		Repo:     settings.RepoRoot,
+		Settings: settings,
+		Auth:     NewAuthState(osUsername),
+		Services: registry,
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{
