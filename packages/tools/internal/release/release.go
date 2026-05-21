@@ -343,13 +343,13 @@ func (w workflow) localTagExists(ctx context.Context, tag string) (bool, error) 
 }
 
 func (w workflow) runBuilds(ctx context.Context) error {
-	macbookDir := filepath.Join(w.rootDir, "packages", "macbook")
+	apiDir := filepath.Join(w.rootDir, "packages", "api")
 	uiDir := filepath.Join(w.rootDir, "packages", "ui")
 
 	commands := []runner.CommandSpec{
 		{Cwd: w.rootDir, Name: "pnpm", Args: []string{"-C", w.rootDir, "test"}},
 		{Cwd: w.rootDir, Name: "pnpm", Args: []string{"-C", w.rootDir, "build"}},
-		{Cwd: w.rootDir, Name: "pnpm", Args: []string{"--dir", macbookDir, "run", "build"}},
+		{Cwd: w.rootDir, Name: "pnpm", Args: []string{"--dir", apiDir, "run", "build"}},
 		{Cwd: w.rootDir, Name: "pnpm", Args: []string{"--dir", uiDir, "run", "dist:mac:unsigned"}},
 	}
 

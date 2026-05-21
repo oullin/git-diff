@@ -4,15 +4,14 @@ node_modules/
 .turbo
 .idea/
 .playwright-mcp/
-packages/macbook/.gocache/
-packages/macbook/.gopath/
-packages/macbook/.turbo
 
 # Private migration artifacts should stay outside git.
 *.tar.gz
 *.tar.gz.age
 macos-settings-archives/
 archives/
+# Legacy turbo / pnpm cache holder (cacheDir now points to .turbo/cache).
+# Keep ignored so an existing local checkout doesn't dirty the working tree.
 storage/.cache
 storage/.pnpm-store
 # Secrets and generated local state.
@@ -28,6 +27,3 @@ hosts.yml
 ngrok.yml
 state.vscdb
 storage.json
-
-# Private Git config is restored from a 1Password concealed field at runtime.
-packages/macbook/stow/git/.config/git/private.gitconfig

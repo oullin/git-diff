@@ -10,7 +10,7 @@ const delegatedProps = reactiveOmit(props, "class");
 </script>
 
 <template>
-  <StepperItem data-slot="stepper-item" v-bind="delegatedProps" :class="cn('group', props.class)">
-    <slot />
-  </StepperItem>
+    <StepperItem data-slot="stepper-item" v-bind="delegatedProps" :class="cn('group', props.class)">
+        <slot />
+    </StepperItem>
 </template>

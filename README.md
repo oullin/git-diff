@@ -26,16 +26,13 @@ requests, or modify the repository contents.
 
 ## Workspace Layout
 
-| Path               | Role                                                    |
-| ------------------ | ------------------------------------------------------- |
-| `packages/ui`      | Electron/Vue desktop app and renderer UI.               |
-| `packages/bridge`  | TypeScript HTTP client used by Electron.                |
-| `packages/macbook` | Go backend that reads Git diffs and stores reviews.     |
-| `packages/tools`   | Turbo cache wrapper and unsigned macOS release helper.  |
-| `storage/`         | Local build caches and generated runtime data.          |
-
-Some internal package names still use the older `git-diff` / `macbook` naming.
-The app surface and release target are `Git Diff Review`.
+| Path                  | Role                                                         |
+| --------------------- | ------------------------------------------------------------ |
+| `packages/ui`         | Electron/Vue desktop app and renderer UI.                    |
+| `packages/bridge`     | TypeScript HTTP client used by Electron.                     |
+| `packages/contracts`  | Shared DTOs consumed by `ui` and `bridge`.                   |
+| `packages/api`        | Go backend that reads Git diffs and stores reviews.          |
+| `packages/tools`      | Turbo cache wrapper and unsigned macOS release helper.       |
 
 ## Requirements
 
@@ -77,7 +74,7 @@ The Electron app normally starts the backend automatically. To inspect the
 backend directly:
 
 ```sh
-cd packages/macbook
+cd packages/api
 go run ./cmd help
 go run ./cmd serve-http --socket /tmp/git-diff.sock
 ```
@@ -101,7 +98,7 @@ Useful package-level commands:
 pnpm --filter ui build
 pnpm --filter ui test
 pnpm --filter ui dev
-pnpm --filter macbook test
+go test ./packages/api/...
 ```
 
 ## Review Data

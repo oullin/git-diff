@@ -1,0 +1,85 @@
+package httpx
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"github.com/gocanto/git-diff/internal/service"
+	"github.com/gocanto/git-diff/internal/storage"
+)
+
+func (s Server) handleRepositoryError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrAuthenticationRequired):
+		writeError(w, http.StatusUnauthorized, err)
+	case errors.Is(err, service.ErrRepositoryPathRequired):
+		writeError(w, http.StatusBadRequest, err)
+	case errors.Is(err, storage.ErrRepositoryNotOwned):
+		writeError(w, http.StatusForbidden, err)
+	default:
+		writeError(w, http.StatusInternalServerError, err)
+	}
+}
+
+func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
+	repos, err := s.RepositoryService.List(r.Context(), s.Auth.CurrentUserID())
+
+	if err != nil {
+		s.handleRepositoryError(w, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"repositories": repos})
+}
+
+func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Path string `json:"path"`
+		Name string `json:"name"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	repo, err := s.RepositoryService.Upsert(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		body.Path,
+		body.Name,
+	)
+
+	if err != nil {
+		if errors.Is(err, service.ErrAuthenticationRequired) {
+			writeError(w, http.StatusUnauthorized, err)
+
+			return
+		}
+
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, repo)
+}
+
+func (s Server) removeRepository(w http.ResponseWriter, r *http.Request) {
+	err := s.RepositoryService.Remove(
+		r.Context(),
+		s.Auth.CurrentUserID(),
+		r.URL.Query().Get("path"),
+	)
+
+	if err != nil {
+		s.handleRepositoryError(w, err)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

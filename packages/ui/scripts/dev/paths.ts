@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 
 export const uiDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const repoRoot = resolve(uiDir, "..", "..");
-export const macbookDir = join(repoRoot, "packages", "macbook");
+export const apiDir = join(repoRoot, "packages", "api");
 export const storageDir = join(repoRoot, "storage", "dev");
 export const settingsPath = join(storageDir, "ui-settings.json");
 export const appName = "git-diff-ui";
