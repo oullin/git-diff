@@ -25,12 +25,9 @@ format: format-start
 	$(GO_FMT_EXEC) format --cwd $(ROOT_PATH) --host-path $(ROOT_PATH)
 	@echo "blank-lines fix across packages and root scripts"
 	@cd $(ROOT_PATH) && $(TSX) $(BLANK_LINES) \
-		packages/ui/src \
-		packages/ui/scripts \
-		packages/ui/electron \
-		packages/ui/tests \
-		packages/bridge/src \
-		packages/contracts/src \
+		packages/ui \
+		packages/bridge \
+		packages/contracts \
 		scripts
 	@echo "oxfmt format in $(ROOT_PATH)"
 	@$(OXFMT) --write packages/ui packages/bridge package.json turbo.json

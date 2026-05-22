@@ -126,6 +126,8 @@ async function dirExists(dir: string): Promise<boolean> {
     }
 }
 
+const EXCLUDED_DIR_SEGMENTS = new Set(["node_modules", "dist", "dist-electron"]);
+
 async function listSourceFiles(dir: string): Promise<string[]> {
     const entries = await readdir(dir, { recursive: true, withFileTypes: true });
     const files: string[] = [];
@@ -142,9 +144,18 @@ async function listSourceFiles(dir: string): Promise<string[]> {
         if (
             !entry.name.endsWith(".ts") &&
             !entry.name.endsWith(".tsx") &&
+            !entry.name.endsWith(".js") &&
             !entry.name.endsWith(".jsx") &&
+            !entry.name.endsWith(".mjs") &&
+            !entry.name.endsWith(".cjs") &&
             !entry.name.endsWith(".vue")
         ) {
+            continue;
+        }
+
+        const segments = entry.parentPath.split(/[/\\]/);
+
+        if (segments.some((seg) => EXCLUDED_DIR_SEGMENTS.has(seg))) {
             continue;
         }
 
