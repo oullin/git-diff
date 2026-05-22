@@ -31,6 +31,7 @@ async function startWorkflowBridge(): Promise<void> {
     }
 
     const handle = spawnBridge(savedSettings);
+
     bridgeHandle = handle;
 
     handle.process?.on("exit", (code, signal) => {

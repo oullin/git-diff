@@ -14,6 +14,7 @@ import { register as registerWalkthrough } from "#electron/ipc/walkthrough.ipc.j
 
 export function registerIpcHandlers(deps: IpcDeps): void {
     const router = buildRouter(deps);
+
     router.register(ipcMain);
 }
 

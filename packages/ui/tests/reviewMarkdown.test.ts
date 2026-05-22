@@ -87,6 +87,7 @@ describe("formatReviewAsMarkdown", () => {
             ],
         };
         const out = formatReviewAsMarkdown(detail);
+
         expect(out).toContain("# Review feat/x");
         expect(out).toContain("Branch: `feat/x`");
         expect(out).toContain("HEAD: `abc1234`");
@@ -103,6 +104,7 @@ describe("formatReviewAsMarkdown", () => {
             events: [],
             comments: [comment()],
         };
+
         expect(formatReviewAsMarkdown(detail)).toContain("Commit: `deadbeef`");
     });
 
@@ -112,11 +114,13 @@ describe("formatReviewAsMarkdown", () => {
             events: [],
             comments: [comment({ deletedAt: "2026-05-20T11:00:00Z", bodyHtml: "<p>oops</p>" })],
         };
+
         expect(formatReviewAsMarkdown(detail)).toContain("_No comments yet._");
     });
 
     test("empty review surfaces a no-comments line", () => {
         const detail: ReviewDetail = { review: session(), events: [], comments: [] };
+
         expect(formatReviewAsMarkdown(detail)).toContain("_No comments yet._");
     });
 });

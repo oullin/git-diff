@@ -58,11 +58,13 @@ export function register(router: IpcRouter, deps: IpcDeps): void {
 
     router.on("launch-intent:take", async (event) => {
         const window = BrowserWindow.fromWebContents(event.sender);
+
         return window ? takeIntentForWindow(window) : null;
     });
 
     router.on("window:new", async (_event, repoPath?: string) => {
         const intent = repoPath ? { kind: "working" as const, repoPath, walkthrough: false } : null;
+
         createWindow(intent);
     });
 }

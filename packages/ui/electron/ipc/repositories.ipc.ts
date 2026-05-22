@@ -24,6 +24,7 @@ export function register(router: IpcRouter): void {
 
     router.on("repositories:collaborators:list", async (_event, path: string) => {
         const response = await (await client()).repositories.listCollaborators({ path });
+
         return response.collaborators ?? [];
     });
 

@@ -11,14 +11,17 @@ export function register(router: IpcRouter): void {
             return await (await client()).branches.checkout({ path, branch });
         } catch (cause) {
             const err = cause as { code?: string; files?: string[]; message?: string };
+
             if (err && typeof err.code === "string") {
                 const payload = JSON.stringify({
                     code: err.code,
                     files: Array.isArray(err.files) ? err.files : [],
                     message: typeof err.message === "string" ? err.message : "",
                 });
+
                 throw new Error(`__BRIDGE_ERROR__${payload}`);
             }
+
             throw cause;
         }
     });

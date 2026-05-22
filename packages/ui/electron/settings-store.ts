@@ -82,6 +82,7 @@ let activeStore: SettingsStore = new ElectronSettingsStore();
 /** Swap the active SettingsStore. Returns a restore func for scoped overrides. */
 export function setSettingsStore(store: SettingsStore): () => void {
     const prev = activeStore;
+
     activeStore = store;
 
     return () => {

@@ -4,7 +4,9 @@ contextBridge.exposeInMainWorld("diffApp", {
     takeLaunchIntent: () => ipcRenderer.invoke("launch-intent:take"),
     onLaunchIntent: (handler: (intent: unknown) => void) => {
         const listener = (_event: Electron.IpcRendererEvent, intent: unknown) => handler(intent);
+
         ipcRenderer.on("launch-intent:updated", listener);
+
         return () => ipcRenderer.removeListener("launch-intent:updated", listener);
     },
     openNewWindow: (repoPath?: string) => ipcRenderer.invoke("window:new", repoPath),

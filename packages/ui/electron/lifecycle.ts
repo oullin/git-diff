@@ -47,6 +47,7 @@ export function runApp(initialIntent: LaunchIntent): void {
         // Every second-instance launch opens a fresh window so two `git-diff`
         // invocations from two terminals end up side-by-side.
         const window = createWindow(intent);
+
         setIntentForWindow(window, intent);
         window.webContents.once("did-finish-load", () => {
             window.webContents.send("launch-intent:updated", intent);

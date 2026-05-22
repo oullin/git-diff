@@ -20,9 +20,15 @@ interface SelectionState {
     anchor: LineAnchor | null;
 }
 
-const state: SelectionState = reactive({ anchor: null });
-
+/**
+ * Returns a per-instance selection store. Each component that calls
+ * useLineSelection() owns its own anchor; mounting two DiffBody
+ * instances in the same window no longer shares (and corrupts)
+ * selection state.
+ */
 export function useLineSelection() {
+    const state: SelectionState = reactive({ anchor: null });
+
     function setAnchor(anchor: LineAnchor | null): void {
         state.anchor = anchor;
     }

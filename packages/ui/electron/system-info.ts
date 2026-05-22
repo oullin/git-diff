@@ -7,6 +7,7 @@ export function architectureLabel(architecture: string) {
     if (architecture === "arm64") {
         return "Apple silicon";
     }
+
     if (architecture === "x64") {
         return "Intel";
     }

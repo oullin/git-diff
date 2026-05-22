@@ -104,5 +104,6 @@ process.on("uncaughtException", (error) => {
 
 process.on("unhandledRejection", (reason) => {
     const error = reason instanceof Error ? reason : new Error(String(reason));
+
     shutdownAfterFatal(error);
 });

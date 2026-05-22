@@ -13,11 +13,17 @@ import type {
 import { PREF_KEYS } from "@git-diff/contracts";
 import type { DiffAppApi } from "@/types/diff-app";
 
-export function installBrowserFallback() {
-    if (window.diffApp) {
-        return;
-    }
-
+/**
+ * Build an in-memory DiffAppApi suitable for browser/test contexts that
+ * have no Electron IPC. The returned api owns its own preferences,
+ * repositories, and reviews state; mutations on this instance do not
+ * leak across calls.
+ *
+ * `installBrowserFallback` installs one onto `window.diffApp` when no
+ * real bridge is present. Tests that want a fresh sandbox call
+ * `createMockDiffApp()` directly.
+ */
+export function createMockDiffApp(): DiffAppApi {
     let preferences: UIPreferences = {
         values: {
             [PREF_KEYS.theme]: "system",
@@ -324,5 +330,18 @@ export function installBrowserFallback() {
         }),
     };
 
-    window.diffApp = api;
+    return api;
+}
+
+/**
+ * Install the in-memory bridge on `window.diffApp` unless a real one is
+ * already present. Used by the renderer entry to keep the storybook /
+ * browser dev server runnable without spawning the Go backend.
+ */
+export function installBrowserFallback(): void {
+    if (window.diffApp) {
+        return;
+    }
+
+    window.diffApp = createMockDiffApp();
 }

@@ -60,6 +60,7 @@ export function register(router: IpcRouter): void {
             if (token) {
                 try {
                     const resumed = await c.auth.resume({ token });
+
                     user = resumed.user;
                 } catch {
                     clearSessionToken();

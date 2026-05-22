@@ -25,14 +25,17 @@ const windows = new Map<number, WindowEntry>();
 
 export function getMainWindow(): BrowserWindow | null {
     const focused = BrowserWindow.getFocusedWindow();
+
     if (focused && !focused.isDestroyed() && windows.has(focused.webContents.id)) {
         return focused;
     }
+
     for (const entry of windows.values()) {
         if (!entry.window.isDestroyed()) {
             return entry.window;
         }
     }
+
     return null;
 }
 
@@ -57,6 +60,7 @@ export function createWindow(intent: LaunchIntent | null = null): BrowserWindow 
             ? { center: true }
             : (() => {
                   const base = existing[existing.length - 1]!.getBounds();
+
                   return { x: base.x + offset, y: base.y + offset };
               })()),
         resizable: true,
@@ -78,13 +82,16 @@ export function createWindow(intent: LaunchIntent | null = null): BrowserWindow 
     attachWindowDiagnostics(window);
 
     const id = window.webContents.id;
+
     windows.set(id, { window, intent, devTools: null });
 
     window.on("closed", () => {
         const entry = windows.get(id);
+
         if (entry?.devTools && !entry.devTools.isDestroyed()) {
             entry.devTools.close();
         }
+
         windows.delete(id);
     });
 
@@ -103,30 +110,39 @@ export function createWindow(intent: LaunchIntent | null = null): BrowserWindow 
 
 export function focusMainWindow(): void {
     const window = getMainWindow();
+
     if (!window) {
         return;
     }
+
     if (window.isMinimized()) {
         window.restore();
     }
+
     window.focus();
 }
 
 export function takeIntentForWindow(window: BrowserWindow): LaunchIntent | null {
     const entry = windows.get(window.webContents.id);
+
     if (!entry) {
         return null;
     }
+
     const intent = entry.intent;
+
     entry.intent = null;
+
     return intent;
 }
 
 export function setIntentForWindow(window: BrowserWindow, intent: LaunchIntent | null): void {
     const entry = windows.get(window.webContents.id);
+
     if (!entry) {
         return;
     }
+
     entry.intent = intent;
 }
 
@@ -160,6 +176,7 @@ export function openDevToolsPanel(parentWindow: BrowserWindow): void {
 
     devToolsWindow.once("ready-to-show", () => {
         const parentBounds = parentWindow.getBounds();
+
         devToolsWindow.setSize(devToolsWindowWidth, devToolsWindowHeight, false);
         devToolsWindow.setBounds({
             x: parentBounds.x + parentBounds.width,

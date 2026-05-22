@@ -82,6 +82,7 @@ export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string
                 helpText: `\`pr\` subcommand requires a numeric PR id.\n\n${USAGE_TEXT}`,
             };
         }
+
         return {
             kind: "pull-request",
             prNumber: Number(positionals[1]),

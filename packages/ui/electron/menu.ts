@@ -12,9 +12,11 @@ function newWindowItem(): MenuItemConstructorOptions {
                 title: "Open Repository",
                 properties: ["openDirectory"],
             });
+
             if (result.canceled || result.filePaths.length === 0) {
                 return;
             }
+
             createWindow({
                 kind: "working",
                 repoPath: result.filePaths[0]!,
