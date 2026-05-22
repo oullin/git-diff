@@ -131,7 +131,21 @@ export function createMockDiffApp(): DiffAppApi {
             repoRoot: state.root,
             contextKind: "working",
             fingerprint: "demo",
+            providerId: "anthropic",
             modelId: "demo",
+            groups: [
+                {
+                    id: "files",
+                    title: "Files",
+                    rationale: "",
+                    files: state.files.map((file) => ({
+                        path: file.path,
+                        note: "demo note",
+                        action: "review" as const,
+                        impact: "contained" as const,
+                    })),
+                },
+            ],
             order: state.files.map((file) => file.path),
             notes: Object.fromEntries(state.files.map((file) => [file.path, "demo note"])),
             summary: "Demo walkthrough — Anthropic API not reachable in browser fallback.",

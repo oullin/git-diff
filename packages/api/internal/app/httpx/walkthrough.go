@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gocanto/git-diff/internal/ai"
 	"github.com/gocanto/git-diff/internal/review"
 	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
-	"github.com/gocanto/git-diff/internal/walkthrough"
 )
 
 type walkthroughRequest struct {
@@ -66,8 +66,8 @@ func (s Server) walkthroughGenerate(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrAnthropicNotConfigured),
-			errors.Is(err, walkthrough.ErrMissingAPIKey):
+		case errors.Is(err, service.ErrProviderUnavailable),
+			errors.Is(err, ai.ErrCodexNotInstalled):
 			writeError(w, http.StatusPreconditionFailed, err)
 		default:
 			writeError(w, http.StatusBadGateway, err)

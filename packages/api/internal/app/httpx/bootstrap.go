@@ -12,6 +12,7 @@ import (
 	"os/user"
 	"strings"
 
+	"github.com/gocanto/git-diff/internal/ai"
 	"github.com/gocanto/git-diff/internal/app/setting"
 	"github.com/gocanto/git-diff/internal/storage"
 	"github.com/gocanto/git-diff/internal/userconfig"
@@ -52,8 +53,6 @@ func Serve(args []string, cfg ServeConfig) int {
 		return 1
 	}
 
-	registry := newServiceRegistry(store)
-
 	userCfg, err := userconfig.NewService(cfg.Home)
 
 	if err != nil {
@@ -72,6 +71,15 @@ func Serve(args []string, cfg ServeConfig) int {
 		// app keeps running with the initial config.
 		_ = userCfg.Run(watchCtx)
 	}()
+
+	// AI provider registry. Adding a new provider only requires another
+	// Register() call here — handlers depend on the registry interface,
+	// not the concrete providers.
+	providers := ai.NewRegistry()
+	providers.Register(ai.NewAnthropicProvider())
+	providers.Register(ai.NewCodexProvider())
+
+	registry := newServiceRegistry(store, providers, userCfg.Reader)
 
 	appServer := Server{
 		Home:             cfg.Home,

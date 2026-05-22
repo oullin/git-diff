@@ -1,8 +1,10 @@
 package httpx
 
 import (
+	"github.com/gocanto/git-diff/internal/ai"
 	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/gocanto/git-diff/internal/userconfig"
 )
 
 // services is the concrete ServiceRegistry backed by a real *storage.Store.
@@ -18,7 +20,7 @@ type services struct {
 	walkthroughs *service.WalkthroughService
 }
 
-func newServiceRegistry(store *storage.Store) *services {
+func newServiceRegistry(store *storage.Store, providers *ai.Registry, userCfg userconfig.Reader) *services {
 	return &services{
 		auth: service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
 			BcryptCost:        bcryptCost,
@@ -30,7 +32,7 @@ func newServiceRegistry(store *storage.Store) *services {
 		repos:        service.NewRepositoryService(store.Repos),
 		preferences:  service.NewPreferenceService(store.Preferences),
 		branches:     service.NewBranchService(store.Branches),
-		walkthroughs: service.NewWalkthroughService(store.Walkthroughs, store.Preferences),
+		walkthroughs: service.NewWalkthroughService(store.Walkthroughs, providers, userCfg),
 	}
 }
 

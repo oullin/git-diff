@@ -41,6 +41,10 @@ func (m *Migrator) Run(ctx context.Context) error {
 		return fmt.Errorf("add comment range columns: %w", err)
 	}
 
+	if err := m.addWalkthroughGroupsColumns(ctx); err != nil {
+		return fmt.Errorf("add walkthrough groups columns: %w", err)
+	}
+
 	if _, err := m.db.ExecContext(ctx, string(schema)); err == nil {
 		return nil
 	}
@@ -112,6 +116,37 @@ func (m *Migrator) addCommentRangeColumns(ctx context.Context) error {
 			if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN start_side TEXT"); err != nil {
 				return fmt.Errorf("add %s.start_side: %w", table, err)
 			}
+		}
+	}
+
+	return nil
+}
+
+// addWalkthroughGroupsColumns brings legacy databases up to the v2 schema
+// by attaching the groups_json and provider_id columns. CREATE TABLE IF
+// NOT EXISTS is a no-op for existing tables so explicit ALTERs are
+// required. groups_json defaults to "[]" so cached rows without it still
+// decode cleanly.
+func (m *Migrator) addWalkthroughGroupsColumns(ctx context.Context) error {
+	have, err := m.columnSet(ctx, "walkthroughs")
+
+	if err != nil {
+		return err
+	}
+
+	if len(have) == 0 {
+		return nil
+	}
+
+	if !have["groups_json"] {
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE walkthroughs ADD COLUMN groups_json TEXT NOT NULL DEFAULT '[]'"); err != nil {
+			return fmt.Errorf("add walkthroughs.groups_json: %w", err)
+		}
+	}
+
+	if !have["provider_id"] {
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE walkthroughs ADD COLUMN provider_id TEXT NOT NULL DEFAULT ''"); err != nil {
+			return fmt.Errorf("add walkthroughs.provider_id: %w", err)
 		}
 	}
 

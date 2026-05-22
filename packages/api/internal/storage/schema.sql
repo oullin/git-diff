@@ -82,9 +82,11 @@ CREATE TABLE IF NOT EXISTS walkthroughs (
   context_kind TEXT NOT NULL,
   context_sha  TEXT NOT NULL DEFAULT '',
   fingerprint  TEXT NOT NULL,
+  provider_id  TEXT NOT NULL DEFAULT '',
   model_id     TEXT NOT NULL,
   order_json   TEXT NOT NULL,
   notes_json   TEXT NOT NULL,
+  groups_json  TEXT NOT NULL DEFAULT '[]',
   summary      TEXT NOT NULL DEFAULT '',
   generated_at TEXT NOT NULL,
   PRIMARY KEY (repo_root, context_kind, context_sha)

@@ -3,25 +3,32 @@ package service
 import (
 	"context"
 	"errors"
-	"os"
-	"strings"
+	"fmt"
 
+	"github.com/gocanto/git-diff/internal/ai"
 	"github.com/gocanto/git-diff/internal/review"
 	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/gocanto/git-diff/internal/userconfig"
 	"github.com/gocanto/git-diff/internal/walkthrough"
 )
 
-// WalkthroughService coordinates the walkthrough cache, the credential
-// lookup, and the LLM call. Handlers feed it the resolved RepositoryState
-// and the request parameters; the service returns the resulting record
-// plus a flag indicating whether it came from cache.
+// WalkthroughService coordinates the cache, the user config, the AI
+// provider registry, and the walkthrough orchestrator. Handlers feed it
+// the resolved RepositoryState and the request parameters; the service
+// returns the resulting record plus a flag indicating cache hit.
+//
+// Depends on the registry/reader INTERFACES, not concretes — keeps the
+// service layer testable without booting viper or hitting real LLMs.
 type WalkthroughService struct {
 	walkthroughs *storage.WalkthroughRepo
-	preferences  *storage.PreferenceRepo
+	providers    *ai.Registry
+	userConfig   userconfig.Reader
 }
 
-// ErrAnthropicNotConfigured signals that no API key was found in env vars
-// or saved preferences; handlers translate to 412 Precondition Failed.
+// ErrProviderUnavailable signals that the configured provider couldn't
+// be reached (missing API key, missing CLI binary). Handlers translate
+// to 412 Precondition Failed so the renderer can surface a specific
+// remediation prompt.
 
 type GenerateRequest struct {
 	State      review.RepositoryState
@@ -36,41 +43,67 @@ type GenerateResult struct {
 	Cached bool
 }
 
-func NewWalkthroughService(walkthroughs *storage.WalkthroughRepo, preferences *storage.PreferenceRepo) *WalkthroughService {
-	return &WalkthroughService{walkthroughs: walkthroughs, preferences: preferences}
+// NewWalkthroughService composes the dependencies. Wired in the app
+// bootstrap; tests can pass fakes for any dependency individually.
+
+// Generate runs the cache lookup, falls through to the LLM when the
+// cache is stale (or absent), and persists the new record. Caching
+// failures are non-fatal: the caller still gets the fresh result.
+
+// providerWithModel wraps a Provider so its Generate call sees the
+// caller's preferred Model on the request. The underlying provider is
+// unchanged — we just stamp the Model field on the way through.
+
+type modelOverrideProvider struct {
+	ai.Provider
+	model string
 }
 
-var ErrAnthropicNotConfigured = errors.New("anthropic api key not configured")
+var ErrProviderUnavailable = errors.New("ai provider unavailable")
 
-// Generate runs the cache lookup, falls through to the LLM when the cache
-// is stale (or absent), and persists the new record. Caching failures are
-// non-fatal: the caller still gets the fresh result.
+func NewWalkthroughService(
+	walkthroughs *storage.WalkthroughRepo,
+	providers *ai.Registry,
+	userConfig userconfig.Reader,
+) *WalkthroughService {
+	return &WalkthroughService{
+		walkthroughs: walkthroughs,
+		providers:    providers,
+		userConfig:   userConfig,
+	}
+}
+
 func (s *WalkthroughService) Generate(
 	ctx context.Context,
 	req GenerateRequest,
 ) (GenerateResult, error) {
+	cfg := s.userConfig.Get()
+
+	provider, err := s.providers.Get(cfg.Walkthrough.Provider)
+
+	if err != nil {
+		return GenerateResult{}, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
+	}
+
+	fingerprint := walkthrough.FingerprintForStateAndProvider(req.State, provider.ID())
+
 	cached, found, err := s.walkthroughs.GetWalkthrough(ctx, req.State.Root, req.Kind, req.ContextSHA)
 
 	if err != nil {
 		return GenerateResult{}, err
 	}
 
-	fingerprint := walkthrough.FingerprintForState(req.State)
-
 	if !req.Refresh && found && cached.Fingerprint == fingerprint {
 		return GenerateResult{Record: cached, Cached: true}, nil
 	}
 
-	apiKey, modelID := s.credentials(ctx, req.UserID)
-
-	if apiKey == "" {
-		return GenerateResult{}, ErrAnthropicNotConfigured
-	}
-
 	result, err := walkthrough.Generate(ctx, walkthrough.Request{
-		APIKey:  apiKey,
-		ModelID: modelID,
-		State:   req.State,
+		Provider: providerWithModel(provider, cfg.Walkthrough.Model),
+		State:    req.State,
+		Budget: walkthrough.Budget{
+			PerFileBytes: cfg.Walkthrough.PerFileBudgetBytes,
+			TotalBytes:   cfg.Walkthrough.PatchBudgetBytes,
+		},
 	})
 
 	if err != nil {
@@ -82,7 +115,9 @@ func (s *WalkthroughService) Generate(
 		ContextKind: req.Kind,
 		ContextSHA:  req.ContextSHA,
 		Fingerprint: result.Fingerprint,
+		ProviderID:  result.ProviderID,
 		ModelID:     result.ModelID,
+		Groups:      toStorageGroups(result.Groups),
 		Order:       result.Order,
 		Notes:       result.Notes,
 		Summary:     result.Summary,
@@ -94,26 +129,40 @@ func (s *WalkthroughService) Generate(
 	return GenerateResult{Record: record}, nil
 }
 
-// credentials sources the Anthropic API key and optional model override.
-// Env vars win over the user's saved UI preferences so a developer can
-// override without touching settings.
-func (s *WalkthroughService) credentials(ctx context.Context, userID int64) (string, string) {
-	if env := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")); env != "" {
-		return env, strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL"))
+func providerWithModel(p ai.Provider, model string) ai.Provider {
+	return modelOverrideProvider{Provider: p, model: model}
+}
+
+func (m modelOverrideProvider) Generate(ctx context.Context, req ai.GenerateRequest) (ai.GenerateResponse, error) {
+	if req.Model == "" {
+		req.Model = m.model
 	}
 
-	if userID == 0 {
-		return "", ""
+	return m.Provider.Generate(ctx, req)
+}
+
+func toStorageGroups(groups []walkthrough.Group) []storage.WalkthroughGroup {
+	out := make([]storage.WalkthroughGroup, 0, len(groups))
+
+	for _, group := range groups {
+		files := make([]storage.WalkthroughGroupFile, 0, len(group.Files))
+
+		for _, file := range group.Files {
+			files = append(files, storage.WalkthroughGroupFile{
+				Path:   file.Path,
+				Note:   file.Note,
+				Action: string(file.Action),
+				Impact: string(file.Impact),
+			})
+		}
+
+		out = append(out, storage.WalkthroughGroup{
+			ID:        group.ID,
+			Title:     group.Title,
+			Rationale: group.Rationale,
+			Files:     files,
+		})
 	}
 
-	prefs, err := s.preferences.GetUIPreferences(ctx, userID)
-
-	if err != nil {
-		return "", ""
-	}
-
-	apiKey := strings.TrimSpace(prefs.Values[storage.PrefKeyAnthropicAPIKey])
-	modelID := strings.TrimSpace(prefs.Values[storage.PrefKeyAnthropicModel])
-
-	return apiKey, modelID
+	return out
 }
