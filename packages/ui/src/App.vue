@@ -255,10 +255,13 @@ onMounted(async () => {
         }
 
         await openRepo(intent.repoPath);
-        if (intent.kind === "pull-request" && intent.prNumber && state.value) {
-            await openPullRequest(intent.prNumber);
-        } else if (intent.sha && state.value) {
-            await openCommit(intent.sha);
+        const prNumber = intent.pullRequestNumber ?? intent.prNumber;
+        const commitRef = intent.commitRef ?? intent.sha;
+
+        if (intent.kind === "pull-request" && prNumber && state.value) {
+            await openPullRequest(prNumber);
+        } else if (commitRef && state.value) {
+            await openCommit(commitRef);
         }
     });
 });
@@ -307,10 +310,13 @@ async function applyLaunchIntent() {
 
     await openRepo(initialPath);
 
-    if (intent?.kind === "pull-request" && intent.prNumber && state.value) {
-        await openPullRequest(intent.prNumber);
-    } else if (intent?.sha && state.value) {
-        await openCommit(intent.sha);
+    const prNumber = intent?.pullRequestNumber ?? intent?.prNumber;
+    const commitRef = intent?.commitRef ?? intent?.sha;
+
+    if (intent?.kind === "pull-request" && prNumber && state.value) {
+        await openPullRequest(prNumber);
+    } else if (commitRef && state.value) {
+        await openCommit(commitRef);
     }
 
     if (intent?.walkthrough) {

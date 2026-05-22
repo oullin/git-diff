@@ -52,8 +52,54 @@ describe("parseLaunchArgs", () => {
         const intent = parseLaunchArgs(["/bin/app", "abc1234"], true, "/repo");
 
         expect(intent.kind).toBe("commit");
-        expect(intent.sha).toBe("abc1234");
+        expect(intent.commitRef).toBe("abc1234");
+        expect(intent.sha).toBe("abc1234"); // deprecated alias still emitted
         expect(intent.repoPath).toBe("/repo");
+    });
+
+    test("full 40-char SHA is accepted", () => {
+        const sha = "a".repeat(40);
+        const intent = parseLaunchArgs(["/bin/app", sha], true, "/repo");
+
+        expect(intent.kind).toBe("commit");
+        expect(intent.commitRef).toBe(sha);
+    });
+
+    test("64-char SHA-256 hash is accepted", () => {
+        const sha = "f".repeat(64);
+        const intent = parseLaunchArgs(["/bin/app", sha], true, "/repo");
+
+        expect(intent.kind).toBe("commit");
+        expect(intent.commitRef).toBe(sha);
+    });
+
+    test("HEAD~N revision syntax becomes a commit intent", () => {
+        const intent = parseLaunchArgs(["/bin/app", "HEAD~3"], true, "/repo");
+
+        expect(intent.kind).toBe("commit");
+        expect(intent.commitRef).toBe("HEAD~3");
+        expect(intent.sha).toBe("HEAD~3");
+    });
+
+    test("HEAD^ revision syntax becomes a commit intent", () => {
+        const intent = parseLaunchArgs(["/bin/app", "HEAD^"], true, "/repo");
+
+        expect(intent.kind).toBe("commit");
+        expect(intent.commitRef).toBe("HEAD^");
+    });
+
+    test("bare HEAD is a commit intent", () => {
+        const intent = parseLaunchArgs(["/bin/app", "HEAD"], true, "/repo");
+
+        expect(intent.kind).toBe("commit");
+        expect(intent.commitRef).toBe("HEAD");
+    });
+
+    test("reflog syntax @{1} is accepted", () => {
+        const intent = parseLaunchArgs(["/bin/app", "@{1}"], true, "/repo");
+
+        expect(intent.kind).toBe("commit");
+        expect(intent.commitRef).toBe("@{1}");
     });
 
     test("existing directory wins over SHA pattern", () => {
@@ -66,6 +112,21 @@ describe("parseLaunchArgs", () => {
 
             expect(intent.kind).toBe("working");
             expect(intent.repoPath).toBe(shaLike);
+        } finally {
+            rmSync(repo, { recursive: true, force: true });
+        }
+    });
+
+    test("existing path named HEAD~3 wins over revision syntax", () => {
+        const repo = tempRepo();
+        const headPath = join(repo, "HEAD~3");
+
+        mkdirSync(headPath);
+        try {
+            const intent = parseLaunchArgs(["/bin/app", "HEAD~3"], true, repo);
+
+            expect(intent.kind).toBe("working");
+            expect(intent.repoPath).toBe(headPath);
         } finally {
             rmSync(repo, { recursive: true, force: true });
         }
@@ -84,7 +145,7 @@ describe("parseLaunchArgs", () => {
 
         expect(a.kind).toBe("commit");
         expect(a.walkthrough).toBe(true);
-        expect(a.sha).toBe("abc1234");
+        expect(a.commitRef).toBe("abc1234");
         expect(b).toEqual(a);
     });
 
@@ -109,8 +170,8 @@ describe("parseLaunchArgs", () => {
         expect(intent.helpText).toContain("not-a-path-or-sha-xyz");
     });
 
-    test("too many positionals -> help", () => {
-        const intent = parseLaunchArgs(["/bin/app", "a", "b"], true, "/tmp");
+    test("three positionals -> help", () => {
+        const intent = parseLaunchArgs(["/bin/app", "a", "b", "c"], true, "/tmp");
 
         expect(intent.kind).toBe("help");
         expect(intent.helpText).toContain("Too many arguments");
@@ -136,15 +197,69 @@ describe("parseLaunchArgs", () => {
         const intent = parseLaunchArgs(["/bin/app", "pr", "42"], true, "/repo");
 
         expect(intent.kind).toBe("pull-request");
-        expect(intent.prNumber).toBe(42);
+        expect(intent.pullRequestNumber).toBe(42);
+        expect(intent.prNumber).toBe(42); // deprecated alias still emitted
         expect(intent.repoPath).toBe("/repo");
     });
 
-    test("pr without a number returns help", () => {
+    test("pr <github-url> resolves to the same intent and carries the URL", () => {
+        const url = "https://github.com/anthropics/claude-code/pull/42";
+        const intent = parseLaunchArgs(["/bin/app", "pr", url], true, "/repo");
+
+        expect(intent.kind).toBe("pull-request");
+        expect(intent.pullRequestNumber).toBe(42);
+        expect(intent.pullRequestUrl).toBe(url);
+    });
+
+    test("#<number> shorthand routes to pull-request", () => {
+        const intent = parseLaunchArgs(["/bin/app", "#7"], true, "/repo");
+
+        expect(intent.kind).toBe("pull-request");
+        expect(intent.pullRequestNumber).toBe(7);
+    });
+
+    test("github pull URL as a single arg routes to pull-request", () => {
+        const url = "https://github.com/anthropics/claude-code/pull/99/files";
+        const intent = parseLaunchArgs(["/bin/app", url], true, "/repo");
+
+        expect(intent.kind).toBe("pull-request");
+        expect(intent.pullRequestNumber).toBe(99);
+        expect(intent.pullRequestUrl).toBe(url);
+    });
+
+    test("pr without an argument returns help", () => {
         const intent = parseLaunchArgs(["/bin/app", "pr"], true, "/repo");
 
         expect(intent.kind).toBe("help");
         expect(intent.helpText).toContain("pr` subcommand requires");
+    });
+
+    test("pr with a non-numeric non-URL arg returns help", () => {
+        const intent = parseLaunchArgs(["/bin/app", "pr", "abc"], true, "/repo");
+
+        expect(intent.kind).toBe("help");
+        expect(intent.helpText).toContain("expected a number or GitHub URL");
+    });
+
+    test("two positionals: <path> <ref> opens commit in that repo", () => {
+        const repo = tempRepo();
+
+        try {
+            const intent = parseLaunchArgs(["/bin/app", repo, "HEAD~2"], true, "/elsewhere");
+
+            expect(intent.kind).toBe("commit");
+            expect(intent.repoPath).toBe(repo);
+            expect(intent.commitRef).toBe("HEAD~2");
+        } finally {
+            rmSync(repo, { recursive: true, force: true });
+        }
+    });
+
+    test("two positionals where first is not a directory -> help", () => {
+        const intent = parseLaunchArgs(["/bin/app", "not-a-dir", "HEAD~2"], true, "/tmp");
+
+        expect(intent.kind).toBe("help");
+        expect(intent.helpText).toContain("not a directory");
     });
 
     test("Electron internal flags are ignored", () => {
@@ -155,6 +270,6 @@ describe("parseLaunchArgs", () => {
         );
 
         expect(intent.kind).toBe("commit");
-        expect(intent.sha).toBe("abc1234");
+        expect(intent.commitRef).toBe("abc1234");
     });
 });
