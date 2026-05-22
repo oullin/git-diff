@@ -8,42 +8,22 @@ export interface Accent {
     soft: string;
 }
 
+// Pierre is monochrome — there is no colored accent system. Every key resolves
+// to the same neutral preset so existing user preferences ("copper", "indigo", …)
+// keep working without a contracts-package migration. Re-introduce variants here
+// if a future theme reinstates colored accents.
+const PIERRE_NEUTRAL: Omit<Accent, "key" | "name"> = {
+    hex: "oklch(20.5% 0 0)",
+    strong: "oklch(14.5% 0 0)",
+    soft: "oklch(97% 0 0)",
+};
+
 export const ACCENTS: Record<UIAccent, Accent> = {
-    copper: {
-        key: "copper",
-        name: "Copper",
-        hex: "#d97757",
-        strong: "#b85a3f",
-        soft: "rgb(217 119 87 / 0.14)",
-    },
-    indigo: {
-        key: "indigo",
-        name: "Indigo",
-        hex: "#818cf8",
-        strong: "#6366f1",
-        soft: "rgb(129 140 248 / 0.14)",
-    },
-    emerald: {
-        key: "emerald",
-        name: "Emerald",
-        hex: "#34d399",
-        strong: "#10b981",
-        soft: "rgb(52 211 153 / 0.14)",
-    },
-    amber: {
-        key: "amber",
-        name: "Amber",
-        hex: "#fbbf24",
-        strong: "#f59e0b",
-        soft: "rgb(251 191 36 / 0.14)",
-    },
-    rose: {
-        key: "rose",
-        name: "Rose",
-        hex: "#fb7185",
-        strong: "#f43f5e",
-        soft: "rgb(251 113 133 / 0.14)",
-    },
+    copper: { key: "copper", name: "Pierre", ...PIERRE_NEUTRAL },
+    indigo: { key: "indigo", name: "Pierre", ...PIERRE_NEUTRAL },
+    emerald: { key: "emerald", name: "Pierre", ...PIERRE_NEUTRAL },
+    amber: { key: "amber", name: "Pierre", ...PIERRE_NEUTRAL },
+    rose: { key: "rose", name: "Pierre", ...PIERRE_NEUTRAL },
 };
 
 export function applyAccent(accent: Accent): void {
@@ -73,19 +53,24 @@ export type DiffStyleColors = {
     remBar: string;
 };
 
+// Pierre uses solid fills with a saturated 4px edge stripe. The three styles
+// keep the same shape so the existing toggle in TweaksPanel still works:
+//   soft   — the default Pierre look (filled row, soft tint)
+//   punchy — same fill but a stronger gutter strip for high-contrast scanning
+//   bar    — transparent rows with only the edge stripe (minimal mode)
 export function diffBgs(
     style: "soft" | "punchy" | "bar",
-    added = "var(--gd-added)",
-    removed = "var(--gd-removed)",
+    added = "var(--gd-add-border)",
+    removed = "var(--gd-del-border)",
 ): DiffStyleColors {
     if (style === "punchy") {
         return {
-            addBg: "rgb(195 232 141 / 0.14)",
-            addStrong: "rgb(195 232 141 / 0.32)",
-            remBg: "rgb(255 83 112 / 0.14)",
-            remStrong: "rgb(255 83 112 / 0.34)",
-            addNum: "rgb(195 232 141 / 0.20)",
-            remNum: "rgb(255 83 112 / 0.22)",
+            addBg: "var(--diff-added-bg)",
+            addStrong: "var(--diff-added-bg-strong)",
+            remBg: "var(--diff-removed-bg)",
+            remStrong: "var(--diff-removed-bg-strong)",
+            addNum: "var(--diff-added-bg-strong)",
+            remNum: "var(--diff-removed-bg-strong)",
             addBar: added,
             remBar: removed,
         };
@@ -94,9 +79,9 @@ export function diffBgs(
     if (style === "bar") {
         return {
             addBg: "transparent",
-            addStrong: "rgb(195 232 141 / 0.18)",
+            addStrong: "var(--diff-added-bg)",
             remBg: "transparent",
-            remStrong: "rgb(255 83 112 / 0.20)",
+            remStrong: "var(--diff-removed-bg)",
             addNum: "transparent",
             remNum: "transparent",
             addBar: added,
@@ -105,13 +90,13 @@ export function diffBgs(
     }
 
     return {
-        addBg: "rgb(195 232 141 / 0.07)",
-        addStrong: "rgb(195 232 141 / 0.22)",
-        remBg: "rgb(255 83 112 / 0.07)",
-        remStrong: "rgb(255 83 112 / 0.24)",
-        addNum: "rgb(195 232 141 / 0.14)",
-        remNum: "rgb(255 83 112 / 0.14)",
-        addBar: "rgb(195 232 141 / 0.55)",
-        remBar: "rgb(255 83 112 / 0.55)",
+        addBg: "var(--diff-added-bg)",
+        addStrong: "var(--diff-added-bg-strong)",
+        remBg: "var(--diff-removed-bg)",
+        remStrong: "var(--diff-removed-bg-strong)",
+        addNum: "var(--diff-added-bg-strong)",
+        remNum: "var(--diff-removed-bg-strong)",
+        addBar: added,
+        remBar: removed,
     };
 }
