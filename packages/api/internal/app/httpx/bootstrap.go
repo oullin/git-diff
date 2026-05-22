@@ -14,6 +14,7 @@ import (
 
 	"github.com/gocanto/git-diff/internal/ai"
 	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
 	"github.com/gocanto/git-diff/internal/userconfig"
 )
@@ -79,16 +80,25 @@ func Serve(args []string, cfg ServeConfig) int {
 	providers.Register(ai.NewAnthropicProvider())
 	providers.Register(ai.NewCodexProvider())
 
-	svcs := newServices(store, providers, userCfg.Reader)
-
 	appServer := Server{
 		Home:             cfg.Home,
 		Repo:             settings.RepoRoot,
 		Settings:         settings,
-		Auth:             NewAuthState(osUsername),
-		Services:         svcs,
+		Session:          NewAuthState(osUsername),
 		UserConfig:       userCfg.Reader,
 		UserConfigEvents: userCfg.Broker,
+
+		auth: service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
+			BcryptCost:        bcryptCost,
+			SessionTTL:        sessionTTL,
+			MinPasswordLength: minPasswordLength,
+		}),
+		reviews:      service.NewReviewService(store.Reviews, store.Comments),
+		pending:      service.NewPendingCommentService(store.PendingComments),
+		repos:        service.NewRepositoryService(store.Repos),
+		preferences:  service.NewPreferenceService(store.Preferences),
+		branches:     service.NewBranchService(store.Branches),
+		walkthroughs: service.NewWalkthroughService(store.Walkthroughs, providers, userCfg.Reader),
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{

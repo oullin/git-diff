@@ -33,6 +33,6 @@ func testHTTPServer(t *testing.T, home, repo string) Server {
 		Home:     home,
 		Repo:     repo,
 		Settings: setting.DefaultRuntimeSettings(home, repo),
-		Auth:     NewAuthState("test"),
+		Session:  NewAuthState("test"),
 	}
 }

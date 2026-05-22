@@ -51,12 +51,12 @@ func (s Server) repositoryOpen(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.Auth != nil && s.Auth.CurrentUserID() != 0 {
-		userID := s.Auth.CurrentUserID()
-		_, _ = s.Services.preferences.Save(r.Context(), userID, map[string]string{
+	if s.Session != nil && s.Session.CurrentUserID() != 0 {
+		userID := s.Session.CurrentUserID()
+		_, _ = s.preferences.Save(r.Context(), userID, map[string]string{
 			storage.PrefKeyLastRepoRoot: state.Root,
 		})
-		_, _ = s.Services.repos.Upsert(r.Context(), userID, state.Root, "")
+		_, _ = s.repos.Upsert(r.Context(), userID, state.Root, "")
 	}
 
 	writeJSON(w, http.StatusOK, state)

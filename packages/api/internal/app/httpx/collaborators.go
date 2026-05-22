@@ -34,9 +34,9 @@ func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collaborators, err := s.Services.repos.ListCollaborators(
+	collaborators, err := s.repos.ListCollaborators(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		path,
 	)
 
@@ -62,9 +62,9 @@ func (s Server) addCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collaborator, err := s.Services.repos.GrantCollaborator(
+	collaborator, err := s.repos.GrantCollaborator(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		body.Path,
 		body.UserID,
 		body.Role,
@@ -97,9 +97,9 @@ func (s Server) removeCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.Services.repos.RevokeCollaborator(
+	if err := s.repos.RevokeCollaborator(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		path,
 		targetID,
 	); err != nil {

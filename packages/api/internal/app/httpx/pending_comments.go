@@ -28,9 +28,9 @@ func (s Server) listPendingComments(w http.ResponseWriter, r *http.Request) {
 		repoRoot = s.Repo
 	}
 
-	comments, err := s.Services.pending.List(
+	comments, err := s.pending.List(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		repoRoot,
 		r.URL.Query().Get("kind"),
 		r.URL.Query().Get("sha"),
@@ -54,9 +54,9 @@ func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.Services.pending.Create(
+	comment, err := s.pending.Create(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		s.Repo,
 		input,
 	)
@@ -81,9 +81,9 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.Services.pending.Update(
+	comment, err := s.pending.Update(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		r.PathValue("id"),
 		body.BodyHTML,
 	)
@@ -104,9 +104,9 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
-	if err := s.Services.pending.Delete(
+	if err := s.pending.Delete(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		r.PathValue("id"),
 	); err != nil {
 		s.handlePendingCommentError(w, err)
@@ -128,9 +128,9 @@ func (s Server) promotePendingComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	promoted, err := s.Services.pending.Promote(
+	promoted, err := s.pending.Promote(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		body.ReviewID,
 	)
 

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/userconfig"
 )
 
@@ -18,10 +19,17 @@ type Server struct {
 	Home             string
 	Repo             string
 	Settings         setting.RuntimeSettings
-	Auth             *AuthState
-	Services         *services
+	Session          *AuthState
 	UserConfig       userconfig.Reader
 	UserConfigEvents *userconfig.Broker
+
+	auth         *service.AuthService
+	reviews      *service.ReviewService
+	pending      *service.PendingCommentService
+	repos        *service.RepositoryService
+	preferences  *service.PreferenceService
+	branches     *service.BranchService
+	walkthroughs *service.WalkthroughService
 }
 
 func (s Server) healthz(w http.ResponseWriter, _ *http.Request) {

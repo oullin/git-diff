@@ -24,7 +24,7 @@ func (s Server) handlePreferenceError(w http.ResponseWriter, err error, wrap str
 }
 
 func (s Server) getPreferences(w http.ResponseWriter, r *http.Request) {
-	prefs, err := s.Services.preferences.Get(r.Context(), s.Auth.CurrentUserID())
+	prefs, err := s.preferences.Get(r.Context(), s.Session.CurrentUserID())
 
 	if err != nil {
 		s.handlePreferenceError(w, err, "read ui preferences")
@@ -44,7 +44,7 @@ func (s Server) savePreferences(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prefs, err := s.Services.preferences.Save(r.Context(), s.Auth.CurrentUserID(), req.Values)
+	prefs, err := s.preferences.Save(r.Context(), s.Session.CurrentUserID(), req.Values)
 
 	if err != nil {
 		s.handlePreferenceError(w, err, "save ui preferences")

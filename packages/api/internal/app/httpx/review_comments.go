@@ -16,7 +16,7 @@ func (s Server) createReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.Services.reviews.CreateComment(r.Context(), r.PathValue("id"), input)
+	comment, err := s.reviews.CreateComment(r.Context(), r.PathValue("id"), input)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -38,7 +38,7 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.Services.reviews.UpdateComment(
+	comment, err := s.reviews.UpdateComment(
 		r.Context(),
 		r.PathValue("id"),
 		r.PathValue("commentId"),
@@ -55,7 +55,7 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deleteReviewComment(w http.ResponseWriter, r *http.Request) {
-	if err := s.Services.reviews.DeleteComment(
+	if err := s.reviews.DeleteComment(
 		r.Context(),
 		r.PathValue("id"),
 		r.PathValue("commentId"),

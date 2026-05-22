@@ -20,7 +20,7 @@ func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := s.Services.reviews.Create(r.Context(), s.Auth.CurrentUserID(), input)
+	created, err := s.reviews.Create(r.Context(), s.Session.CurrentUserID(), input)
 
 	switch {
 	case errors.Is(err, service.ErrAuthenticationRequired):
@@ -51,7 +51,7 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	reviews, err := s.Services.reviews.List(r.Context(), s.Auth.CurrentUserID(), limit)
+	reviews, err := s.reviews.List(r.Context(), s.Session.CurrentUserID(), limit)
 
 	switch {
 	case errors.Is(err, service.ErrAuthenticationRequired):
@@ -68,7 +68,7 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) reviewDetail(w http.ResponseWriter, r *http.Request) {
-	detail, err := s.Services.reviews.Detail(r.Context(), r.PathValue("id"))
+	detail, err := s.reviews.Detail(r.Context(), r.PathValue("id"))
 
 	if err != nil {
 		writeError(w, http.StatusNotFound, err)
@@ -88,7 +88,7 @@ func (s Server) addReviewEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := s.Services.reviews.AddEvent(r.Context(), r.PathValue("id"), input)
+	event, err := s.reviews.AddEvent(r.Context(), r.PathValue("id"), input)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

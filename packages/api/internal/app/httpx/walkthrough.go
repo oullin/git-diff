@@ -52,11 +52,11 @@ func (s Server) walkthroughGenerate(w http.ResponseWriter, r *http.Request) {
 
 	userID := int64(0)
 
-	if s.Auth != nil {
-		userID = s.Auth.CurrentUserID()
+	if s.Session != nil {
+		userID = s.Session.CurrentUserID()
 	}
 
-	result, err := s.Services.walkthroughs.Generate(r.Context(), service.GenerateRequest{
+	result, err := s.walkthroughs.Generate(r.Context(), service.GenerateRequest{
 		State:      state,
 		Kind:       req.Kind,
 		ContextSHA: req.SHA,

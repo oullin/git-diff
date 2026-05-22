@@ -14,7 +14,7 @@ func (s Server) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		if s.Auth == nil || s.Auth.CurrentUserID() == 0 {
+		if s.Session == nil || s.Session.CurrentUserID() == 0 {
 			writeError(w, http.StatusUnauthorized, errors.New("authentication required"))
 
 			return
