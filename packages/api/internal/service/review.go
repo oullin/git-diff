@@ -10,10 +10,6 @@ import (
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
-// ReviewService owns review-session, review-event, and review-comment use
-// cases. It abstracts away the store handle, the random-ID generation, and
-// the auto-event side effects so handlers can stay thin (decode -> dispatch
-// -> writeJSON).
 type ReviewService struct {
 	reviews  *storage.ReviewRepo
 	comments *storage.CommentRepo
@@ -23,13 +19,9 @@ func NewReviewService(reviews *storage.ReviewRepo, comments *storage.CommentRepo
 	return &ReviewService{reviews: reviews, comments: comments}
 }
 
-// ErrAuthenticationRequired signals that an action needs a logged-in user;
-// handlers translate it to 401.
 var ErrAuthenticationRequired = errors.New("authentication required")
 
-// Create starts a new review session for `userID`. An empty input.ID is
-// auto-filled with a random identifier so callers can choose to delegate
-// id generation here.
+// Create auto-fills an empty input.ID with a random identifier.
 func (s *ReviewService) Create(
 	ctx context.Context,
 	userID int64,
@@ -46,8 +38,6 @@ func (s *ReviewService) Create(
 	return s.reviews.CreateReview(ctx, userID, input)
 }
 
-// List returns up to `limit` review sessions owned by `userID`, most
-// recent first.
 func (s *ReviewService) List(
 	ctx context.Context,
 	userID int64,
@@ -64,12 +54,10 @@ func (s *ReviewService) List(
 	return s.reviews.ListReviews(ctx, userID, limit)
 }
 
-// Detail returns the session, its events, and its comments by review id.
 func (s *ReviewService) Detail(ctx context.Context, id string) (storage.ReviewDetail, error) {
 	return s.reviews.ReviewDetail(ctx, s.comments, id)
 }
 
-// AddEvent appends a review-timeline event to the session.
 func (s *ReviewService) AddEvent(
 	ctx context.Context,
 	reviewID string,
@@ -78,9 +66,8 @@ func (s *ReviewService) AddEvent(
 	return s.reviews.AddReviewEvent(ctx, reviewID, input)
 }
 
-// CreateComment posts a new comment under the review session and
-// auto-generates its identifier. The store records a "comment_added"
-// review event side-effect.
+// CreateComment auto-generates the comment id and records a
+// "comment_added" review event as a side effect.
 func (s *ReviewService) CreateComment(
 	ctx context.Context,
 	reviewID string,
@@ -89,8 +76,7 @@ func (s *ReviewService) CreateComment(
 	return s.comments.CreateReviewComment(ctx, reviewID, randomID("comment"), input)
 }
 
-// UpdateComment rewrites the body of an existing comment and emits a
-// "comment_edited" event.
+// UpdateComment emits a "comment_edited" event.
 func (s *ReviewService) UpdateComment(
 	ctx context.Context,
 	reviewID, commentID, bodyHTML string,

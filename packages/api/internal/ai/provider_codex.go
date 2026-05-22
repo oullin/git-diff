@@ -11,16 +11,13 @@ import (
 	"strings"
 )
 
-// CodexProvider shells out to the `codex` CLI (the OpenAI Codex tool).
-// Strict failure mode per the user's decision: when the binary isn't on
-// PATH (and not under ~/.codex/bin), Generate returns ErrCodexNotInstalled
-// — no silent fallback.
+// CodexProvider shells out to the `codex` CLI. When the binary is
+// missing, Generate returns ErrCodexNotInstalled with no silent fallback.
 type CodexProvider struct {
-	// resolveBinary lets tests inject a fake lookup. nil → default
-	// resolution (PATH then ~/.codex/bin/codex).
+	// resolveBinary lets tests inject a fake lookup.
 	resolveBinary func() (string, error)
 
-	// runExec lets tests inject a fake subprocess. nil → real os/exec.
+	// runExec lets tests inject a fake subprocess.
 	runExec func(ctx context.Context, binary, model, prompt string) ([]byte, error)
 }
 
@@ -33,8 +30,6 @@ const (
 // the user to install Codex or switch providers in their YAML config.
 var ErrCodexNotInstalled = errors.New("codex CLI not found; install from https://github.com/openai/codex or switch walkthrough.provider in ~/.git-diff/config.yaml")
 
-// NewCodexProvider returns a provider with the default binary resolution
-// (PATH then ~/.codex/bin/codex) and a real subprocess runner.
 func NewCodexProvider() *CodexProvider {
 	return &CodexProvider{
 		resolveBinary: defaultResolveCodexBinary,
@@ -46,9 +41,8 @@ func (*CodexProvider) ID() string { return "codex" }
 
 func (*CodexProvider) DefaultModel() string { return codexDefaultModel }
 
-// SupportsModel is permissive — any non-empty string passes. Codex
-// supports a wide range of OpenAI models; gatekeeping here would just
-// race new releases.
+// SupportsModel is permissive: gatekeeping a hard-coded model list here
+// would just race new OpenAI releases.
 func (*CodexProvider) SupportsModel(model string) bool {
 	return strings.TrimSpace(model) != ""
 }
@@ -85,9 +79,6 @@ func (p *CodexProvider) Generate(ctx context.Context, req GenerateRequest) (Gene
 	}, nil
 }
 
-// defaultResolveCodexBinary looks up `codex` on PATH, then falls back to
-// the install location codex typically uses. Returns ErrCodexNotInstalled
-// when neither is present.
 func defaultResolveCodexBinary() (string, error) {
 	if path, err := exec.LookPath("codex"); err == nil {
 		return path, nil
@@ -106,9 +97,8 @@ func defaultResolveCodexBinary() (string, error) {
 	return "", ErrCodexNotInstalled
 }
 
-// defaultRunCodex invokes the binary with `codex exec --model <m>
-// --stdin` and captures stdout. Stderr is propagated in the error
-// message so users see install / auth issues directly.
+// defaultRunCodex propagates stderr in the error message so users see
+// install/auth issues directly.
 func defaultRunCodex(ctx context.Context, binary, model, prompt string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, binary, "exec", "--model", model, "--stdin")
 	cmd.Stdin = strings.NewReader(prompt)

@@ -7,17 +7,14 @@ import (
 	"strings"
 )
 
-// GitHubRemote identifies one GitHub-hosted remote configured in a repo.
-// Empty when the repo has no GitHub remotes.
 type GitHubRemote struct {
-	Name  string // local remote name, e.g. "origin"
-	Owner string // GitHub owner, e.g. "anthropics"
-	Repo  string // GitHub repo, e.g. "claude-code"
-	URL   string // the raw fetch URL parsed
+	Name  string
+	Owner string
+	Repo  string
+	URL   string
 }
 
-// HTMLURL returns the canonical https URL for the remote, without a trailing
-// `.git` suffix. Empty when Owner or Repo is unset.
+// HTMLURL drops the .git suffix; empty when Owner or Repo is unset.
 func (r GitHubRemote) HTMLURL() string {
 	if r.Owner == "" || r.Repo == "" {
 		return ""
@@ -26,13 +23,8 @@ func (r GitHubRemote) HTMLURL() string {
 	return fmt.Sprintf("https://github.com/%s/%s", r.Owner, r.Repo)
 }
 
-// ReadGitHubRemotes lists every GitHub remote configured in the repo at
-// root, in the order `git remote -v` reports them with `origin` first when
-// present. Returns an empty slice when the repo has no GitHub remotes.
-//
-// Extracted as a standalone helper so callers that need to resolve `#42` to
-// a PR URL without shelling out to `gh` can do so. Used by the
-// pull-request flow and (planned) by the CLI launch surface.
+// ReadGitHubRemotes lists every GitHub remote, with `origin` first when
+// present so callers can `[0]` it.
 func ReadGitHubRemotes(ctx context.Context, root string) ([]GitHubRemote, error) {
 	raw, err := gitOutput(ctx, root, "remote", "-v")
 
@@ -84,7 +76,6 @@ func parseGitHubRemotes(raw string) []GitHubRemote {
 		})
 	}
 
-	// Put origin first when present so callers can `[0]` it.
 	for i := range out {
 		if out[i].Name == "origin" {
 			if i != 0 {

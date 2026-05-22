@@ -1,17 +1,9 @@
 // Package userconfig owns the user-editable YAML config at
-// ~/.git-diff/config.yaml. Decomposed so each concern lives in its own
-// file: schema (data), defaults (pure function), loader (viper wiring),
-// watcher (notify on edits), writer (first-run scaffold), reader (the
-// interface handlers depend on).
+// ~/.git-diff/config.yaml.
 package userconfig
 
-// Config is the in-memory shape of the user config. Snake_case wire format
-// per the user's decision; `mapstructure` tags are how viper drives the
-// decode from YAML → Config.
-//
-// All fields are value types so passing a Config across goroutines is safe
-// without locking — callers either hold their own copy or read through the
-// Reader interface.
+// Config carries value types only so passing one across goroutines is
+// safe without locking.
 type Config struct {
 	Theme               string      `mapstructure:"theme"               yaml:"theme"`
 	ShowWhitespace      bool        `mapstructure:"show_whitespace"     yaml:"show_whitespace"`
@@ -21,8 +13,7 @@ type Config struct {
 	Keymap              Keymap      `mapstructure:"keymap"              yaml:"keymap"`
 }
 
-// Walkthrough groups the LLM-walkthrough settings. The model field is a
-// single string interpreted by whichever provider is selected — providers
+// Walkthrough's Model is interpreted by the selected provider; providers
 // validate and reject models they don't support.
 type Walkthrough struct {
 	Provider           string `mapstructure:"provider"               yaml:"provider"`
@@ -31,10 +22,8 @@ type Walkthrough struct {
 	PerFileBudgetBytes int    `mapstructure:"per_file_budget_bytes"  yaml:"per_file_budget_bytes"`
 }
 
-// Keymap is the user-configurable shortcut table. Every action is a string
-// in the "modifier+...+key" format consumed by the renderer's key matcher
-// (e.g. "cmd+shift+p", "ctrl+enter", "/"). Empty strings disable the
-// action.
+// Keymap actions follow the "modifier+...+key" format (e.g. "cmd+shift+p");
+// empty strings disable the action.
 type Keymap struct {
 	CommandBar       string `mapstructure:"command_bar"        yaml:"command_bar"`
 	FileFilter       string `mapstructure:"file_filter"        yaml:"file_filter"`

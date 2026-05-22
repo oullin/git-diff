@@ -7,25 +7,17 @@ import (
 	"github.com/gocanto/git-diff/internal/review"
 )
 
-// schemaVersion bumps whenever the Walkthrough shape changes in a way
-// that invalidates cached rows. Mixed into the fingerprint so old caches
-// are forced to regenerate instead of round-tripping a stale shape.
+// schemaVersion is mixed into the fingerprint so cached rows from older
+// Walkthrough shapes are forced to regenerate.
 const schemaVersion = "v2"
 
-// FingerprintForState returns a deterministic hash of the file paths,
-// per-file fingerprints, AND the current schema version. Two
-// RepositoryStates with the same fingerprint should yield the same
-// walkthrough; this powers the cache key.
-//
-// Pure function — no IO. Public so the service layer can compare against
-// the cached row's fingerprint without re-implementing the rule.
+// FingerprintForState falls back to the provider-agnostic hash.
 func FingerprintForState(state review.RepositoryState) string {
 	return FingerprintForStateAndProvider(state, "")
 }
 
-// FingerprintForStateAndProvider mixes the providerID into the hash so
-// switching providers (anthropic ↔ codex) invalidates the cache. Pass an
-// empty providerID to fall back to the legacy (state-only) hash.
+// FingerprintForStateAndProvider mixes providerID into the hash so
+// switching providers invalidates the cache.
 func FingerprintForStateAndProvider(state review.RepositoryState, providerID string) string {
 	hash := sha1.New()
 

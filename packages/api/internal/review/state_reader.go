@@ -25,9 +25,8 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 		return RepositoryState{}, err
 	}
 
-	// Four cheap startup queries fan out in parallel. They're independent —
-	// each hits a different bit of git state — so the wall time collapses
-	// to the slowest single call instead of summing across all four.
+	// Four independent git queries fan out so wall time collapses to the
+	// slowest one rather than summing across all four.
 	var (
 		branch    string
 		head      string
@@ -118,10 +117,8 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 	return state, nil
 }
 
-// assembleChangedFiles maps porcelain status entries onto the pre-split
-// per-file patches from the staged/unstaged batch diffs. Untracked files
-// aren't in either diff output and are synthesised on the fly so the UI
-// still gets a green-line preview.
+// assembleChangedFiles synthesises a green-line patch for untracked files
+// since they're absent from both staged and unstaged diff outputs.
 func assembleChangedFiles(
 	entries []statusEntry,
 	root string,

@@ -8,27 +8,21 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// Watcher emits debounced notifications when the YAML file changes on
-// disk. Single responsibility: notify. Does NOT decode, validate, or
-// store state — the callback supplies the parsing.
-//
-// Debounced at 200 ms to coalesce editor saves (vim's write-and-rename,
-// VS Code's atomic save, etc.) that would otherwise fire the callback
-// 2-3 times per save.
+// Watcher coalesces editor saves (vim's write-and-rename, VS Code's
+// atomic save) that would otherwise fire the callback multiple times per
+// save. 200 ms debounce.
 type Watcher struct {
 	loader   Loader
 	debounce time.Duration
 }
 
-// NewWatcher returns a watcher with the default 200 ms debounce.
 func NewWatcher() *Watcher {
 	return &Watcher{loader: Loader{}, debounce: 200 * time.Millisecond}
 }
 
-// Watch blocks until ctx is cancelled, invoking onChange(cfg) after each
-// debounced file edit. Returns immediately with the first load error
-// (e.g. the watch target was missing); transient parse failures after
-// startup are surfaced through onError so the watcher loop keeps running.
+// Watch blocks until ctx is cancelled. Returns the first load error
+// immediately; later parse failures go through onError so the loop keeps
+// running.
 func (w *Watcher) Watch(
 	ctx context.Context,
 	path string,
@@ -47,8 +41,8 @@ func (w *Watcher) Watch(
 		return err
 	}
 
-	// Send the initial load synchronously so subscribers don't have to
-	// race the first edit to learn what's on disk.
+	// Initial load is synchronous so subscribers see current state
+	// without waiting for the first edit.
 	cfg, err := w.loader.Load(path)
 
 	if err != nil {

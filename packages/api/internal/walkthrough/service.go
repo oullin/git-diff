@@ -10,26 +10,17 @@ import (
 	"github.com/gocanto/git-diff/internal/review"
 )
 
-// Request configures one Generate call. Provider is required — callers
-// look it up from an ai.Registry using the user-config-selected ID.
-// Budget is optional; an empty Budget gets DefaultBudget().
+// Request configures one Generate call. An empty Budget gets DefaultBudget().
 type Request struct {
 	Provider ai.Provider
 	State    review.RepositoryState
 	Budget   Budget
 }
 
-// ErrProviderRequired indicates the caller forgot to wire a provider.
-// Distinct sentinel so the service layer can surface a 412 instead of a
-// generic 500.
 var ErrProviderRequired = errors.New("walkthrough requires an ai.Provider")
 
-// Generate is the thin orchestrator: budget → prompt → provider → parse
-// → validate → assemble. Each step lives in its own file so this
-// function reads top-to-bottom in one screen.
-//
-// Empty file lists short-circuit (no model call) — saves a token spend
-// for trivially clean states.
+// Generate short-circuits on empty file lists to avoid spending tokens on
+// trivially clean states.
 func Generate(ctx context.Context, req Request) (Walkthrough, error) {
 	if req.Provider == nil {
 		return Walkthrough{}, ErrProviderRequired

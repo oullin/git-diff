@@ -10,10 +10,6 @@ import (
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
-// PendingCommentService owns the draft-comment use cases. The promote
-// path is transactional inside the storage layer; the service just
-// proxies to it but normalises validation + id generation so handlers
-// stop hand-rolling them.
 type PendingCommentService struct {
 	pending *storage.PendingCommentRepo
 }
@@ -22,12 +18,8 @@ func NewPendingCommentService(pending *storage.PendingCommentRepo) *PendingComme
 	return &PendingCommentService{pending: pending}
 }
 
-// ErrInvalidCommentInput signals that filePath or diffSection were missing
-// from a create request; handlers translate it to 400.
 var ErrInvalidCommentInput = errors.New("filePath and diffSection are required")
 
-// ErrReviewIDRequired signals that the promote request omitted the review
-// id; handlers translate it to 400.
 var ErrReviewIDRequired = errors.New("reviewId is required")
 
 func (s *PendingCommentService) List(

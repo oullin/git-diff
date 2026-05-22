@@ -7,15 +7,10 @@ import (
 	"sync"
 )
 
-// rootCacheKey is the unexported context key under which a per-request git
-// toplevel resolver is stored. Use WithRootCache to install one; RootFor to
-// read through it.
 type rootCacheKey struct{}
 
-// rootCache memoises `git rev-parse --show-toplevel` for a single request.
-// The cache is keyed by launch path because two different launch paths can
-// legitimately resolve to the same root (one via symlink, one direct) — we
-// don't want to entangle them.
+// rootCache memoises `git rev-parse --show-toplevel` for a single request,
+// keyed by launch path so symlinked paths don't collapse onto each other.
 type rootCache struct {
 	mu      sync.Mutex
 	entries map[string]rootCacheEntry
@@ -26,12 +21,9 @@ type rootCacheEntry struct {
 	err  error
 }
 
-// WithRootCache returns a context that memoises git toplevel lookups for
-// the lifetime of the request. Call once at the top of each handler.
-//
-// Without an installed cache, RootFor still works but falls through to git
-// every time — that's by design so unit tests don't need to bootstrap the
-// context plumbing.
+// WithRootCache memoises git toplevel lookups for the request's lifetime.
+// RootFor still works without one (it just hits git every time) so unit
+// tests don't need to bootstrap the context plumbing.
 func WithRootCache(ctx context.Context) context.Context {
 	if existing, _ := ctx.Value(rootCacheKey{}).(*rootCache); existing != nil {
 		return ctx
@@ -42,12 +34,10 @@ func WithRootCache(ctx context.Context) context.Context {
 	})
 }
 
-// RootFor resolves the git toplevel for launchPath, using the request-scoped
-// cache when present. Equivalent to `git rev-parse --show-toplevel`.
-//
-// All review-package code that needs the repo root should go through this
-// helper instead of calling gitOutput directly — that's how the cache earns
-// its keep across the 7+ call sites that used to invoke rev-parse.
+// RootFor resolves the git toplevel for launchPath through the
+// request-scoped cache when present. All review-package code that needs
+// the repo root should go through this helper rather than gitOutput
+// directly — that's how the cache earns its keep.
 func RootFor(ctx context.Context, launchPath string) (string, error) {
 	cache, _ := ctx.Value(rootCacheKey{}).(*rootCache)
 

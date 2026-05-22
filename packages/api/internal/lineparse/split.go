@@ -7,28 +7,18 @@ import (
 	"strings"
 )
 
-// SplitUnifiedPatch breaks a multi-file git patch into per-file sections,
-// keyed by the b-side path (the "new" path, which differs from a-side for
-// renames). Order of insertion in the returned map is not preserved — use
-// SplitUnifiedPatchOrdered when call sites need a stable iteration.
-//
-// Each returned value is the raw bytes of the section, starting at its
-// `diff --git ...` header and ending right before the next one. Trailing
-// newlines from the source are preserved so the section round-trips back
-// into git tooling unchanged.
-//
-// Empty input returns an empty (non-nil) map.
-
 // PatchSection is one file's slice of a multi-file unified patch.
+// Path is the b-side (new) path; OldPath is the a-side (equal for
+// non-renames). Body starts at `diff --git` and preserves trailing
+// newlines so the section round-trips through git tooling unchanged.
 type PatchSection struct {
-	// Path is the b-side path (the new path; same as a-side for non-renames).
-	Path string
-	// OldPath is the a-side path; equals Path when the file wasn't renamed.
+	Path    string
 	OldPath string
-	// Body is the raw bytes of the section, starting at `diff --git`.
-	Body []byte
+	Body    []byte
 }
 
+// SplitUnifiedPatch keys by b-side path; iteration order is undefined.
+// Use SplitUnifiedPatchOrdered when call sites need stable iteration.
 func SplitUnifiedPatch(raw []byte) map[string][]byte {
 	sections := SplitUnifiedPatchOrdered(raw)
 	out := make(map[string][]byte, len(sections))
@@ -40,9 +30,8 @@ func SplitUnifiedPatch(raw []byte) map[string][]byte {
 	return out
 }
 
-// SplitUnifiedPatchOrdered returns one PatchSection per file in source order.
-// Use this when callers need deterministic iteration (e.g. to preserve
-// `git diff` ordering in the UI).
+// SplitUnifiedPatchOrdered returns sections in source order so callers
+// can preserve `git diff` ordering.
 func SplitUnifiedPatchOrdered(raw []byte) []PatchSection {
 	if len(raw) == 0 {
 		return nil
@@ -97,7 +86,6 @@ func SplitUnifiedPatchOrdered(raw []byte) []PatchSection {
 		}
 
 		if current == nil {
-			// Skip preamble noise before the first `diff --git`.
 			continue
 		}
 
@@ -115,10 +103,8 @@ func SplitUnifiedPatchOrdered(raw []byte) []PatchSection {
 
 	flush()
 
-	// Strip the trailing newline we always append if the source didn't end with one.
-	// scanner.Scan strips the line terminator, so we re-add `\n` per line; if the
-	// input ended without a final `\n`, our last line gets an extra one. Detect
-	// that by checking the source's final byte and trimming the section body.
+	// scanner.Scan strips line terminators and we re-add `\n` per line,
+	// so an input without a trailing newline picks up an extra one — trim it.
 	if len(sections) > 0 && raw[len(raw)-1] != '\n' {
 		last := &sections[len(sections)-1]
 
@@ -130,14 +116,11 @@ func SplitUnifiedPatchOrdered(raw []byte) []PatchSection {
 	return sections
 }
 
-// parseDiffGitHeader extracts the a/ and b/ paths from a `diff --git` header
-// line. Handles both unquoted (`a/path`) and quoted (`"a/path with space"`)
-// forms; in the quoted form, basic C-style escapes are decoded.
-//
-// Returns ("", "") when the line doesn't parse — callers should fall back
-// to the `rename to` / `--- a/` / `+++ b/` lines that follow.
+// parseDiffGitHeader handles both unquoted (`a/path`) and quoted
+// (`"a/path with space"`) forms; quoted form decodes C-style escapes.
+// Returns ("", "") on parse failure — callers should fall back to the
+// `rename to` / `--- a/` / `+++ b/` lines that follow.
 func parseDiffGitHeader(line string) (oldPath, newPath string) {
-	// Strip the `diff --git ` prefix.
 	const prefix = "diff --git "
 
 	if !strings.HasPrefix(line, prefix) {
@@ -146,7 +129,6 @@ func parseDiffGitHeader(line string) (oldPath, newPath string) {
 
 	rest := line[len(prefix):]
 
-	// Walk left-to-right consuming the a/ token, then the b/ token.
 	a, after := consumePath(rest)
 
 	if a == "" {
@@ -163,15 +145,12 @@ func parseDiffGitHeader(line string) (oldPath, newPath string) {
 	return stripABPrefix(a, "a/"), stripABPrefix(b, "b/")
 }
 
-// consumePath returns the next path token (quoted or unquoted) and the
-// remainder of the line.
 func consumePath(s string) (path, rest string) {
 	if s == "" {
 		return "", ""
 	}
 
 	if s[0] == '"' {
-		// Find the matching unescaped closing quote.
 		end := -1
 
 		for i := 1; i < len(s); i++ {
@@ -195,14 +174,12 @@ func consumePath(s string) (path, rest string) {
 		decoded, err := strconv.Unquote(s[:end+1])
 
 		if err != nil {
-			// Fall back to the raw quoted body.
 			decoded = s[1:end]
 		}
 
 		return decoded, s[end+1:]
 	}
 
-	// Unquoted: read up to next space.
 	if idx := strings.IndexByte(s, ' '); idx >= 0 {
 		return s[:idx], s[idx:]
 	}

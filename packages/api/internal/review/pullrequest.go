@@ -12,8 +12,6 @@ import (
 	"github.com/gocanto/git-diff/internal/lineparse"
 )
 
-// PullRequestSummary describes one entry returned by `gh pr list`. The UI
-// renders these in a sidebar tab so the user can pick a PR to review.
 type PullRequestSummary struct {
 	Number  int    `json:"number"`
 	Title   string `json:"title"`
@@ -24,13 +22,10 @@ type PullRequestSummary struct {
 	URL     string `json:"url"`
 }
 
-// ErrGhUnavailable is returned when the `gh` CLI isn't on PATH. The HTTP
-// layer maps this to a 412 so the UI can prompt the user to install it.
+// ErrGhUnavailable lets the HTTP layer surface a 412 when `gh` is missing.
 var ErrGhUnavailable = errors.New("gh CLI is required for pull-request operations; install from https://cli.github.com")
 
-// ListPullRequests returns the open pull requests for the repository at
-// launchPath. Backed by `gh pr list --json`. Limited to 50 entries — enough
-// to scroll through but cheap to fetch.
+// ListPullRequests returns open PRs (default 50, max 200).
 func ListPullRequests(ctx context.Context, launchPath string, limit int) ([]PullRequestSummary, error) {
 	if !hasGh(ctx) {
 		return nil, ErrGhUnavailable
@@ -94,10 +89,8 @@ func ListPullRequests(ctx context.Context, launchPath string, limit int) ([]Pull
 	return summaries, nil
 }
 
-// ReadPullRequestState fetches the PR head into a local ref and renders the
-// base..head diff through the same shape as ReadCommitState. Comments
-// attach to commit SHAs (head_sha) so they stay anchored even if the PR
-// branch updates upstream.
+// ReadPullRequestState anchors comments to head_sha so they stay attached
+// when the PR branch updates upstream.
 func ReadPullRequestState(ctx context.Context, launchPath string, number int) (RepositoryState, error) {
 	if number <= 0 {
 		return RepositoryState{}, errors.New("pull request number is required")
@@ -142,8 +135,7 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 		return RepositoryState{}, fmt.Errorf("decode gh pr view: %w", err)
 	}
 
-	// Fetch the head ref so the SHAs resolve locally even if the user hasn't
-	// pulled this PR before.
+	// Fetch so the SHAs resolve locally if the user hasn't pulled this PR.
 	if _, err := gitOutput(ctx, root, "fetch", "origin", fmt.Sprintf("pull/%d/head", number)); err != nil {
 		return RepositoryState{}, fmt.Errorf("fetch PR head: %w", err)
 	}
@@ -159,9 +151,6 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 
 	entries := parseDiffTreeNameStatus(nameStatusRaw)
 
-	// One batched `git diff` covers every file in the PR; we split by
-	// `diff --git` headers so each file's patch is recovered without the
-	// N+1 invocation cost the per-file loop used to pay.
 	patches, err := readPullRequestPatches(ctx, root, view.BaseRefOid, view.HeadRefOid)
 
 	if err != nil {

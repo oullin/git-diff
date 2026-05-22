@@ -6,11 +6,6 @@ import (
 	"testing"
 )
 
-// Three lookups for the same launchPath — only the first should hit git.
-
-// Same cache instance should round-trip — we don't want nested wrappers
-// to break the memoisation invariant.
-
 type countingGit struct {
 	calls    *atomic.Int32
 	fail     bool

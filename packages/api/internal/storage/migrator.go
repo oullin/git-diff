@@ -5,15 +5,14 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"strings"
 )
 
 //go:embed schema.sql
 var schemaFS embed.FS
 
-// Migrator brings a SQLite database up to the current schema. It runs the
-// embedded `schema.sql`, applies one-shot column migrations for legacy
-// databases, and falls back to a destructive reset if the embedded schema
-// fails to apply (e.g. when an old table shape blocks new constraints).
+// Migrator runs explicit compatibility migrations before applying the
+// embedded schema.
 type Migrator struct {
 	db *sql.DB
 }
@@ -45,25 +44,15 @@ func (m *Migrator) Run(ctx context.Context) error {
 		return fmt.Errorf("add walkthrough groups columns: %w", err)
 	}
 
-	if _, err := m.db.ExecContext(ctx, string(schema)); err == nil {
-		return nil
-	}
-
-	if err := m.resetSchema(ctx); err != nil {
-		return fmt.Errorf("reset stale schema: %w", err)
-	}
-
 	if _, err := m.db.ExecContext(ctx, string(schema)); err != nil {
-		return fmt.Errorf("initialize sqlite schema after reset: %w", err)
+		return fmt.Errorf("initialize sqlite schema: %w", err)
 	}
 
 	return nil
 }
 
-// addReviewSessionContextColumns is a one-shot migration that brings legacy
-// databases up to the current schema by attaching the context_kind and
-// context_sha columns to review_sessions. CREATE TABLE IF NOT EXISTS in
-// schema.sql is a no-op for existing tables, so explicit ALTERs are required.
+// CREATE TABLE IF NOT EXISTS is a no-op on existing tables, so legacy
+// databases need explicit ALTERs to pick up the new columns.
 func (m *Migrator) addReviewSessionContextColumns(ctx context.Context) error {
 	have, err := m.columnSet(ctx, "review_sessions")
 
@@ -76,13 +65,13 @@ func (m *Migrator) addReviewSessionContextColumns(ctx context.Context) error {
 	}
 
 	if !have["context_kind"] {
-		if _, err := m.db.ExecContext(ctx, "ALTER TABLE review_sessions ADD COLUMN context_kind TEXT NOT NULL DEFAULT 'working'"); err != nil {
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("review_sessions")+" ADD COLUMN context_kind TEXT NOT NULL DEFAULT 'working'"); err != nil {
 			return fmt.Errorf("add context_kind: %w", err)
 		}
 	}
 
 	if !have["context_sha"] {
-		if _, err := m.db.ExecContext(ctx, "ALTER TABLE review_sessions ADD COLUMN context_sha TEXT"); err != nil {
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("review_sessions")+" ADD COLUMN context_sha TEXT"); err != nil {
 			return fmt.Errorf("add context_sha: %w", err)
 		}
 	}
@@ -90,10 +79,8 @@ func (m *Migrator) addReviewSessionContextColumns(ctx context.Context) error {
 	return nil
 }
 
-// addCommentRangeColumns brings legacy databases up to the current schema by
-// attaching start_line_number / start_side columns to review_comments and
-// pending_comments. Multi-line and cross-side comment ranges are stored
-// through these fields; single-line comments leave both NULL.
+// Multi-line and cross-side comment ranges live in start_line_number /
+// start_side; single-line comments leave both NULL.
 func (m *Migrator) addCommentRangeColumns(ctx context.Context) error {
 	for _, table := range []string{"review_comments", "pending_comments"} {
 		have, err := m.columnSet(ctx, table)
@@ -107,13 +94,13 @@ func (m *Migrator) addCommentRangeColumns(ctx context.Context) error {
 		}
 
 		if !have["start_line_number"] {
-			if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN start_line_number INTEGER"); err != nil {
+			if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier(table)+" ADD COLUMN start_line_number INTEGER"); err != nil {
 				return fmt.Errorf("add %s.start_line_number: %w", table, err)
 			}
 		}
 
 		if !have["start_side"] {
-			if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+table+" ADD COLUMN start_side TEXT"); err != nil {
+			if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier(table)+" ADD COLUMN start_side TEXT"); err != nil {
 				return fmt.Errorf("add %s.start_side: %w", table, err)
 			}
 		}
@@ -122,11 +109,7 @@ func (m *Migrator) addCommentRangeColumns(ctx context.Context) error {
 	return nil
 }
 
-// addWalkthroughGroupsColumns brings legacy databases up to the v2 schema
-// by attaching the groups_json and provider_id columns. CREATE TABLE IF
-// NOT EXISTS is a no-op for existing tables so explicit ALTERs are
-// required. groups_json defaults to "[]" so cached rows without it still
-// decode cleanly.
+// groups_json defaults to "[]" so cached rows without it still decode cleanly.
 func (m *Migrator) addWalkthroughGroupsColumns(ctx context.Context) error {
 	have, err := m.columnSet(ctx, "walkthroughs")
 
@@ -139,13 +122,13 @@ func (m *Migrator) addWalkthroughGroupsColumns(ctx context.Context) error {
 	}
 
 	if !have["groups_json"] {
-		if _, err := m.db.ExecContext(ctx, "ALTER TABLE walkthroughs ADD COLUMN groups_json TEXT NOT NULL DEFAULT '[]'"); err != nil {
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("walkthroughs")+" ADD COLUMN groups_json TEXT NOT NULL DEFAULT '[]'"); err != nil {
 			return fmt.Errorf("add walkthroughs.groups_json: %w", err)
 		}
 	}
 
 	if !have["provider_id"] {
-		if _, err := m.db.ExecContext(ctx, "ALTER TABLE walkthroughs ADD COLUMN provider_id TEXT NOT NULL DEFAULT ''"); err != nil {
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("walkthroughs")+" ADD COLUMN provider_id TEXT NOT NULL DEFAULT ''"); err != nil {
 			return fmt.Errorf("add walkthroughs.provider_id: %w", err)
 		}
 	}
@@ -153,12 +136,9 @@ func (m *Migrator) addWalkthroughGroupsColumns(ctx context.Context) error {
 	return nil
 }
 
-// dropLegacyProvisioningTables removes tables that used to back the macOS
-// provisioning engine. They are no longer part of the schema; this lets
-// existing user databases shed them on first launch after the upgrade.
 func (m *Migrator) dropLegacyProvisioningTables(ctx context.Context) error {
 	for _, table := range []string{"workflow_events", "workflow_runs"} {
-		if _, err := m.db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table); err != nil {
+		if _, err := m.db.ExecContext(ctx, "DROP TABLE IF EXISTS "+sqliteQuoteIdentifier(table)); err != nil {
 			return fmt.Errorf("drop %s: %w", table, err)
 		}
 	}
@@ -166,57 +146,13 @@ func (m *Migrator) dropLegacyProvisioningTables(ctx context.Context) error {
 	return nil
 }
 
-func (m *Migrator) resetSchema(ctx context.Context) error {
-	if _, err := m.db.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
-		return fmt.Errorf("disable foreign keys: %w", err)
-	}
-
-	rows, err := m.db.QueryContext(ctx, `
-		SELECT name FROM sqlite_master
-		WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
-	`)
-
-	if err != nil {
-		return fmt.Errorf("list tables: %w", err)
-	}
-
-	tables := []string{}
-
-	for rows.Next() {
-		var name string
-
-		if err := rows.Scan(&name); err != nil {
-			rows.Close()
-
-			return fmt.Errorf("scan table name: %w", err)
-		}
-
-		tables = append(tables, name)
-	}
-
-	rows.Close()
-
-	for _, table := range tables {
-		if _, err := m.db.ExecContext(ctx, "DROP TABLE IF EXISTS "+table); err != nil {
-			return fmt.Errorf("drop table %q: %w", table, err)
-		}
-	}
-
-	if _, err := m.db.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		return fmt.Errorf("re-enable foreign keys: %w", err)
-	}
-
-	return nil
-}
-
-// columnSet returns the set of column names present on `table`, or an empty
-// set if the table does not exist. Any SQL error is treated as "table not
-// present yet" by the caller (the schema.sql apply will create it).
+// columnSet returns the columns present on table, or an empty set if the table
+// does not exist.
 func (m *Migrator) columnSet(ctx context.Context, table string) (map[string]bool, error) {
-	rows, err := m.db.QueryContext(ctx, "PRAGMA table_info("+table+")")
+	rows, err := m.db.QueryContext(ctx, "PRAGMA table_info("+sqliteQuoteIdentifier(table)+")")
 
 	if err != nil {
-		return nil, nil
+		return nil, fmt.Errorf("query %s columns: %w", table, err)
 	}
 
 	defer rows.Close()
@@ -245,4 +181,8 @@ func (m *Migrator) columnSet(ctx context.Context, table string) (map[string]bool
 	}
 
 	return have, nil
+}
+
+func sqliteQuoteIdentifier(name string) string {
+	return `"` + strings.ReplaceAll(name, `"`, `""`) + `"`
 }

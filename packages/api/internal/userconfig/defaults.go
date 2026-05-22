@@ -1,11 +1,7 @@
 package userconfig
 
-// Defaults returns the baseline Config used when no YAML file exists or
-// when keys are missing from a partial file. Pure function, no IO — tests
-// can compare against it directly.
-//
 // Defaults must always be a complete, valid Config so the app boots even
-// when the user has never touched the config file.
+// when no YAML file exists.
 func Defaults() Config {
 	return Config{
 		Theme:               "system",

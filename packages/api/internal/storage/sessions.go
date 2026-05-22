@@ -61,9 +61,6 @@ func (r *SessionRepo) CreateSession(ctx context.Context, userID int64, ttl time.
 	}, nil
 }
 
-// ResumeSession verifies the token, updates last_used_at, and returns the
-// associated user. The UserRepo is provided so callers wire the lookup
-// explicitly instead of through a god-object Store.
 func (r *SessionRepo) ResumeSession(ctx context.Context, users *UserRepo, rawToken string) (User, error) {
 	rawToken = strings.TrimSpace(rawToken)
 

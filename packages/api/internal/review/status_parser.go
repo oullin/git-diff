@@ -4,9 +4,8 @@ import (
 	"bytes"
 )
 
-// StatusParser turns the raw bytes of `git status --porcelain=v1 -z` into a
-// slice of statusEntry. The parsing logic is isolated from IO so it can be
-// unit-tested against captured fixtures without spawning git.
+// StatusParser turns the raw bytes of `git status --porcelain=v1 -z` into
+// a slice of statusEntry.
 type StatusParser struct{}
 
 func (StatusParser) Parse(raw []byte) []statusEntry {
@@ -38,8 +37,6 @@ func (StatusParser) Parse(raw []byte) []statusEntry {
 	return entries
 }
 
-// parseStatus is the legacy package-level wrapper; new code should
-// construct a StatusParser explicitly.
 func parseStatus(raw []byte) []statusEntry {
 	return StatusParser{}.Parse(raw)
 }

@@ -7,9 +7,8 @@ import (
 	"strings"
 )
 
-// EnsureSystemPath prepends standard macOS developer-tool directories to PATH
-// so that GUI-launched processes (which inherit only /usr/bin:/bin:/usr/sbin:/sbin
-// from launchd) can locate Homebrew and user-local binaries. No-op on non-darwin.
+// EnsureSystemPath prepends Homebrew and user-local bin directories so
+// launchd-spawned processes can find them. No-op outside darwin.
 func EnsureSystemPath() {
 	if runtime.GOOS != "darwin" {
 		return
@@ -38,9 +37,7 @@ func EnsureSystemPath() {
 	os.Setenv("PATH", updated)
 }
 
-// augmentPath returns a PATH string with each candidate prepended (preserving
-// candidate order) when the directory exists and is not already present.
-// Returns "" when no changes are needed.
+// augmentPath returns "" when no changes are needed.
 func augmentPath(current string, candidates []string, exists func(string) bool) string {
 	existing := make(map[string]struct{})
 

@@ -6,23 +6,16 @@ import (
 	"strings"
 )
 
-// parsedResponse is the JSON shape we expect back from the model.
-// Mirrors PromptInput's documented schema 1:1.
 type parsedResponse struct {
 	Summary string  `json:"summary"`
 	Groups  []Group `json:"groups"`
-	// Legacy fields — populated when the model (or a cached row) still
-	// emits the flat shape. Converted to groups by Parse.
+	// Order/Notes are the legacy flat shape; Parse hoists them into Groups.
 	Order []string          `json:"order"`
 	Notes map[string]string `json:"notes"`
 }
 
-// Parse decodes the model's output into a Walkthrough's payload fields
-// (Groups, Summary). Strips optional ```json fences first.
-//
-// No validation happens here — the SchemaValidator runs separately so
-// each unit stays focused. Parse will accept anything the JSON decoder
-// accepts; validation is the gate.
+// Parse strips optional ```json fences and decodes; validation runs in
+// Validate so this stays a tolerant JSON pass.
 func Parse(raw string) (parsedResponse, error) {
 	trimmed := strings.TrimSpace(raw)
 
@@ -37,9 +30,6 @@ func Parse(raw string) (parsedResponse, error) {
 		return parsedResponse{}, fmt.Errorf("decode walkthrough JSON: %w", err)
 	}
 
-	// Fall through to legacy: if the model emitted Order/Notes instead
-	// of Groups, hoist the flat list into one group so downstream code
-	// sees the same shape.
 	if len(parsed.Groups) == 0 && len(parsed.Order) > 0 {
 		parsed.Groups = []Group{legacyToGroup(parsed.Order, parsed.Notes)}
 	}

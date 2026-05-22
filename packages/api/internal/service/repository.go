@@ -7,10 +7,6 @@ import (
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
-// RepositoryService owns the repository-registry use cases: the list of
-// known repos for a user, upserting on open, and removing. Collaborator
-// management lives alongside since both surfaces share the owner-check
-// contract enforced by the storage layer.
 type RepositoryService struct {
 	repos *storage.RepoRepo
 }
@@ -19,8 +15,6 @@ func NewRepositoryService(repos *storage.RepoRepo) *RepositoryService {
 	return &RepositoryService{repos: repos}
 }
 
-// ErrRepositoryPathRequired signals that a path query parameter was
-// missing from a request; handlers translate it to 400.
 var ErrRepositoryPathRequired = errors.New("path query parameter is required")
 
 func (s *RepositoryService) List(

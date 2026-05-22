@@ -16,9 +16,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthService owns the user-authentication use cases. Construction time
-// captures the bcrypt cost, session TTL, and minimum password length so the
-// HTTP layer never has to reach for these knobs.
 type AuthService struct {
 	users             *storage.UserRepo
 	sessions          *storage.SessionRepo
@@ -55,8 +52,6 @@ func NewAuthService(users *storage.UserRepo, sessions *storage.SessionRepo, cfg 
 	}
 }
 
-// Domain errors signal expected business outcomes that the handler layer
-// translates into specific HTTP status codes.
 var (
 	ErrPasswordTooShort    = errors.New("password too short")
 	ErrPasswordAlreadySet  = errors.New("password already set")
@@ -65,13 +60,10 @@ var (
 	ErrCannotWipeOtherUser = errors.New("can only wipe the active OS user")
 )
 
-// State returns the user record used to populate authStateResponse.
 func (s *AuthService) State(ctx context.Context, osUsername string) (storage.User, error) {
 	return s.users.GetUserByOSUsername(ctx, osUsername)
 }
 
-// Setup hashes the supplied password, stores it for the active OS user, and
-// creates the initial remembered session.
 func (s *AuthService) Setup(
 	ctx context.Context,
 	osUsername, password string,
@@ -113,8 +105,7 @@ func (s *AuthService) Setup(
 	return user, session, nil
 }
 
-// Login validates the supplied password. If remember is true a persistent
-// session is created and returned; otherwise the session pointer is nil and
+// Login returns a non-nil session only when remember is true; otherwise
 // callers should record only the in-memory user id.
 func (s *AuthService) Login(
 	ctx context.Context,
@@ -150,14 +141,12 @@ func (s *AuthService) Login(
 	return user, &session, nil
 }
 
-// Resume restores the user behind a stored session token. ErrSessionNotFound
-// is propagated from the store untouched so handlers can map it to 401.
+// Resume propagates storage.ErrSessionNotFound untouched so handlers can map it to 401.
 func (s *AuthService) Resume(ctx context.Context, token string) (storage.User, error) {
 	return s.sessions.ResumeSession(ctx, s.users, token)
 }
 
-// Logout drops the session row for the given token. A blank token is a no-op
-// so handlers can call this unconditionally.
+// Logout is a no-op on a blank token so handlers can call it unconditionally.
 func (s *AuthService) Logout(ctx context.Context, token string) error {
 	if strings.TrimSpace(token) == "" {
 		return nil
@@ -166,8 +155,8 @@ func (s *AuthService) Logout(ctx context.Context, token string) error {
 	return s.sessions.DeleteSession(ctx, token)
 }
 
-// Wipe deletes the user and re-seeds a fresh, password-less account for the
-// same OS username. Only the active OS user may wipe their own account.
+// Wipe deletes the user and re-seeds a fresh, password-less account.
+// Only the active OS user may wipe their own account.
 func (s *AuthService) Wipe(ctx context.Context, activeOSUsername, requestedOSUsername string) error {
 	target := strings.TrimSpace(requestedOSUsername)
 

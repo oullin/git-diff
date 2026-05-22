@@ -27,9 +27,6 @@ type RepositoryCollaborator struct {
 	GrantedAt   string `json:"grantedAt"`
 }
 
-// RepoRepo owns repositories and their collaborator membership. The
-// historical files repositories.go and repository_users.go now share one
-// type so callers can manage ownership and access in one place.
 type RepoRepo struct {
 	db      *sql.DB
 	queries *db.Queries

@@ -132,10 +132,8 @@ func (s Server) searchRepositoryFiles(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
 }
 
-// scoreFileMatch returns a relevance score for `path` against the already
-// lower-cased `needle`. Higher is better; zero means no match. The scoring
-// favours basename matches over deep-path matches and exact prefixes over
-// later substrings.
+// scoreFileMatch favours basename matches and exact prefixes; zero means
+// no match. `needle` must already be lower-cased.
 func scoreFileMatch(path, needle string) int {
 	lowerPath := strings.ToLower(path)
 	idx := strings.Index(lowerPath, needle)

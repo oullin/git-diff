@@ -32,9 +32,8 @@ func (s Server) getSystemStats(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, stats)
 }
 
-// CPU sampling on macOS requires two `top` snapshots ~1s apart, which blocks
-// the request for ~3.5s. We sample in the background and serve the latest
-// value instead, so the HTTP handler stays non-blocking.
+// CPU sampling on macOS requires two `top` snapshots ~1s apart and
+// blocks ~3.5s. Sample in the background; the handler reads the latest.
 var (
 	cpuSampleOnce sync.Once
 	cpuPercent    atomic.Uint64 // float64 bits
@@ -51,8 +50,6 @@ func startCPUSampler() {
 		for {
 			cpuPercent.Store(math.Float64bits(readCPUPercent()))
 
-			// `top -l 2 -s 1` already blocks ~3.5s; pause briefly between
-			// samples so we're not pegging a core on the sampler itself.
 			time.Sleep(500 * time.Millisecond)
 		}
 	}()

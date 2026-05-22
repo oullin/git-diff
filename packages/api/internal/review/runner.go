@@ -8,16 +8,13 @@ import (
 	"strings"
 )
 
-// GitExecutor runs `git` against a working tree. The default implementation
-// shells out to the on-PATH `git` binary; tests swap it via SetGit to
-// avoid real subprocesses.
+// GitExecutor runs `git`. Tests swap it via SetGit to avoid subprocesses.
 type GitExecutor interface {
 	Output(ctx context.Context, dir string, args ...string) (string, error)
 	Bytes(ctx context.Context, dir string, args ...string) ([]byte, error)
 }
 
-// GhExecutor runs the GitHub CLI. Available reports whether the binary is
-// installed; Output runs it inside a working tree.
+// GhExecutor runs the GitHub CLI; Available reports installation.
 type GhExecutor interface {
 	Available() bool
 	Output(ctx context.Context, dir string, args ...string) ([]byte, error)
@@ -75,15 +72,12 @@ func (execGh) Output(ctx context.Context, dir string, args ...string) ([]byte, e
 	return output, nil
 }
 
-// Default executors are exposed as package-level variables so tests can
-// swap them in process. Use SetGit / SetGh for scoped overrides that
-// restore on the returned func.
 var (
 	gitExec GitExecutor = execGit{}
 	ghExec  GhExecutor  = execGh{}
 )
 
-// SetGit swaps the active git executor and returns a restore func.
+// SetGit swaps the active executor and returns a restore func.
 func SetGit(executor GitExecutor) (restore func()) {
 	prev := gitExec
 	gitExec = executor
@@ -91,7 +85,7 @@ func SetGit(executor GitExecutor) (restore func()) {
 	return func() { gitExec = prev }
 }
 
-// SetGh swaps the active gh executor and returns a restore func.
+// SetGh swaps the active executor and returns a restore func.
 func SetGh(executor GhExecutor) (restore func()) {
 	prev := ghExec
 	ghExec = executor

@@ -36,9 +36,8 @@ type ReviewComment struct {
 	DeletedAt       string `json:"deletedAt,omitempty"`
 }
 
-// CommentRepo owns review_comments. It also writes timeline events as side
-// effects via a ReviewEventWriter so comment mutations and review-event
-// inserts stay consistent without coupling to the concrete ReviewRepo.
+// CommentRepo writes timeline events through ReviewEventWriter so it can
+// stay decoupled from the concrete ReviewRepo.
 type CommentRepo struct {
 	db      *sql.DB
 	queries *db.Queries

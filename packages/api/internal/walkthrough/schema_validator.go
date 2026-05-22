@@ -6,13 +6,8 @@ import (
 	"github.com/gocanto/git-diff/internal/review"
 )
 
-// Validate trims a parsedResponse so it only references paths present in
-// state, normalises invalid action/impact values to sensible defaults,
-// and returns an error when the response is unusable (empty groups,
-// every path filtered).
-//
-// Single responsibility: filter + normalise. Parsing happens in
-// response_parser.go; persistence in cache.go.
+// Validate keeps only paths present in state, normalises action/impact
+// to known values, and errors when nothing usable remains.
 func Validate(parsed parsedResponse, state review.RepositoryState) (parsedResponse, error) {
 	allowed := allowedPaths(state)
 
@@ -23,7 +18,7 @@ func Validate(parsed parsedResponse, state review.RepositoryState) (parsedRespon
 
 		for _, file := range group.Files {
 			if _, ok := allowed[file.Path]; !ok {
-				continue // drop hallucinated path
+				continue
 			}
 
 			file.Action = normaliseAction(file.Action)
@@ -32,7 +27,7 @@ func Validate(parsed parsedResponse, state review.RepositoryState) (parsedRespon
 		}
 
 		if len(cleanFiles) == 0 {
-			continue // drop now-empty group
+			continue
 		}
 
 		group.Files = cleanFiles
@@ -76,8 +71,8 @@ func normaliseImpact(i Impact) Impact {
 	}
 }
 
-// flattenForLegacy mirrors Groups back onto the flat Order/Notes shape
-// so legacy renderer code keeps working for one release. Pure function.
+// flattenForLegacy mirrors Groups onto the flat Order/Notes shape kept
+// for one release of legacy renderer code.
 func flattenForLegacy(groups []Group) (order []string, notes map[string]string) {
 	order = []string{}
 	notes = map[string]string{}

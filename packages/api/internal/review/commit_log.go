@@ -7,8 +7,7 @@ import (
 	"strings"
 )
 
-// ListCommitLog returns the most recent commits in the repository for use as
-// a picker. The slice is ordered newest-first.
+// ListCommitLog returns the most recent commits, newest first.
 func ListCommitLog(ctx context.Context, launchPath string, limit int) ([]CommitSummary, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100

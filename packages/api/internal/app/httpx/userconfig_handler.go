@@ -7,9 +7,6 @@ import (
 	"github.com/gocanto/git-diff/internal/userconfig"
 )
 
-// userConfigGet returns the current resolved config as JSON. Snake_case
-// keys are preserved via the struct's yaml tags + a hand-built map below
-// (json marshalling would otherwise default to the exported Go names).
 func (s Server) userConfigGet(w http.ResponseWriter, _ *http.Request) {
 	if s.UserConfig == nil {
 		writeError(w, http.StatusServiceUnavailable, errors.New("user config not initialised"))
@@ -20,9 +17,9 @@ func (s Server) userConfigGet(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, marshalConfig(s.UserConfig.Get()))
 }
 
-// userConfigStream is an SSE endpoint that emits a "config" event whenever
-// the YAML file changes. The initial event fires immediately so clients
-// can subscribe and forget about the GET endpoint.
+// userConfigStream emits the current config immediately, then a "config"
+// event on every YAML change — clients can subscribe without also calling
+// userConfigGet.
 func (s Server) userConfigStream(w http.ResponseWriter, r *http.Request) {
 	if s.UserConfig == nil || s.UserConfigEvents == nil {
 		writeError(w, http.StatusServiceUnavailable, errors.New("user config not initialised"))
@@ -60,10 +57,8 @@ func (s Server) userConfigStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// marshalConfig converts a Config into a snake_case map matching the YAML
-// schema 1:1, so the renderer can consume the same key names whether it
-// reads the YAML directly or our HTTP endpoint. Centralised here so the
-// JSON shape lives next to the handler that emits it.
+// marshalConfig emits the snake_case shape that mirrors the YAML schema —
+// json marshalling the struct directly would leak the exported Go names.
 func marshalConfig(cfg userconfig.Config) map[string]any {
 	return map[string]any{
 		"theme":                  cfg.Theme,

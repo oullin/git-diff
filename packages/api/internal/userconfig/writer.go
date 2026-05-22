@@ -8,12 +8,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// WriteDefaults creates the YAML config file at path with the baseline
-// values and a commented header. Idempotent: existing files are left
-// alone, so callers can invoke this unconditionally at startup.
-//
-// Single responsibility — first-run scaffold. Hot-reload, validation, and
-// in-memory state belong elsewhere.
+// WriteDefaults is idempotent: existing files are left alone, so
+// callers can invoke this unconditionally at startup.
 func WriteDefaults(path string) error {
 	if _, err := os.Stat(path); err == nil {
 		return nil

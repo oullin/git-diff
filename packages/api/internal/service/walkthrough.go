@@ -12,23 +12,11 @@ import (
 	"github.com/gocanto/git-diff/internal/walkthrough"
 )
 
-// WalkthroughService coordinates the cache, the user config, the AI
-// provider registry, and the walkthrough orchestrator. Handlers feed it
-// the resolved RepositoryState and the request parameters; the service
-// returns the resulting record plus a flag indicating cache hit.
-//
-// Depends on the registry/reader INTERFACES, not concretes — keeps the
-// service layer testable without booting viper or hitting real LLMs.
 type WalkthroughService struct {
 	walkthroughs *storage.WalkthroughRepo
 	providers    *ai.Registry
 	userConfig   userconfig.Reader
 }
-
-// ErrProviderUnavailable signals that the configured provider couldn't
-// be reached (missing API key, missing CLI binary). Handlers translate
-// to 412 Precondition Failed so the renderer can surface a specific
-// remediation prompt.
 
 type GenerateRequest struct {
 	State      review.RepositoryState
@@ -42,17 +30,6 @@ type GenerateResult struct {
 	Record storage.WalkthroughRecord
 	Cached bool
 }
-
-// NewWalkthroughService composes the dependencies. Wired in the app
-// bootstrap; tests can pass fakes for any dependency individually.
-
-// Generate runs the cache lookup, falls through to the LLM when the
-// cache is stale (or absent), and persists the new record. Caching
-// failures are non-fatal: the caller still gets the fresh result.
-
-// providerWithModel wraps a Provider so its Generate call sees the
-// caller's preferred Model on the request. The underlying provider is
-// unchanged — we just stamp the Model field on the way through.
 
 type modelOverrideProvider struct {
 	ai.Provider

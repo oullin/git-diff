@@ -138,10 +138,9 @@ func ReadRepositoryFile(ctx context.Context, launchPath, relPath string) (Reposi
 	}, nil
 }
 
-// ReadRepositoryFileRange returns the lines of relPath in the half-open range
-// [startLine, endLine]. When ref is empty the working tree is read; otherwise
-// the file is materialised via `git show ref:path`. Both line numbers are
-// 1-indexed. The response is capped at maxFileRangeLines.
+// ReadRepositoryFileRange returns lines [startLine, endLine] (1-indexed).
+// An empty ref reads the working tree; otherwise `git show ref:path`.
+// Capped at maxFileRangeLines.
 func ReadRepositoryFileRange(
 	ctx context.Context,
 	launchPath, relPath, ref string,
@@ -228,8 +227,8 @@ func ReadRepositoryFileRange(
 
 	allLines := strings.Split(string(content), "\n")
 
-	// A trailing newline produces a final empty element; ignore it so totalLines
-	// matches what users would see in an editor.
+	// A trailing newline produces a final empty element; drop it so
+	// totalLines matches what users see in an editor.
 	totalLines := len(allLines)
 
 	if totalLines > 0 && allLines[totalLines-1] == "" {

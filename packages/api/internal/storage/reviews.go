@@ -64,10 +64,8 @@ type ReviewDetail struct {
 	Comments []ReviewComment `json:"comments"`
 }
 
-// ReviewEventWriter is the slice of the review repository that other repos
-// need to log timeline events as side effects (e.g. CommentRepo writing
-// "comment_added"). Defined as an interface so consumers depend on the one
-// method they call, not the full repo.
+// ReviewEventWriter lets other repos log timeline events without depending
+// on the concrete ReviewRepo.
 type ReviewEventWriter interface {
 	AddReviewEvent(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error)
 }
@@ -176,7 +174,7 @@ func (r *ReviewRepo) ListReviews(ctx context.Context, userID int64, limit int64)
 	return reviews, rows.Err()
 }
 
-// GetReviewByID returns the bare review session, without events or comments.
+// GetReviewByID returns the session without its events or comments.
 func (r *ReviewRepo) GetReviewByID(ctx context.Context, id string) (ReviewSession, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
@@ -189,9 +187,6 @@ func (r *ReviewRepo) GetReviewByID(ctx context.Context, id string) (ReviewSessio
 	return scanReview(row)
 }
 
-// ReviewDetail composes the review session with its timeline events and
-// non-deleted comments. CommentRepo is passed explicitly so the two repos
-// stay independently constructible.
 func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id string) (ReviewDetail, error) {
 	review, err := r.GetReviewByID(ctx, id)
 

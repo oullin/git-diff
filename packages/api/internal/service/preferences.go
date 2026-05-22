@@ -6,10 +6,6 @@ import (
 	"github.com/gocanto/git-diff/internal/storage"
 )
 
-// PreferenceService is a thin owner for the per-user UI preference map.
-// The storage layer already handles the optimistic merge + delete-on-empty
-// behaviour; the service exists so handlers can drop the store-handle
-// boilerplate.
 type PreferenceService struct {
 	preferences *storage.PreferenceRepo
 }

@@ -9,10 +9,8 @@ import (
 	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
-// PendingComment is a draft comment that exists before a review session has
-// been created. The (user_id, repo_root, context_kind, context_sha) tuple
-// scopes it; when the user starts a review, PromotePendingComments moves any
-// matching rows into review_comments.
+// PendingComment is a draft scoped by (user_id, repo_root, context_kind,
+// context_sha); PromotePendingComments moves matching rows into review_comments.
 type PendingComment struct {
 	ID              string `json:"id"`
 	UserID          int64  `json:"userId"`
@@ -178,9 +176,8 @@ func (r *PendingCommentRepo) ListPendingComments(ctx context.Context, userID int
 	return comments, rows.Err()
 }
 
-// PromotePendingComments moves every matching pending comment into
-// review_comments under the given review session. Runs in a single
-// transaction so a crash mid-promotion can't leave partial state.
+// PromotePendingComments runs in one transaction so a mid-promotion crash
+// can't leave partial state across pending and review tables.
 func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID int64, reviewID string) (int, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 

@@ -6,12 +6,8 @@ import (
 	"path/filepath"
 )
 
-// Service bundles the loader, reader, watcher, and broker into one
-// dependency the HTTP layer can inject. The struct is just composition —
-// every concern still lives in its own file.
-//
-// Construct via NewService at startup. Call Run(ctx) in a goroutine to
-// drive the watcher; cancel ctx to stop.
+// Service bundles loader, reader, watcher, and broker. Construct via
+// NewService at startup; call Run(ctx) in a goroutine and cancel to stop.
 type Service struct {
 	Path    string
 	Reader  *AtomicReader
@@ -19,9 +15,8 @@ type Service struct {
 	watcher *Watcher
 }
 
-// NewService scaffolds the YAML file if missing, loads it, and returns a
-// Service ready to be Run. Returns the load error so callers can fail
-// loudly at boot.
+// NewService scaffolds the YAML file if missing and returns a load error
+// so callers can fail loudly at boot.
 func NewService(home string) (*Service, error) {
 	path := DefaultPath(home)
 
@@ -43,10 +38,9 @@ func NewService(home string) (*Service, error) {
 	}, nil
 }
 
-// Run drives the watcher loop. On every reload, the AtomicReader is
-// updated and the broker fans out to subscribers. Errors are silently
-// dropped here — production callers should pass a logger via onError;
-// kept off the surface to avoid coupling to a logging library.
+// Run drives the watcher loop, refreshing the reader and broker on every
+// reload. Watch errors are silently dropped; pass a logger via the
+// watcher directly if production logging is needed.
 func (s *Service) Run(ctx context.Context) error {
 	return s.watcher.Watch(ctx, s.Path,
 		func(cfg Config) {
@@ -57,8 +51,7 @@ func (s *Service) Run(ctx context.Context) error {
 	)
 }
 
-// DefaultPath returns the canonical config location for a given home
-// directory: ~/.git-diff/config.yaml.
+// DefaultPath is ~/.git-diff/config.yaml relative to home.
 func DefaultPath(home string) string {
 	return filepath.Join(home, ".git-diff", "config.yaml")
 }

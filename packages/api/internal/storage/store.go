@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,17 +15,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// clock is a small mutable holder for the time source. Repositories share a
-// pointer to one clock so a test can advance time on the Store and every
-// repo observes it through r.clk.now().
+// clock is shared across every repo so SetNow advances time everywhere.
 type clock struct {
 	now func() time.Time
 }
 
-// Store is the composition root for the SQLite-backed storage layer. It owns
-// the database connection, the sqlc-generated queries, and a shared clock,
-// and exposes one repository per domain. Services depend on the specific
-// repositories they need rather than on the Store itself.
 type Store struct {
 	db      *sql.DB
 	queries *db.Queries
@@ -55,16 +50,10 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, fmt.Errorf("create database directory: %w", err)
 	}
 
-	conn, err := sql.Open("sqlite", path)
+	conn, err := sql.Open("sqlite", sqliteOpenDSN(path))
 
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
-	}
-
-	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); err != nil {
-		_ = conn.Close()
-
-		return nil, fmt.Errorf("enable sqlite foreign keys: %w", err)
 	}
 
 	clk := &clock{now: time.Now}
@@ -95,6 +84,15 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	return store, nil
 }
 
+func sqliteOpenDSN(path string) string {
+	dsn := url.URL{Scheme: "file", Path: path}
+	query := dsn.Query()
+	query.Add("_pragma", "foreign_keys(1)")
+	dsn.RawQuery = query.Encode()
+
+	return dsn.String()
+}
+
 func DefaultPath(home string) string {
 	if override := os.Getenv(envDBPath); override != "" {
 		return override
@@ -107,8 +105,7 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-// SetNow swaps the clock used by every repository. Tests use this to
-// advance time deterministically.
+// SetNow swaps the clock used by every repository.
 func (s *Store) SetNow(fn func() time.Time) {
 	s.clk.now = fn
 }

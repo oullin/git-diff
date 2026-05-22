@@ -7,20 +7,13 @@ import (
 	"github.com/gocanto/git-diff/internal/review"
 )
 
-// PromptInput is the snapshot the prompt builder turns into text. Pure
-// data — kept separate from Request (which carries provider/budget) so
-// the builder can be unit tested without touching ai.Provider.
 type PromptInput struct {
 	State  review.RepositoryState
 	Budget Budget
 }
 
-// BuildPrompt returns the system+user prompt for a walkthrough call.
-// Pure function: same input → identical output. The prompt instructs
-// the model to emit the v2 grouped JSON schema.
-//
-// Decomposed from the legacy buildPrompt so callers can also exercise
-// budget enforcement in isolation.
+// BuildPrompt produces the prompt for a walkthrough call; the model is
+// instructed to emit the v2 grouped JSON schema.
 func BuildPrompt(input PromptInput) string {
 	files := enforceBudget(input.State.Files, input.Budget)
 

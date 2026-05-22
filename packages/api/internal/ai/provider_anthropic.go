@@ -13,19 +13,11 @@ import (
 	"time"
 )
 
-// AnthropicProvider implements Provider against the Anthropic Messages API.
-// Pulls the API key from $ANTHROPIC_API_KEY at request time so key
+// AnthropicProvider reads $ANTHROPIC_API_KEY at request time so key
 // rotation doesn't require a process restart.
 type AnthropicProvider struct {
 	http *http.Client
 }
-
-// NewAnthropicProvider returns a provider with a 60 s default HTTP
-// timeout. Tests can swap http via the field directly when needed.
-
-// SupportsModel is permissive — any non-empty string that looks like a
-// claude model name passes. Goal: catch obvious wrong-provider
-// configs (e.g. "gpt-5"), not gatekeep new claude releases.
 
 type anthropicResponse struct {
 	Content []struct {
@@ -39,10 +31,14 @@ type anthropicResponse struct {
 }
 
 const (
-	anthropicEndpoint = "https://api.anthropic.com/v1/messages"
-	anthropicAPIVer   = "2023-06-01"
-	anthropicDefault  = "claude-sonnet-4-5"
+	anthropicEndpoint         = "https://api.anthropic.com/v1/messages"
+	anthropicAPIVer           = "2023-06-01"
+	anthropicDefault          = "claude-sonnet-4-5"
+	anthropicErrorBodyLimit   = 64 * 1024
+	anthropicSuccessBodyLimit = 8 * 1024 * 1024
 )
+
+var errAnthropicResponseTooLarge = errors.New("anthropic response body exceeds limit")
 
 func NewAnthropicProvider() *AnthropicProvider {
 	return &AnthropicProvider{http: &http.Client{Timeout: 60 * time.Second}}
@@ -107,14 +103,20 @@ func (p *AnthropicProvider) Generate(ctx context.Context, req GenerateRequest) (
 
 	defer resp.Body.Close()
 
-	raw, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		raw, err := readLimited(resp.Body, anthropicErrorBodyLimit)
+
+		if err != nil && !errors.Is(err, errAnthropicResponseTooLarge) {
+			return GenerateResponse{}, fmt.Errorf("read anthropic error response: %w", err)
+		}
+
+		return GenerateResponse{}, fmt.Errorf("anthropic returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+
+	raw, err := readLimited(resp.Body, anthropicSuccessBodyLimit)
 
 	if err != nil {
 		return GenerateResponse{}, fmt.Errorf("read anthropic response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return GenerateResponse{}, fmt.Errorf("anthropic returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 
 	text, usage, err := decodeAnthropic(raw)
@@ -145,4 +147,18 @@ func decodeAnthropic(body []byte) (string, Usage, error) {
 	}
 
 	return "", Usage{}, errors.New("anthropic response had no text content")
+}
+
+func readLimited(r io.Reader, limit int64) ([]byte, error) {
+	raw, err := io.ReadAll(io.LimitReader(r, limit+1))
+
+	if err != nil {
+		return nil, err
+	}
+
+	if int64(len(raw)) > limit {
+		return raw[:limit], errAnthropicResponseTooLarge
+	}
+
+	return raw, nil
 }

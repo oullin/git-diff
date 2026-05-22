@@ -19,10 +19,7 @@ import (
 	"github.com/gocanto/git-diff/internal/userconfig"
 )
 
-// Serve is the CLI entry point for the "serve-http" subcommand. It does the
-// boring orchestration plumbing (parse flags, validate settings, open the
-// store, bind the unix socket, seed the OS user) and then hands off to
-// RunServer with a Server that the route table can consume.
+// Serve is the CLI entry point for the "serve-http" subcommand.
 func Serve(args []string, cfg ServeConfig) int {
 	settings, socketPath, exit := parseServeFlags(args, cfg)
 
@@ -67,15 +64,9 @@ func Serve(args []string, cfg ServeConfig) int {
 	defer cancelWatch()
 
 	go func() {
-		// Watcher loop survives transient errors via its own onError path
-		// (here nil); a hard error returns and the goroutine exits — the
-		// app keeps running with the initial config.
 		_ = userCfg.Run(watchCtx)
 	}()
 
-	// AI provider registry. Adding a new provider only requires another
-	// Register() call here — handlers depend on the registry interface,
-	// not the concrete providers.
 	providers := ai.NewRegistry()
 	providers.Register(ai.NewAnthropicProvider())
 	providers.Register(ai.NewCodexProvider())

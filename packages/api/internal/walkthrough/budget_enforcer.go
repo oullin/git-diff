@@ -7,24 +7,15 @@ import (
 	"github.com/gocanto/git-diff/internal/review"
 )
 
-// truncatedFile is the post-budget shape the prompt builder consumes.
-// Keeps the prompt builder oblivious to budget details — it just renders
-// whatever this function hands back.
 type truncatedFile struct {
 	File         review.ChangedFile
 	PatchBody    string
-	OmittedAfter bool // true on the last file when the total budget cut the rest
+	OmittedAfter bool // set on the last file when the total budget cut the rest
 }
 
-// enforceBudget walks the state's files in order, truncating each file's
-// concatenated patch to PerFileBytes and stopping the iteration once the
-// cumulative size crosses TotalBytes. Pure function — no IO, easy to
-// unit test against captured states.
-//
-// When a file is truncated, "[…truncated]" is appended so the LLM
-// understands the body was cut. When the total budget terminates the
-// iteration, OmittedAfter is set on the final included file so the
-// caller can render a global marker.
+// enforceBudget caps each file at PerFileBytes (appending "[…truncated]")
+// and stops once the running total crosses TotalBytes (setting
+// OmittedAfter on the final included file).
 func enforceBudget(files []review.ChangedFile, budget Budget) []truncatedFile {
 	if budget.PerFileBytes <= 0 {
 		budget.PerFileBytes = DefaultBudget().PerFileBytes
@@ -60,8 +51,8 @@ func enforceBudget(files []review.ChangedFile, budget Budget) []truncatedFile {
 	return out
 }
 
-// concatenatePatches joins every diff section in the file, marking
-// binary sections so the LLM doesn't try to interpret the bytes.
+// concatenatePatches marks binary sections so the LLM doesn't try to
+// interpret the bytes.
 func concatenatePatches(file review.ChangedFile) string {
 	var b strings.Builder
 

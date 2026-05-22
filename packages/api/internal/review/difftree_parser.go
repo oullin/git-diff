@@ -5,9 +5,7 @@ import (
 )
 
 // DiffTreeParser turns the raw bytes of
-// `git diff-tree --name-status -z` into a slice of commitDiffEntry. Like
-// StatusParser, the parsing logic is isolated from IO so it can be unit
-// tested against captured fixtures.
+// `git diff-tree --name-status -z` into a slice of commitDiffEntry.
 type DiffTreeParser struct{}
 
 func (DiffTreeParser) Parse(raw []byte) []commitDiffEntry {
@@ -62,8 +60,6 @@ func (DiffTreeParser) Parse(raw []byte) []commitDiffEntry {
 	return entries
 }
 
-// parseDiffTreeNameStatus is the legacy package-level wrapper; new code
-// should construct a DiffTreeParser explicitly.
 func parseDiffTreeNameStatus(raw []byte) []commitDiffEntry {
 	return DiffTreeParser{}.Parse(raw)
 }

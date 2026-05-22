@@ -10,9 +10,8 @@ import (
 	"github.com/gocanto/git-diff/internal/storage/db"
 )
 
-// WalkthroughGroupFile mirrors walkthrough.FileEntry on the wire. The
-// storage layer doesn't import the walkthrough package (would create a
-// cycle through the service layer); the JSON shape is identical.
+// WalkthroughGroupFile mirrors walkthrough.FileEntry; the storage layer
+// can't import the walkthrough package without an import cycle.
 type WalkthroughGroupFile struct {
 	Path   string `json:"path"`
 	Note   string `json:"note"`
@@ -20,7 +19,6 @@ type WalkthroughGroupFile struct {
 	Impact string `json:"impact"`
 }
 
-// WalkthroughGroup mirrors walkthrough.Group on the wire.
 type WalkthroughGroup struct {
 	ID        string                 `json:"id"`
 	Title     string                 `json:"title"`
@@ -28,10 +26,8 @@ type WalkthroughGroup struct {
 	Files     []WalkthroughGroupFile `json:"files"`
 }
 
-// WalkthroughRecord is the cached output of an LLM walkthrough for a specific
-// (repo, context) pair. Fingerprint is the deterministic state-and-provider
-// hash; if it drifts from what the latest RepositoryState produces, the
-// cached row is considered stale and should be re-generated.
+// WalkthroughRecord caches one LLM walkthrough per (repo, context) pair.
+// A drifted Fingerprint marks the row stale and forces regeneration.
 type WalkthroughRecord struct {
 	RepoRoot    string             `json:"repoRoot"`
 	ContextKind string             `json:"contextKind"`
@@ -42,8 +38,8 @@ type WalkthroughRecord struct {
 	Groups      []WalkthroughGroup `json:"groups"`
 	Summary     string             `json:"summary"`
 	GeneratedAt string             `json:"generatedAt"`
-	// Legacy mirrors retained for one release so renderer code that
-	// hasn't migrated still has data to display.
+	// Order/Notes are legacy mirrors kept for one release so unmigrated
+	// renderer code still has data to display.
 	Order []string          `json:"order"`
 	Notes map[string]string `json:"notes"`
 }

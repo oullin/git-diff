@@ -9,11 +9,6 @@ import (
 	"testing"
 )
 
-// BenchmarkReadRepositoryState exercises the batched-diff path on a
-// working-tree with 50 modified files. Comparing before/after the perf
-// pass should show a multi-x speedup since the old per-file loop fired
-// 100 separate `git diff` subprocesses.
-//
 // Run with: go test -bench BenchmarkReadRepositoryState -benchtime=3x ./internal/review/
 func BenchmarkReadRepositoryState(b *testing.B) {
 	root := benchSetup(b, 50)
@@ -34,9 +29,6 @@ func BenchmarkReadRepositoryState(b *testing.B) {
 	}
 }
 
-// TestReadRepositoryStateHandlesManyFiles is the correctness counterpart
-// to the benchmark — verifies the batched splitter actually returns one
-// section per dirty file with the right paths.
 func TestReadRepositoryStateHandlesManyFiles(t *testing.T) {
 	root := t.TempDir()
 	git(t, root, "init")

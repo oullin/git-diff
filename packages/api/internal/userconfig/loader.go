@@ -8,16 +8,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Loader reads a YAML config from disk and decodes into Config. Stateless
-// — Load is safe to call concurrently with distinct paths.
-//
-// Defaults are merged per-key via viper.SetDefault so a partial YAML file
-// inherits the missing keys from Defaults() automatically.
 type Loader struct{}
 
-// Load reads and decodes the config at path. Missing files are treated as
-// "use defaults" — the caller decides whether to call Writer.WriteDefaults
-// to scaffold one.
+// Load treats a missing file as "use defaults"; the caller decides
+// whether to scaffold one via WriteDefaults.
 func (Loader) Load(path string) (Config, error) {
 	v := viper.New()
 
@@ -55,8 +49,8 @@ func isMissing(err error) bool {
 	return errors.Is(err, os.ErrNotExist)
 }
 
-// applyDefaults populates viper's default layer from a Defaults() snapshot
-// so partial files inherit missing keys per-leaf, not all-or-nothing.
+// applyDefaults seeds viper's default layer so partial YAML inherits
+// missing keys per-leaf rather than all-or-nothing.
 func applyDefaults(v *viper.Viper, d Config) {
 	v.SetDefault("theme", d.Theme)
 	v.SetDefault("show_whitespace", d.ShowWhitespace)
