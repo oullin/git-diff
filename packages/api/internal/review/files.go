@@ -13,13 +13,7 @@ import (
 )
 
 func ResolveRoot(ctx context.Context, launchPath string) (string, error) {
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
-
-	if err != nil {
-		return "", fmt.Errorf("resolve git root: %w", err)
-	}
-
-	return strings.TrimSpace(root), nil
+	return RootFor(ctx, launchPath)
 }
 
 func ListRepositoryFiles(ctx context.Context, root string) ([]string, error) {
@@ -65,13 +59,13 @@ func ReadRepositoryFile(ctx context.Context, launchPath, relPath string) (Reposi
 		return RepositoryFile{}, errors.New("path is required")
 	}
 
-	rootRaw, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	rootRaw, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryFile{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryFile{}, err
 	}
 
-	root, err := filepath.EvalSymlinks(strings.TrimSpace(rootRaw))
+	root, err := filepath.EvalSymlinks(rootRaw)
 
 	if err != nil {
 		return RepositoryFile{}, fmt.Errorf("resolve git root: %w", err)
@@ -169,13 +163,13 @@ func ReadRepositoryFileRange(
 		endLine = startLine + maxFileRangeLines - 1
 	}
 
-	rootRaw, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	rootRaw, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryFileRange{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryFileRange{}, err
 	}
 
-	root, err := filepath.EvalSymlinks(strings.TrimSpace(rootRaw))
+	root, err := filepath.EvalSymlinks(rootRaw)
 
 	if err != nil {
 		return RepositoryFileRange{}, fmt.Errorf("resolve git root: %w", err)

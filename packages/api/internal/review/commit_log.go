@@ -14,13 +14,11 @@ func ListCommitLog(ctx context.Context, launchPath string, limit int) ([]CommitS
 		limit = 100
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return nil, fmt.Errorf("resolve git root: %w", err)
+		return nil, err
 	}
-
-	root = strings.TrimSpace(root)
 
 	const sep = "\x1f"
 	const recordSep = "\x1e"

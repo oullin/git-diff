@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/lineparse"
 )
 
 func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositoryState, error) {
@@ -14,21 +16,20 @@ func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositorySta
 		return RepositoryState{}, errors.New("commit sha is required")
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	ctx = WithRootCache(ctx)
+
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryState{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryState{}, err
 	}
 
-	root = strings.TrimSpace(root)
-
-	resolved, err := gitOutput(ctx, root, "rev-parse", "--verify", sha+"^{commit}")
+	resolved, err := ResolveCommitRef(ctx, root, sha)
 
 	if err != nil {
 		return RepositoryState{}, fmt.Errorf("verify commit: %w", err)
 	}
 
-	resolved = strings.TrimSpace(resolved)
 	short, _ := gitOutput(ctx, root, "rev-parse", "--short", resolved)
 	short = strings.TrimSpace(short)
 
@@ -39,30 +40,17 @@ func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositorySta
 	}
 
 	entries := parseDiffTreeNameStatus(nameStatusRaw)
-	files := make([]ChangedFile, 0, len(entries))
 
-	for _, entry := range entries {
-		patch, binary := commitFilePatch(ctx, root, resolved, entry.path, entry.old)
+	// Batch: one `git show` covers every file in the commit. Splitting it
+	// gives us per-file bodies without the N+1 invocation cost the old code
+	// paid when commits touched many files.
+	patches, err := readCommitPatches(ctx, root, resolved)
 
-		section := DiffSection{
-			ID:     fmt.Sprintf("commit:%s:%s", resolved, entry.path),
-			Kind:   "commit",
-			Patch:  patch,
-			Binary: binary,
-		}
-
-		file := ChangedFile{
-			Path:     entry.path,
-			OldPath:  entry.old,
-			Status:   entry.status,
-			Binary:   binary,
-			Sections: []DiffSection{section},
-		}
-
-		file.Additions, file.Deletions = countPatchLines(patch)
-		file.Fingerprint = fingerprint(file)
-		files = append(files, file)
+	if err != nil {
+		return RepositoryState{}, err
 	}
+
+	files := buildCommitChangedFiles(entries, patches, resolved)
 
 	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 
@@ -88,19 +76,44 @@ func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositorySta
 	return state, nil
 }
 
-func commitFilePatch(ctx context.Context, root, sha, path, oldPath string) (string, bool) {
-	args := []string{"show", "--binary", "--find-renames", "--format=", "-m", "--first-parent", sha, "--"}
-
-	if oldPath != "" {
-		args = append(args, oldPath)
-	}
-
-	args = append(args, path)
-	patch, err := gitOutput(ctx, root, args...)
+func readCommitPatches(ctx context.Context, root, sha string) (map[string][]byte, error) {
+	raw, err := gitBytes(ctx, root,
+		"show", "--binary", "--find-renames", "--format=", "-m", "--first-parent", sha,
+	)
 
 	if err != nil {
-		return "", false
+		return nil, fmt.Errorf("read commit patches: %w", err)
 	}
 
-	return patch, isBinaryPatch(patch)
+	return lineparse.SplitUnifiedPatch(raw), nil
+}
+
+func buildCommitChangedFiles(entries []commitDiffEntry, patches map[string][]byte, sha string) []ChangedFile {
+	files := make([]ChangedFile, 0, len(entries))
+
+	for _, entry := range entries {
+		patch := string(patches[entry.path])
+		binary := isBinaryPatch(patch)
+
+		section := DiffSection{
+			ID:     fmt.Sprintf("commit:%s:%s", sha, entry.path),
+			Kind:   "commit",
+			Patch:  patch,
+			Binary: binary,
+		}
+
+		file := ChangedFile{
+			Path:     entry.path,
+			OldPath:  entry.old,
+			Status:   entry.status,
+			Binary:   binary,
+			Sections: []DiffSection{section},
+		}
+
+		file.Additions, file.Deletions = countPatchLines(patch)
+		file.Fingerprint = fingerprint(file)
+		files = append(files, file)
+	}
+
+	return files
 }

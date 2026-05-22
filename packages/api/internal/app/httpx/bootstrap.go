@@ -62,7 +62,7 @@ func Serve(args []string, cfg ServeConfig) int {
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{
-		Mux:           appServer.requireAuth(appServer.BuildMux()),
+		Mux:           withRequestCaches(appServer.requireAuth(appServer.BuildMux())),
 		SafeQueryKeys: []string{"limit"},
 	})}
 

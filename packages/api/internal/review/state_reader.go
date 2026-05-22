@@ -11,26 +11,122 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/gocanto/git-diff/internal/lineparse"
+	"golang.org/x/sync/errgroup"
 )
 
 func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryState, error) {
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	ctx = WithRootCache(ctx)
+
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryState{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryState{}, err
 	}
 
-	root = strings.TrimSpace(root)
+	// Four cheap startup queries fan out in parallel. They're independent —
+	// each hits a different bit of git state — so the wall time collapses
+	// to the slowest single call instead of summing across all four.
+	var (
+		branch    string
+		head      string
+		statusRaw []byte
+		staged    map[string][]byte
+		unstaged  map[string][]byte
+	)
 
-	branch, _ := gitOutput(ctx, root, "branch", "--show-current")
-	head, _ := gitOutput(ctx, root, "rev-parse", "--short", "HEAD")
-	statusRaw, err := gitBytes(ctx, root, "status", "--porcelain=v1", "-z")
+	group, gctx := errgroup.WithContext(ctx)
 
-	if err != nil {
-		return RepositoryState{}, fmt.Errorf("read git status: %w", err)
+	group.Go(func() error {
+		out, _ := gitOutput(gctx, root, "branch", "--show-current")
+		branch = strings.TrimSpace(out)
+
+		return nil
+	})
+
+	group.Go(func() error {
+		out, _ := gitOutput(gctx, root, "rev-parse", "--short", "HEAD")
+		head = strings.TrimSpace(out)
+
+		return nil
+	})
+
+	group.Go(func() error {
+		out, err := gitBytes(gctx, root, "status", "--porcelain=v1", "-z")
+
+		if err != nil {
+			return fmt.Errorf("read git status: %w", err)
+		}
+
+		statusRaw = out
+
+		return nil
+	})
+
+	group.Go(func() error {
+		raw, err := gitBytes(gctx, root, "diff", "--binary", "--find-renames", "--cached")
+
+		if err != nil {
+			return fmt.Errorf("read staged diff: %w", err)
+		}
+
+		staged = lineparse.SplitUnifiedPatch(raw)
+
+		return nil
+	})
+
+	group.Go(func() error {
+		raw, err := gitBytes(gctx, root, "diff", "--binary", "--find-renames")
+
+		if err != nil {
+			return fmt.Errorf("read unstaged diff: %w", err)
+		}
+
+		unstaged = lineparse.SplitUnifiedPatch(raw)
+
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		return RepositoryState{}, err
 	}
 
 	entries := parseStatus(statusRaw)
+	files := assembleChangedFiles(entries, root, staged, unstaged)
+
+	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+
+	tracked, _ := ListRepositoryFiles(ctx, root)
+
+	state := RepositoryState{
+		Root:         root,
+		LaunchPath:   launchPath,
+		Mode:         RepositoryModeWorking,
+		Branch:       branch,
+		HeadSHA:      head,
+		GeneratedAt:  time.Now().UTC().Format(time.RFC3339Nano),
+		Files:        files,
+		TrackedFiles: tracked,
+	}
+
+	for _, file := range files {
+		state.Additions += file.Additions
+		state.Deletions += file.Deletions
+	}
+
+	return state, nil
+}
+
+// assembleChangedFiles maps porcelain status entries onto the pre-split
+// per-file patches from the staged/unstaged batch diffs. Untracked files
+// aren't in either diff output and are synthesised on the fly so the UI
+// still gets a green-line preview.
+func assembleChangedFiles(
+	entries []statusEntry,
+	root string,
+	staged, unstaged map[string][]byte,
+) []ChangedFile {
 	files := make([]ChangedFile, 0, len(entries))
 
 	for _, entry := range entries {
@@ -41,7 +137,8 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 		}
 
 		if entry.index != ' ' && entry.index != '?' {
-			patch, binary := filePatch(ctx, root, true, entry.path)
+			patch := string(staged[entry.path])
+			binary := isBinaryPatch(patch)
 			file.Sections = append(file.Sections, DiffSection{ID: file.pathSectionID("staged"), Kind: "staged", Patch: patch, Binary: binary})
 			file.Binary = file.Binary || binary
 			add, del := countPatchLines(patch)
@@ -50,7 +147,8 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 		}
 
 		if entry.work != ' ' && entry.work != '?' {
-			patch, binary := filePatch(ctx, root, false, entry.path)
+			patch := string(unstaged[entry.path])
+			binary := isBinaryPatch(patch)
 			file.Sections = append(file.Sections, DiffSection{ID: file.pathSectionID("unstaged"), Kind: "unstaged", Patch: patch, Binary: binary})
 			file.Binary = file.Binary || binary
 			add, del := countPatchLines(patch)
@@ -73,27 +171,7 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 		files = append(files, file)
 	}
 
-	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
-
-	tracked, _ := ListRepositoryFiles(ctx, root)
-
-	state := RepositoryState{
-		Root:         root,
-		LaunchPath:   launchPath,
-		Mode:         RepositoryModeWorking,
-		Branch:       strings.TrimSpace(branch),
-		HeadSHA:      strings.TrimSpace(head),
-		GeneratedAt:  time.Now().UTC().Format(time.RFC3339Nano),
-		Files:        files,
-		TrackedFiles: tracked,
-	}
-
-	for _, file := range files {
-		state.Additions += file.Additions
-		state.Deletions += file.Deletions
-	}
-
-	return state, nil
+	return files
 }
 
 func statusFromEntry(entry statusEntry) GitFileStatus {
@@ -114,23 +192,6 @@ func statusFromEntry(entry statusEntry) GitFileStatus {
 	}
 
 	return StatusModified
-}
-
-func filePatch(ctx context.Context, root string, staged bool, path string) (string, bool) {
-	args := []string{"diff", "--binary", "--find-renames"}
-
-	if staged {
-		args = append(args, "--cached")
-	}
-
-	args = append(args, "--", path)
-	patch, err := gitOutput(ctx, root, args...)
-
-	if err != nil {
-		return "", false
-	}
-
-	return patch, isBinaryPatch(patch)
 }
 
 func untrackedPatch(root string, path string) (string, bool) {

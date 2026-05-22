@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/lineparse"
 )
 
 // PullRequestSummary describes one entry returned by `gh pr list`. The UI
@@ -35,13 +36,11 @@ func ListPullRequests(ctx context.Context, launchPath string, limit int) ([]Pull
 		return nil, ErrGhUnavailable
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return nil, fmt.Errorf("resolve git root: %w", err)
+		return nil, err
 	}
-
-	root = strings.TrimSpace(root)
 
 	if limit <= 0 || limit > 200 {
 		limit = 50
@@ -108,13 +107,11 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 		return RepositoryState{}, ErrGhUnavailable
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryState{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryState{}, err
 	}
-
-	root = strings.TrimSpace(root)
 
 	detail, err := ghOutput(ctx, root,
 		"pr", "view", strconv.Itoa(number),
@@ -161,30 +158,17 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 	}
 
 	entries := parseDiffTreeNameStatus(nameStatusRaw)
-	files := make([]ChangedFile, 0, len(entries))
 
-	for _, entry := range entries {
-		patch, binary := pullRequestFilePatch(ctx, root, view.BaseRefOid, view.HeadRefOid, entry.path, entry.old)
+	// One batched `git diff` covers every file in the PR; we split by
+	// `diff --git` headers so each file's patch is recovered without the
+	// N+1 invocation cost the per-file loop used to pay.
+	patches, err := readPullRequestPatches(ctx, root, view.BaseRefOid, view.HeadRefOid)
 
-		section := DiffSection{
-			ID:     fmt.Sprintf("pr:%d:%s", number, entry.path),
-			Kind:   "commit",
-			Patch:  patch,
-			Binary: binary,
-		}
-
-		file := ChangedFile{
-			Path:     entry.path,
-			OldPath:  entry.old,
-			Status:   entry.status,
-			Binary:   binary,
-			Sections: []DiffSection{section},
-		}
-
-		file.Additions, file.Deletions = countPatchLines(patch)
-		file.Fingerprint = fingerprint(file)
-		files = append(files, file)
+	if err != nil {
+		return RepositoryState{}, err
 	}
+
+	files := buildPullRequestChangedFiles(entries, patches, number)
 
 	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 
@@ -210,19 +194,45 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 	return state, nil
 }
 
-func pullRequestFilePatch(ctx context.Context, root, baseSHA, headSHA, path, oldPath string) (string, bool) {
-	args := []string{"diff", "--binary", "--find-renames", baseSHA + ".." + headSHA, "--"}
-
-	if oldPath != "" {
-		args = append(args, oldPath)
-	}
-
-	args = append(args, path)
-	patch, err := gitOutput(ctx, root, args...)
+func readPullRequestPatches(ctx context.Context, root, baseSHA, headSHA string) (map[string][]byte, error) {
+	raw, err := gitBytes(ctx, root,
+		"diff", "--binary", "--find-renames",
+		baseSHA+".."+headSHA,
+	)
 
 	if err != nil {
-		return "", false
+		return nil, fmt.Errorf("read PR patches: %w", err)
 	}
 
-	return patch, isBinaryPatch(patch)
+	return lineparse.SplitUnifiedPatch(raw), nil
+}
+
+func buildPullRequestChangedFiles(entries []commitDiffEntry, patches map[string][]byte, number int) []ChangedFile {
+	files := make([]ChangedFile, 0, len(entries))
+
+	for _, entry := range entries {
+		patch := string(patches[entry.path])
+		binary := isBinaryPatch(patch)
+
+		section := DiffSection{
+			ID:     fmt.Sprintf("pr:%d:%s", number, entry.path),
+			Kind:   "commit",
+			Patch:  patch,
+			Binary: binary,
+		}
+
+		file := ChangedFile{
+			Path:     entry.path,
+			OldPath:  entry.old,
+			Status:   entry.status,
+			Binary:   binary,
+			Sections: []DiffSection{section},
+		}
+
+		file.Additions, file.Deletions = countPatchLines(patch)
+		file.Fingerprint = fingerprint(file)
+		files = append(files, file)
+	}
+
+	return files
 }
