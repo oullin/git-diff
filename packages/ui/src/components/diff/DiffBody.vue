@@ -178,6 +178,7 @@ function hunksFor(section: DiffSection): HunkInfo[] {
     const infos = getHunkInfos(parsePatch(section, props.hideWhitespace));
 
     hunkInfoCache.set(cacheKey, infos);
+
     return infos;
 }
 

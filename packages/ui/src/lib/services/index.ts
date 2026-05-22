@@ -19,7 +19,7 @@ export type {
  * and the bridge can be swapped (e.g. for browser-fallback) without
  * touching consumers.
  */
-export interface ServiceRegistry {
+export interface Container {
     readonly auth: AuthService;
     readonly preferences: PreferenceService;
     readonly repository: RepositoryService;
@@ -27,9 +27,9 @@ export interface ServiceRegistry {
     readonly walkthrough: WalkthroughService;
 }
 
-let registry: ServiceRegistry | null = null;
+let registry: Container | null = null;
 
-export function services(): ServiceRegistry {
+export function services(): Container {
     if (!registry) {
         registry = {
             auth: createAuthService(),
@@ -43,9 +43,10 @@ export function services(): ServiceRegistry {
     return registry;
 }
 
-/** Swap the active service registry (tests). Returns a restore func. */
-export function setServices(next: ServiceRegistry): () => void {
+/** Swap the active service container (tests). Returns a restore func. */
+export function setServices(next: Container): () => void {
     const prev = registry;
+
     registry = next;
 
     return () => {
