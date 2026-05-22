@@ -52,7 +52,7 @@ func (s Server) searchRepositoryFiles(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	repos, err := s.Services.Repositories().List(r.Context(), s.Auth.CurrentUserID())
+	repos, err := s.Services.repos.List(r.Context(), s.Auth.CurrentUserID())
 
 	if err != nil {
 		if errors.Is(err, service.ErrAuthenticationRequired) {

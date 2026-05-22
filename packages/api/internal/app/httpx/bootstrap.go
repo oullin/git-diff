@@ -79,14 +79,14 @@ func Serve(args []string, cfg ServeConfig) int {
 	providers.Register(ai.NewAnthropicProvider())
 	providers.Register(ai.NewCodexProvider())
 
-	registry := newServiceRegistry(store, providers, userCfg.Reader)
+	svcs := newServices(store, providers, userCfg.Reader)
 
 	appServer := Server{
 		Home:             cfg.Home,
 		Repo:             settings.RepoRoot,
 		Settings:         settings,
 		Auth:             NewAuthState(osUsername),
-		Services:         registry,
+		Services:         svcs,
 		UserConfig:       userCfg.Reader,
 		UserConfigEvents: userCfg.Broker,
 	}

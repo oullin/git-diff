@@ -34,7 +34,7 @@ func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collaborators, err := s.Services.Repositories().ListCollaborators(
+	collaborators, err := s.Services.repos.ListCollaborators(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		path,
@@ -62,7 +62,7 @@ func (s Server) addCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collaborator, err := s.Services.Repositories().GrantCollaborator(
+	collaborator, err := s.Services.repos.GrantCollaborator(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		body.Path,
@@ -97,7 +97,7 @@ func (s Server) removeCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.Services.Repositories().RevokeCollaborator(
+	if err := s.Services.repos.RevokeCollaborator(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		path,

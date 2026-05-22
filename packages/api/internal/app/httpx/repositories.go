@@ -23,7 +23,7 @@ func (s Server) handleRepositoryError(w http.ResponseWriter, err error) {
 }
 
 func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
-	repos, err := s.Services.Repositories().List(r.Context(), s.Auth.CurrentUserID())
+	repos, err := s.Services.repos.List(r.Context(), s.Auth.CurrentUserID())
 
 	if err != nil {
 		s.handleRepositoryError(w, err)
@@ -46,7 +46,7 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo, err := s.Services.Repositories().Upsert(
+	repo, err := s.Services.repos.Upsert(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		body.Path,
@@ -69,7 +69,7 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) removeRepository(w http.ResponseWriter, r *http.Request) {
-	err := s.Services.Repositories().Remove(
+	err := s.Services.repos.Remove(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		r.URL.Query().Get("path"),

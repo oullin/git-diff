@@ -28,7 +28,7 @@ func (s Server) listPendingComments(w http.ResponseWriter, r *http.Request) {
 		repoRoot = s.Repo
 	}
 
-	comments, err := s.Services.PendingComments().List(
+	comments, err := s.Services.pending.List(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		repoRoot,
@@ -54,7 +54,7 @@ func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.Services.PendingComments().Create(
+	comment, err := s.Services.pending.Create(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		s.Repo,
@@ -81,7 +81,7 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.Services.PendingComments().Update(
+	comment, err := s.Services.pending.Update(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		r.PathValue("id"),
@@ -104,7 +104,7 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
-	if err := s.Services.PendingComments().Delete(
+	if err := s.Services.pending.Delete(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		r.PathValue("id"),
@@ -128,7 +128,7 @@ func (s Server) promotePendingComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	promoted, err := s.Services.PendingComments().Promote(
+	promoted, err := s.Services.pending.Promote(
 		r.Context(),
 		s.Auth.CurrentUserID(),
 		body.ReviewID,
