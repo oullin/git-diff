@@ -101,7 +101,7 @@
         "Berkeley Mono", "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, "SF Mono",
         Menlo, Consolas, "Liberation Mono", monospace;
 
-    /* codiff-style aliases — let raw CSS reference these names without going through @theme */
+    /* aliases — let raw CSS reference these names without going through @theme */
     --font-sans: var(--font-ui);
     --font-mono: var(--font-code);
 

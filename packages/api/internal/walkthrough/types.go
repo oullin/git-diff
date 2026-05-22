@@ -5,8 +5,8 @@
 package walkthrough
 
 // Action labels what the user is expected to do with a file: a full
-// review, a quick scan, or a skim. Mirrors codiff's vocabulary so the UI
-// can colour-code consistently.
+// review, a quick scan, or a skim. The vocabulary lets the UI colour-code
+// consistently.
 type Action string
 
 // Impact labels how broadly a change reaches. "wide" means many call
@@ -75,8 +75,8 @@ const (
 	ImpactMechanical Impact = "mechanical"
 )
 
-// DefaultBudget is the codiff parity setting. Used when the caller
-// doesn't supply a Budget.
+// DefaultBudget returns the default Budget used when the caller doesn't
+// supply one.
 func DefaultBudget() Budget {
 	return Budget{
 		PerFileBytes: 4 * 1024,

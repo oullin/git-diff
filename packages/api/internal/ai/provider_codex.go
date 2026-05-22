@@ -11,10 +11,10 @@ import (
 	"strings"
 )
 
-// CodexProvider shells out to the `codex` CLI (the OpenAI Codex tool
-// codiff uses for its walkthrough). Strict failure mode per the user's
-// decision: when the binary isn't on PATH (and not under ~/.codex/bin),
-// Generate returns ErrCodexNotInstalled — no silent fallback.
+// CodexProvider shells out to the `codex` CLI (the OpenAI Codex tool).
+// Strict failure mode per the user's decision: when the binary isn't on
+// PATH (and not under ~/.codex/bin), Generate returns ErrCodexNotInstalled
+// — no silent fallback.
 type CodexProvider struct {
 	// resolveBinary lets tests inject a fake lookup. nil → default
 	// resolution (PATH then ~/.codex/bin/codex).

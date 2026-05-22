@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
-// Mirrors codiff's three patterns so users get the same launch grammar:
+// Three patterns define the launch grammar:
 //
 //   commitHashPattern    : 4-64 hex chars — short or full SHAs.
 //   headCommitRefPattern : HEAD / @ revision syntax — HEAD, HEAD~3, HEAD^,
@@ -114,7 +114,7 @@ export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string
         return classifyPositional(positionals[0]!, cwd, walkthrough);
     }
 
-    // Two positionals: support `git-diff <path> <ref>` (codiff-compatible).
+    // Two positionals: support `git-diff <path> <ref>`.
     if (positionals.length === 2) {
         const pathArg = positionals[0]!;
         const refArg = positionals[1]!;
@@ -261,7 +261,7 @@ function classifyPrSubcommand(args: string[], cwd: string, walkthrough: boolean)
 /**
  * True when `arg` is a commit-ish the backend should try to resolve. A path
  * with the same name on disk always wins, so callers must check existence
- * first when ambiguous. Mirrors codiff's `isCommitRefArgument()`.
+ * first when ambiguous.
  */
 export function isCommitRefArgument(arg: string, cwd: string): boolean {
     if (commitHashPattern.test(arg)) {

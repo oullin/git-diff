@@ -2,7 +2,7 @@ import type { RepositoryMode } from "../repo/index.js";
 
 /**
  * What the user is expected to do with a file in a walkthrough group.
- * Mirrors codiff's vocabulary so the UI can colour-code consistently.
+ * The vocabulary lets the UI colour-code consistently.
  */
 export type WalkthroughAction = "review" | "scan" | "skim";
 
