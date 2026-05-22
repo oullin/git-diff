@@ -11,6 +11,8 @@ GO_FMT_BIN := /usr/local/bin/go-fmt
 GO_FMT_EXEC := $(GO_FMT_COMPOSE) exec -T $(GO_FMT_SERVICE) $(GO_FMT_BIN)
 OXFMT := pnpm exec oxfmt
 OXLINT := pnpm exec oxlint
+TSX := pnpm exec tsx
+BLANK_LINES := $(ROOT_PATH)/scripts/blank-lines.ts
 
 .PHONY: dev format format-start format-stop format-login
 
@@ -21,6 +23,9 @@ dev:
 format: format-start
 	@echo "go-fmt format in $(ROOT_PATH)"; \
 	$(GO_FMT_EXEC) format --cwd $(ROOT_PATH) --host-path $(ROOT_PATH)
+	@echo "blank-lines fix in packages/ui packages/bridge"
+	@cd $(ROOT_PATH)/packages/ui && $(TSX) $(BLANK_LINES)
+	@cd $(ROOT_PATH)/packages/bridge && $(TSX) $(BLANK_LINES)
 	@echo "oxfmt format in $(ROOT_PATH)"
 	@$(OXFMT) --write packages/ui packages/bridge package.json turbo.json
 	@echo "oxlint fix in $(ROOT_PATH)"
