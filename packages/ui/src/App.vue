@@ -51,6 +51,8 @@ import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
 import { useReviewMarkdownCopy } from "@composables/useReviewMarkdownCopy";
+import { useCommandRegistry } from "@composables/useCommandRegistry";
+import CommandPalette from "@entry/components/CommandPalette.vue";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth.store";
 import { useRepoStore } from "@/stores/repo.store";
@@ -226,6 +228,51 @@ const { selectAdjacent, jumpToHunk } = useDiffNavigation({
     changedIndex,
     onSelect: (path) => selectFile(path),
 });
+
+// Command palette commands. Registered once at App scope; the palette
+// component (mounted in the template) reads from the same module
+// singleton via useCommandRegistry().
+{
+    const palette = useCommandRegistry();
+
+    palette.register({
+        id: "diff.toggle-whitespace",
+        title: "Toggle whitespace-only changes",
+        section: "Diff",
+        keymapId: "toggle_whitespace",
+        run: () =>
+            savePreferences({ [PREF_KEYS.diffHideWhitespace]: hideWhitespace.value ? "0" : "1" }),
+    });
+
+    palette.register({
+        id: "review.copy-markdown",
+        title: "Copy active review as Markdown",
+        section: "Review",
+        run: () => copyReviewAsMarkdown(),
+    });
+
+    palette.register({
+        id: "walkthrough.generate",
+        title: "Generate AI walkthrough",
+        section: "Review",
+        run: async () => {
+            await generateWalkthrough();
+        },
+    });
+
+    palette.register({
+        id: "file.copy-path",
+        title: "Copy current file path",
+        section: "File",
+        run: () => {
+            const file = selectedFile.value;
+
+            if (file) {
+                copyPath(file.path);
+            }
+        },
+    });
+}
 
 const shortcutsEnabled = computed(() => authMode.value === "ready");
 let unsubscribeShortcuts: (() => void) | null = null;
@@ -944,6 +991,8 @@ void ACCENTS;
             />
 
             <SearchBar :open="searchOpen" @close="searchOpen = false" />
+
+            <CommandPalette />
 
             <ToastViewport :toasts="toasts" @dismiss="dismissToast" />
         </div>
