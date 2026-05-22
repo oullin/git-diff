@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { AlertCircle, Check, MessageSquare, Search, X } from "lucide-vue-next";
-import FileRow from "./FileRow.vue";
-import Kbd from "./Kbd.vue";
-import SegGroup from "./SegGroup.vue";
-import RepoFileTree from "@entry/components/RepoFileTree.vue";
-import { ScrollArea } from "@ui/scroll-area";
+import { computed, toRef } from "vue";
+import { Search, X } from "lucide-vue-next";
+import FileListView from "@components/diff/FileListView.vue";
+import SegGroup from "@components/diff/SegGroup.vue";
+import SidebarActions from "@components/diff/SidebarActions.vue";
+import RepoFileTree from "@components/RepoFileTree.vue";
+import { useFileListFilter } from "@composables/useFileListFilter";
 import type { ChangedFile, ReviewComment } from "@git-diff/contracts";
 
 const props = defineProps<{
@@ -29,24 +29,16 @@ const emit = defineEmits<{
     "open-review-panel": [intent: "comment" | "request"];
 }>();
 
-const totalCount = computed(() => props.files.length);
-const viewedCount = computed(() => props.files.filter((f) => props.isViewed(f)).length);
-
-const filteredFiles = computed(() => {
-    const q = props.searchQuery.trim().toLowerCase();
-
-    return q ? props.files.filter((f) => f.path.toLowerCase().includes(q)) : props.files;
-});
-
-const filteredAllPaths = computed(() => {
-    const q = props.searchQuery.trim().toLowerCase();
-
-    return q ? props.allPaths.filter((path) => path.toLowerCase().includes(q)) : props.allPaths;
-});
-
-const progressPct = computed(() =>
-    totalCount.value === 0 ? 0 : (viewedCount.value / totalCount.value) * 100,
+const { totalCount, viewedCount, filteredFiles, filteredAllPaths, progressPct } = useFileListFilter(
+    {
+        files: toRef(props, "files"),
+        allPaths: toRef(props, "allPaths"),
+        searchQuery: toRef(props, "searchQuery"),
+        isViewed: (file) => props.isViewed(file),
+    },
 );
+
+const filteredCountLabel = computed(() => filteredFiles.value.length);
 
 function onSearchInput(event: Event) {
     emit("update:searchQuery", (event.target as HTMLInputElement).value);
@@ -121,7 +113,7 @@ function clearSearch() {
             </div>
             <div class="flex items-center justify-between" :style="{ marginTop: '10px' }">
                 <div :style="{ fontSize: '11.5px', color: 'var(--gd-text-3)', fontWeight: 500 }">
-                    <span :style="{ color: 'var(--gd-text-2)' }">{{ filteredFiles.length }}</span>
+                    <span :style="{ color: 'var(--gd-text-2)' }">{{ filteredCountLabel }}</span>
                     changed ·
                     <span :style="{ color: 'var(--gd-text-2)' }">{{ viewedCount }}</span
                     >/{{ totalCount }} viewed
@@ -170,30 +162,15 @@ function clearSearch() {
         >
             Workspace
         </div>
-        <ScrollArea v-if="scope === 'changed'" class="min-h-0 flex-1">
-            <div :style="{ padding: '0 6px 12px' }">
-                <FileRow
-                    v-for="file in filteredFiles"
-                    :key="file.path"
-                    :file="file"
-                    :selected="selectedPath === file.path"
-                    :viewed="isViewed(file)"
-                    :threads="threadsForFile(file.path)"
-                    @select="emit('select', file.path)"
-                    @toggle-viewed="emit('toggle-viewed', file)"
-                />
-                <div
-                    v-if="filteredFiles.length === 0"
-                    :style="{
-                        padding: '12px 10px',
-                        fontSize: '12px',
-                        color: 'var(--gd-text-muted)',
-                    }"
-                >
-                    No changed files match the filter.
-                </div>
-            </div>
-        </ScrollArea>
+        <FileListView
+            v-if="scope === 'changed'"
+            :files="filteredFiles"
+            :selected-path="selectedPath"
+            :is-viewed="isViewed"
+            :threads-for-file="threadsForFile"
+            @select="(path) => emit('select', path)"
+            @toggle-viewed="(file) => emit('toggle-viewed', file)"
+        />
         <div v-else class="flex min-h-0 flex-1 flex-col" :style="{ padding: '0 6px 12px' }">
             <RepoFileTree
                 v-if="filteredAllPaths.length > 0"
@@ -213,87 +190,9 @@ function clearSearch() {
             </div>
         </div>
 
-        <div
-            :style="{
-                padding: '6px 6px 14px',
-                borderTop: '1px solid var(--gd-border)',
-                background: 'var(--gd-panel)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '14px',
-            }"
-        >
-            <button
-                type="button"
-                :style="{
-                    height: '36px',
-                    borderRadius: '8px',
-                    border: '1px solid transparent',
-                    background: 'var(--gd-accent-strong)',
-                    color: '#fff',
-                    fontSize: '13.5px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    whiteSpace: 'nowrap',
-                    boxShadow:
-                        '0 0 0 1px var(--gd-accent-strong), 0 1px 0 rgba(255,255,255,0.08) inset, 0 6px 14px -4px var(--gd-accent-soft)',
-                    cursor: 'pointer',
-                }"
-                @click="emit('start-review')"
-            >
-                <Check :size="13" />
-                Submit review
-                <Kbd tone="on-accent">⌘↵</Kbd>
-            </button>
-            <div :style="{ display: 'flex', gap: '6px' }">
-                <button
-                    type="button"
-                    :style="{
-                        flex: 1,
-                        height: '28px',
-                        borderRadius: '7px',
-                        border: '1px solid var(--gd-border)',
-                        background: 'var(--gd-panel-2)',
-                        color: 'var(--gd-text-2)',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px',
-                        cursor: 'pointer',
-                    }"
-                    @click="emit('open-review-panel', 'comment')"
-                >
-                    <MessageSquare :size="12" />
-                    Comment
-                </button>
-                <button
-                    type="button"
-                    :style="{
-                        flex: 1,
-                        height: '28px',
-                        borderRadius: '7px',
-                        border: '1px solid var(--gd-border)',
-                        background: 'var(--gd-panel-2)',
-                        color: 'var(--gd-text-2)',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px',
-                        cursor: 'pointer',
-                    }"
-                    @click="emit('open-review-panel', 'request')"
-                >
-                    <AlertCircle :size="12" />
-                    Request
-                </button>
-            </div>
-        </div>
+        <SidebarActions
+            @start-review="emit('start-review')"
+            @open-review-panel="(intent) => emit('open-review-panel', intent)"
+        />
     </div>
 </template>
