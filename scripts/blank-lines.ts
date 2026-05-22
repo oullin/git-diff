@@ -3,8 +3,10 @@ import { resolve } from "node:path";
 import { parseSync } from "oxc-parser";
 
 const cwd = process.cwd();
-const check = process.argv.includes("--check");
-const candidateDirs = ["src", "scripts"];
+const args = process.argv.slice(2);
+const check = args.includes("--check");
+const dirArgs = args.filter((arg) => !arg.startsWith("--"));
+const candidateDirs = dirArgs.length > 0 ? dirArgs : ["src", "scripts"];
 
 type Node = {
     type: string;
@@ -137,7 +139,12 @@ async function listSourceFiles(dir: string): Promise<string[]> {
             continue;
         }
 
-        if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".vue")) {
+        if (
+            !entry.name.endsWith(".ts") &&
+            !entry.name.endsWith(".tsx") &&
+            !entry.name.endsWith(".jsx") &&
+            !entry.name.endsWith(".vue")
+        ) {
             continue;
         }
 

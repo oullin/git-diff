@@ -23,9 +23,15 @@ dev:
 format: format-start
 	@echo "go-fmt format in $(ROOT_PATH)"; \
 	$(GO_FMT_EXEC) format --cwd $(ROOT_PATH) --host-path $(ROOT_PATH)
-	@echo "blank-lines fix in packages/ui packages/bridge"
-	@cd $(ROOT_PATH)/packages/ui && $(TSX) $(BLANK_LINES)
-	@cd $(ROOT_PATH)/packages/bridge && $(TSX) $(BLANK_LINES)
+	@echo "blank-lines fix across packages and root scripts"
+	@cd $(ROOT_PATH) && $(TSX) $(BLANK_LINES) \
+		packages/ui/src \
+		packages/ui/scripts \
+		packages/ui/electron \
+		packages/ui/tests \
+		packages/bridge/src \
+		packages/contracts/src \
+		scripts
 	@echo "oxfmt format in $(ROOT_PATH)"
 	@$(OXFMT) --write packages/ui packages/bridge package.json turbo.json
 	@echo "oxlint fix in $(ROOT_PATH)"

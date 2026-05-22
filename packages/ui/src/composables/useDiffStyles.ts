@@ -16,33 +16,49 @@ export function useDiffStyles(diffStyle: Ref<DiffHunkStyle>) {
     const colors = computed<DiffStyleColors>(() => diffBgs(diffStyle.value));
 
     function bgFor(kind: DiffCellKind): string {
-        if (kind === "add") {return colors.value.addBg;}
+        if (kind === "add") {
+            return colors.value.addBg;
+        }
 
-        if (kind === "rem") {return colors.value.remBg;}
+        if (kind === "rem") {
+            return colors.value.remBg;
+        }
 
         return "transparent";
     }
 
     function numBgFor(kind: DiffCellKind): string {
-        if (kind === "add") {return colors.value.addNum;}
+        if (kind === "add") {
+            return colors.value.addNum;
+        }
 
-        if (kind === "rem") {return colors.value.remNum;}
+        if (kind === "rem") {
+            return colors.value.remNum;
+        }
 
         return "transparent";
     }
 
     function barFor(kind: DiffCellKind): string {
-        if (kind === "add") {return colors.value.addBar;}
+        if (kind === "add") {
+            return colors.value.addBar;
+        }
 
-        if (kind === "rem") {return colors.value.remBar;}
+        if (kind === "rem") {
+            return colors.value.remBar;
+        }
 
         return "transparent";
     }
 
     function sign(kind: DiffCellKind): string {
-        if (kind === "add") {return "+";}
+        if (kind === "add") {
+            return "+";
+        }
 
-        if (kind === "rem") {return "−";}
+        if (kind === "rem") {
+            return "−";
+        }
 
         return " ";
     }
