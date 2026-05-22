@@ -7,6 +7,7 @@ import { RepositoriesClient } from "#bridge/clients/repositories.js";
 import { RepositoryClient } from "#bridge/clients/repository.js";
 import { ReviewClient } from "#bridge/clients/reviews.js";
 import { SystemClient } from "#bridge/clients/system.js";
+import { UserConfigClient } from "#bridge/clients/userconfig.js";
 import { WalkthroughClient } from "#bridge/clients/walkthrough.js";
 import { SocketHttpTransport } from "#bridge/http.js";
 class HttpApiClient {
@@ -19,6 +20,7 @@ class HttpApiClient {
     repository;
     reviews;
     system;
+    userConfig;
     walkthroughs;
     constructor(transport) {
         this.auth = new AuthClient(transport);
@@ -30,6 +32,7 @@ class HttpApiClient {
         this.repository = new RepositoryClient(transport);
         this.reviews = new ReviewClient(transport);
         this.system = new SystemClient(transport);
+        this.userConfig = new UserConfigClient(transport);
         this.walkthroughs = new WalkthroughClient(transport);
     }
     close() {}

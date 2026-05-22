@@ -14,6 +14,7 @@ import (
 
 	"github.com/gocanto/git-diff/internal/app/setting"
 	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/gocanto/git-diff/internal/userconfig"
 )
 
 // Serve is the CLI entry point for the "serve-http" subcommand. It does the
@@ -53,12 +54,33 @@ func Serve(args []string, cfg ServeConfig) int {
 
 	registry := newServiceRegistry(store)
 
+	userCfg, err := userconfig.NewService(cfg.Home)
+
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "user config: %v\n", err)
+
+		return 1
+	}
+
+	watchCtx, cancelWatch := context.WithCancel(context.Background())
+
+	defer cancelWatch()
+
+	go func() {
+		// Watcher loop survives transient errors via its own onError path
+		// (here nil); a hard error returns and the goroutine exits — the
+		// app keeps running with the initial config.
+		_ = userCfg.Run(watchCtx)
+	}()
+
 	appServer := Server{
-		Home:     cfg.Home,
-		Repo:     settings.RepoRoot,
-		Settings: settings,
-		Auth:     NewAuthState(osUsername),
-		Services: registry,
+		Home:             cfg.Home,
+		Repo:             settings.RepoRoot,
+		Settings:         settings,
+		Auth:             NewAuthState(osUsername),
+		Services:         registry,
+		UserConfig:       userCfg.Reader,
+		UserConfigEvents: userCfg.Broker,
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{

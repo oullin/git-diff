@@ -20,6 +20,7 @@ import type {
     ReviewSession,
     SystemStats,
     UIPreferences,
+    UserConfig,
     WalkthroughRecord,
 } from "@git-diff/contracts";
 
@@ -119,6 +120,7 @@ export interface DiffAppApi {
     deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void>;
     getUIPreferences(): Promise<UIPreferences>;
     saveUIPreferences(patch: Record<string, string>): Promise<UIPreferences>;
+    getUserConfig(): Promise<UserConfig>;
     getAuthState(): Promise<AuthStateResponse>;
     authBootstrap(): Promise<AuthBootstrapResponse>;
     authSetup(password: string): Promise<AuthLoginResponse>;

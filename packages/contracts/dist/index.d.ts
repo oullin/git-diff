@@ -9,5 +9,6 @@ export * from "./repo/index.js";
 export * from "./review/index.js";
 export * from "./settings/index.js";
 export * from "./system/index.js";
+export * from "./userconfig/index.js";
 export * from "./walkthrough/index.js";
 //# sourceMappingURL=index.d.ts.map

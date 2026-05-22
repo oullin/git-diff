@@ -95,6 +95,7 @@ contextBridge.exposeInMainWorld("diffApp", {
     getUIPreferences: () => ipcRenderer.invoke("ui-prefs:get"),
     saveUIPreferences: (patch: Record<string, string>) =>
         ipcRenderer.invoke("ui-prefs:save", patch),
+    getUserConfig: () => ipcRenderer.invoke("user-config:get"),
     getAuthState: () => ipcRenderer.invoke("auth:state"),
     authBootstrap: () => ipcRenderer.invoke("auth:bootstrap"),
     authSetup: (password: string) => ipcRenderer.invoke("auth:setup", { password }),

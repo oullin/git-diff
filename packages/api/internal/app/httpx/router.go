@@ -60,6 +60,11 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("GET /v1/preferences", s.getPreferences)
 	mux.HandleFunc("POST /v1/preferences", s.savePreferences)
 
+	// User config (YAML file at ~/.git-diff/config.yaml). GET for one-shot,
+	// stream for hot-reload subscriptions.
+	mux.HandleFunc("GET /v1/userconfig", s.userConfigGet)
+	mux.HandleFunc("GET /v1/userconfig/stream", s.userConfigStream)
+
 	// Auth: state, password setup/login, session resume, logout, wipe.
 	mux.HandleFunc("GET /v1/auth/state", s.authState)
 	mux.HandleFunc("POST /v1/auth/setup", s.authSetup)

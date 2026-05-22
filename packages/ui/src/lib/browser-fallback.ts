@@ -9,6 +9,7 @@ import type {
     ReviewDetail,
     ReviewSession,
     UIPreferences,
+    UserConfig,
 } from "@git-diff/contracts";
 import { PREF_KEYS } from "@git-diff/contracts";
 import type { DiffAppApi } from "@/types/diff-app";
@@ -23,6 +24,35 @@ import type { DiffAppApi } from "@/types/diff-app";
  * real bridge is present. Tests that want a fresh sandbox call
  * `createMockDiffApp()` directly.
  */
+function fallbackUserConfig(): UserConfig {
+    return {
+        theme: "system",
+        show_whitespace: false,
+        copy_comments_on_close: false,
+        last_repository_path: "",
+        walkthrough: {
+            provider: "anthropic",
+            model: "claude-sonnet-4-5",
+            patch_budget_bytes: 160 * 1024,
+            per_file_budget_bytes: 4 * 1024,
+        },
+        keymap: {
+            command_bar: "cmd+shift+p",
+            file_filter: "cmd+f",
+            diff_search: "/",
+            submit_comment: "cmd+enter",
+            discard_comment: "escape",
+            toggle_sidebar: "cmd+\\",
+            next_file: "j",
+            prev_file: "k",
+            next_hunk: "n",
+            prev_hunk: "p",
+            toggle_viewed: "v",
+            toggle_whitespace: "w",
+        },
+    };
+}
+
 export function createMockDiffApp(): DiffAppApi {
     let preferences: UIPreferences = {
         values: {
@@ -289,6 +319,7 @@ export function createMockDiffApp(): DiffAppApi {
             }
         },
         getUIPreferences: async () => preferences,
+        getUserConfig: async () => fallbackUserConfig(),
         saveUIPreferences: async (patch) => {
             const values = { ...preferences.values };
 

@@ -7,6 +7,7 @@ import { RepositoriesClient } from "#bridge/clients/repositories.js";
 import { RepositoryClient } from "#bridge/clients/repository.js";
 import { ReviewClient } from "#bridge/clients/reviews.js";
 import { SystemClient } from "#bridge/clients/system.js";
+import { UserConfigClient } from "#bridge/clients/userconfig.js";
 import { WalkthroughClient } from "#bridge/clients/walkthrough.js";
 import { type HttpTransport } from "#bridge/http.js";
 /**
@@ -25,6 +26,7 @@ export interface ApiClient {
     readonly repository: RepositoryClient;
     readonly reviews: ReviewClient;
     readonly system: SystemClient;
+    readonly userConfig: UserConfigClient;
     readonly walkthroughs: WalkthroughClient;
     close(): void;
 }

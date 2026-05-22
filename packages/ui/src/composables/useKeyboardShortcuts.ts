@@ -1,4 +1,6 @@
-import type { Ref } from "vue";
+import { onMounted, onUnmounted, type Ref } from "vue";
+import { matchesBinding, parseBinding, type ParsedBinding } from "@/composables/keymapMatcher";
+import { useKeymap } from "@/composables/useKeymap";
 
 export interface UseKeyboardShortcutsOptions {
     enabled: Ref<boolean>;
@@ -10,12 +12,18 @@ export interface UseKeyboardShortcutsOptions {
 }
 
 /**
- * Binds the global keydown listener that powers j/k/v/n/p/Cmd+Enter/Cmd+F
- * shortcuts. The `enabled` ref gates the listener (e.g. only fires when
- * authMode === "ready"). Returns an unbind function suitable for
- * onUnmounted.
+ * Binds the global keydown listener that powers the navigation /
+ * review-action shortcuts. Bindings come from the user-configurable
+ * keymap (YAML), with fallbacks to the historical defaults if a key is
+ * unset. Reactive: editing config.yaml updates the active bindings
+ * without a reload.
+ *
+ * Returns a manual unsubscribe in addition to the automatic onUnmounted
+ * cleanup, so older callers that captured the return value still work.
  */
 export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): () => void {
+    const { keymap } = useKeymap();
+
     function onKeydown(event: KeyboardEvent): void {
         if (!opts.enabled.value) {
             return;
@@ -32,43 +40,126 @@ export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): () => v
             return;
         }
 
-        if (event.key === "j" || event.key === "ArrowDown") {
-            if (event.metaKey || event.ctrlKey || event.altKey) {
-                return;
-            }
+        // Snapshot bindings on each event so a hot-reload of config.yaml
+        // takes effect on the very next keystroke.
+        const bindings = currentBindings(keymap.value);
 
+        // Arrow keys aren't user-configurable today — they're an alias to
+        // next_file / prev_file for ergonomics. Treat them inline.
+        if (event.key === "ArrowDown" && !event.metaKey && !event.ctrlKey && !event.altKey) {
             event.preventDefault();
             opts.onSelectAdjacent(1);
-        } else if (event.key === "k" || event.key === "ArrowUp") {
-            if (event.metaKey || event.ctrlKey || event.altKey) {
-                return;
-            }
 
+            return;
+        }
+
+        if (event.key === "ArrowUp" && !event.metaKey && !event.ctrlKey && !event.altKey) {
             event.preventDefault();
             opts.onSelectAdjacent(-1);
-        } else if (event.key === "v") {
+
+            return;
+        }
+
+        if (bindings.nextFile && matchesBinding(event, bindings.nextFile)) {
+            event.preventDefault();
+            opts.onSelectAdjacent(1);
+
+            return;
+        }
+
+        if (bindings.prevFile && matchesBinding(event, bindings.prevFile)) {
+            event.preventDefault();
+            opts.onSelectAdjacent(-1);
+
+            return;
+        }
+
+        if (bindings.nextHunk && matchesBinding(event, bindings.nextHunk)) {
+            event.preventDefault();
+            opts.onJumpToHunk(1);
+
+            return;
+        }
+
+        if (bindings.prevHunk && matchesBinding(event, bindings.prevHunk)) {
+            event.preventDefault();
+            opts.onJumpToHunk(-1);
+
+            return;
+        }
+
+        if (bindings.toggleViewed && matchesBinding(event, bindings.toggleViewed)) {
             opts.onToggleViewed();
-        } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+
+            return;
+        }
+
+        if (bindings.submitComment && matchesBinding(event, bindings.submitComment)) {
             event.preventDefault();
             opts.onStartReview();
-        } else if (event.key === "n" || event.key === "p") {
-            if (event.metaKey || event.ctrlKey || event.altKey) {
-                return;
-            }
 
-            event.preventDefault();
-            opts.onJumpToHunk(event.key === "n" ? 1 : -1);
-        } else if ((event.key === "f" && (event.metaKey || event.ctrlKey)) || event.key === "/") {
-            if (event.key === "/" && (event.metaKey || event.ctrlKey || event.altKey)) {
-                return;
-            }
+            return;
+        }
 
+        if (
+            (bindings.fileFilter && matchesBinding(event, bindings.fileFilter)) ||
+            (bindings.diffSearch && matchesBinding(event, bindings.diffSearch))
+        ) {
             event.preventDefault();
             opts.onOpenSearch();
         }
     }
 
-    document.addEventListener("keydown", onKeydown);
+    let bound = false;
 
-    return () => document.removeEventListener("keydown", onKeydown);
+    function bind(): void {
+        if (bound) {
+            return;
+        }
+
+        document.addEventListener("keydown", onKeydown);
+        bound = true;
+    }
+
+    function unbind(): void {
+        if (!bound) {
+            return;
+        }
+
+        document.removeEventListener("keydown", onKeydown);
+        bound = false;
+    }
+
+    onMounted(bind);
+    onUnmounted(unbind);
+
+    // The component might mount the listener immediately (callers that
+    // don't rely on onMounted lifecycle) — bind synchronously too.
+    bind();
+
+    return unbind;
+}
+
+interface CurrentBindings {
+    nextFile: ParsedBinding | null;
+    prevFile: ParsedBinding | null;
+    nextHunk: ParsedBinding | null;
+    prevHunk: ParsedBinding | null;
+    toggleViewed: ParsedBinding | null;
+    submitComment: ParsedBinding | null;
+    fileFilter: ParsedBinding | null;
+    diffSearch: ParsedBinding | null;
+}
+
+function currentBindings(keymap: ReturnType<typeof useKeymap>["keymap"]["value"]): CurrentBindings {
+    return {
+        nextFile: parseBinding(keymap.next_file),
+        prevFile: parseBinding(keymap.prev_file),
+        nextHunk: parseBinding(keymap.next_hunk),
+        prevHunk: parseBinding(keymap.prev_hunk),
+        toggleViewed: parseBinding(keymap.toggle_viewed),
+        submitComment: parseBinding(keymap.submit_comment),
+        fileFilter: parseBinding(keymap.file_filter),
+        diffSearch: parseBinding(keymap.diff_search),
+    };
 }
