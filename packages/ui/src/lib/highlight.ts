@@ -102,17 +102,8 @@ function tokenizeWithHighlighter(
     return html;
 }
 
-/**
- * Highlighter owns the per-line tokenize cache and the lazy main-thread
- * fallback highlighter. State that used to live as module-level globals
- * (cache, inflight set, fallback highlighter, loaded-language set) is
- * encapsulated here so the public surface is just the four methods
- * consumed by Vue components.
- *
- * `rev` is a shallowRef that bumps every time async tokens arrive or
- * the colour scheme flips, so consumers can `void rev.value` in a
- * computed to opt into re-render on cache fills.
- */
+/** `rev` bumps on async-token arrival and theme flip; consume it in a
+ *  computed to opt into re-render on cache fills. */
 export class Highlighter {
     /** Tokenized-line HTML cache, keyed by `${theme}:${lang}:${text}`. LRU bounded. */
     private readonly cache = new Map<string, string>();
@@ -136,11 +127,8 @@ export class Highlighter {
         });
     }
 
-    /**
-     * Returns highlighted HTML for `text` if cached; otherwise schedules
-     * an async tokenize and returns plaintext-escaped HTML for now. The
-     * caller observes `rev` to re-render once the cache fills.
-     */
+    /** Async path: returns plaintext-escaped HTML now; the caller
+     *  observes `rev` to re-render once the cache fills. */
     highlightLine(text: string, lang: BundledLanguage | null): string {
         if (!lang) {
             return escapeHtml(text);
@@ -163,10 +151,6 @@ export class Highlighter {
         return escapeHtml(text);
     }
 
-    /**
-     * Pre-warms the worker (or fallback) for `lang` so the next
-     * tokenize call doesn't pay the grammar-load cost on a hot path.
-     */
     async ensureLanguage(lang: BundledLanguage | null): Promise<void> {
         if (!lang) {
             return;
@@ -235,9 +219,8 @@ export class Highlighter {
                 this.cacheSet(key, html);
             })
             .catch(() => {
-                // Leave the cache empty so subsequent renders try again. Plaintext
-                // remains visible in the meantime — that's better than retrying in
-                // a hot loop on a permanent failure.
+                // Leave the cache empty so subsequent renders retry,
+                // but plaintext stays visible meanwhile.
             })
             .finally(() => {
                 this.inflight.delete(key);
@@ -281,9 +264,8 @@ export class Highlighter {
     }
 }
 
-// Singleton used by Vue components. Tests can construct their own
-// Highlighter to assert behaviour in isolation, but the renderer
-// consumes the shared instance so a single cache covers the whole app.
+// Singleton so a single cache covers the whole app; tests can construct
+// their own Highlighter to assert behaviour in isolation.
 const sharedHighlighter = new Highlighter();
 
 export const highlighterRev = sharedHighlighter.rev;

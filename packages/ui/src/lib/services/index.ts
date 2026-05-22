@@ -12,13 +12,6 @@ export type {
     WalkthroughService,
 };
 
-/**
- * The renderer's typed bridge facade. Each field hides
- * `window.diffApp` behind a domain-shaped interface so call sites read
- * `services.auth.login(...)` instead of `window.diffApp.authLogin(...)`,
- * and the bridge can be swapped (e.g. for browser-fallback) without
- * touching consumers.
- */
 export interface Container {
     readonly auth: AuthService;
     readonly preferences: PreferenceService;

@@ -4,12 +4,6 @@ import type {
     AuthStateResponse,
 } from "@git-diff/contracts";
 
-/**
- * AuthService wraps the auth surface of `window.diffApp` so the rest of
- * the app depends on a small, typed interface instead of the global IPC
- * shim. Tests can substitute an in-memory implementation by constructing
- * an alternative bridge and passing it to the service container.
- */
 export interface AuthService {
     state(): Promise<AuthStateResponse>;
     bootstrap(): Promise<AuthBootstrapResponse>;

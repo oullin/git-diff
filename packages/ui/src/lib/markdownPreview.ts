@@ -2,15 +2,8 @@ import type { ChangedFile } from "@git-diff/contracts";
 
 import { parsePatch } from "@lib/patch";
 
-/**
- * Walks every section's patch in `file` and returns the set of new-file line
- * numbers that were added by the change. Used by the markdown preview to
- * highlight which rendered lines correspond to additions in the diff.
- *
- * For fully-new files (`added` / `untracked`) the set is empty — every line
- * in the rendered output is implicitly an addition, so highlighting them all
- * would be noise.
- */
+// Returns an empty set for fully-new files since highlighting every
+// line would be noise.
 export function getAddedLineNumbers(file: ChangedFile): ReadonlySet<number> {
     if (file.status === "added" || file.status === "untracked") {
         return EMPTY;
@@ -29,26 +22,14 @@ export function getAddedLineNumbers(file: ChangedFile): ReadonlySet<number> {
     return added;
 }
 
-/**
- * Checks whether a path is a markdown file (`.md` / `.markdown`, case
- * insensitive). Used to decide whether the preview toggle should appear in
- * the file header.
- */
 export function isMarkdownPath(path: string): boolean {
     return /\.(md|markdown)$/i.test(path);
 }
 
-/**
- * Splits markdown source into per-line segments and renders each on its own
- * `<div data-line="N">`. Returns sanitized HTML safe to inject via v-html.
- *
- * This is intentionally less faithful than a full block-aware renderer — we
- * want the rendered output anchored to source lines so each `data-line` can
- * be tinted when it appears in `addedLines`. Block elements that span
- * multiple source lines (lists, fenced code blocks) render once on the line
- * where they begin and absorb their trailing lines as empty placeholders so
- * the line-number column still lines up.
- */
+// Per-line rendering trades full block fidelity for line anchoring so
+// `data-line` attributes line up with `addedLines` tinting. Multi-line
+// blocks render once on the first line; trailing lines become empty
+// placeholders so the gutter stays aligned.
 export function renderMarkdownWithLineAnchors(
     source: string,
     addedLines: ReadonlySet<number>,

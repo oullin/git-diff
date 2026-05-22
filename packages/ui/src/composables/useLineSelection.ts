@@ -20,12 +20,8 @@ interface SelectionState {
     anchor: LineAnchor | null;
 }
 
-/**
- * Returns a per-instance selection store. Each component that calls
- * useLineSelection() owns its own anchor; mounting two DiffBody
- * instances in the same window no longer shares (and corrupts)
- * selection state.
- */
+// Per-instance store — two DiffBody instances no longer corrupt each
+// other's selection state.
 export function useLineSelection() {
     const state: SelectionState = reactive({ anchor: null });
 
@@ -41,12 +37,8 @@ export function useLineSelection() {
         state.anchor = null;
     }
 
-    /**
-     * Given the current anchor and a target line, returns the normalised range.
-     * If the target is on the same side as the anchor and earlier in the file,
-     * the start/end swap so the range always reads top-to-bottom. Cross-side
-     * ranges always run from `left` to `right` regardless of click order.
-     */
+    // Same-side ranges normalise to top-to-bottom; cross-side ranges
+    // always run left → right regardless of click order.
     function rangeTo(target: LineAnchor): LineSelectionRange | null {
         const anchor = state.anchor;
 
@@ -92,11 +84,6 @@ export function useLineSelection() {
     return { setAnchor, getAnchor, clear, rangeTo };
 }
 
-/**
- * Renders a human-readable label for a comment range. Single-line and
- * single-side ranges collapse to "Old line 12" / "New line 18" forms; mixed
- * ranges expand to "Old line 12 → New line 18".
- */
 export function commentRangeLabel(comment: {
     side: string;
     lineNumber: number;

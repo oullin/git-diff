@@ -1,11 +1,5 @@
-// In-diff text search across all visible hunk lines for the currently shown
-// files. Operates entirely client-side against the rendered DOM, so no patch
-// parsing reruns when the query changes.
-//
-// A match is any contiguous occurrence of `query` (case-insensitive by
-// default) inside the text content of a `[data-diff-line-text]` element. We
-// rely on DiffBody.vue to tag those elements; everything else is renderer-
-// agnostic.
+// In-diff search runs against rendered `[data-diff-line-text]` nodes so
+// patch parsing doesn't rerun on every query change.
 
 export interface DiffSearchMatch {
     /** The DOM node carrying the line text. */

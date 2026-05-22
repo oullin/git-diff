@@ -1,15 +1,9 @@
 import { ref, type Ref } from "vue";
 import type { UserConfig } from "@git-diff/contracts";
 
-// Module-level singleton: every component that calls useUserConfig() sees
-// the same reactive ref. The Go backend is the source of truth — we fetch
-// once on first use and expose a manual refetch.
-//
-// Why not SSE here: the renderer talks to the Go backend over the
-// preload-injected `window.diffApp` IPC bridge, not over a network socket
-// the browser's EventSource can open. Hot-reload from file edits will be
-// piped through the Electron main process in a follow-up; the GET path is
-// enough for theme, keymap, and walkthrough budgets on app start.
+// Module-level singleton: the Go backend is the source of truth; we
+// fetch once on first use and expose a manual refetch. SSE isn't wired
+// because the IPC bridge isn't an EventSource transport.
 
 const config = ref<UserConfig | null>(null);
 const loading = ref(false);
@@ -22,11 +16,6 @@ export interface UseUserConfig {
     refresh(): Promise<UserConfig | null>;
 }
 
-/**
- * Returns the shared reactive user config. The first caller triggers a
- * fetch; subsequent callers see the result reactively. Safe to call from
- * any component / composable.
- */
 export function useUserConfig(): UseUserConfig {
     if (config.value === null && !inflight) {
         void load();
@@ -54,7 +43,7 @@ async function load(): Promise<UserConfig | null> {
 
             return value;
         } catch {
-            // Failure is non-fatal — defaults applied at composable boundary.
+            // Defaults are applied at the composable boundary on null.
             return null;
         } finally {
             loading.value = false;

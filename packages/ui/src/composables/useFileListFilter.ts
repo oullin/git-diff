@@ -8,11 +8,6 @@ export interface UseFileListFilterOptions {
     isViewed: (file: ChangedFile) => boolean;
 }
 
-/**
- * Filtering + progress derivations for the Sidebar. Keeps the
- * computed-heavy bookkeeping (filtered lists, viewed counts, progress
- * percent) out of the component so the template stays declarative.
- */
 export function useFileListFilter(opts: UseFileListFilterOptions) {
     const totalCount = computed(() => opts.files.value.length);
     const viewedCount = computed(() => opts.files.value.filter((f) => opts.isViewed(f)).length);

@@ -11,16 +11,8 @@ export interface UseKeyboardShortcutsOptions {
     onOpenSearch: () => void;
 }
 
-/**
- * Binds the global keydown listener that powers the navigation /
- * review-action shortcuts. Bindings come from the user-configurable
- * keymap (YAML), with fallbacks to the historical defaults if a key is
- * unset. Reactive: editing config.yaml updates the active bindings
- * without a reload.
- *
- * Returns a manual unsubscribe in addition to the automatic onUnmounted
- * cleanup, so older callers that captured the return value still work.
- */
+/** Returns a manual unsubscribe so callers that need to detach before
+ *  onUnmounted (e.g. dialogs) can do so. */
 export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): () => void {
     const { keymap } = useKeymap();
 
@@ -40,12 +32,10 @@ export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): () => v
             return;
         }
 
-        // Snapshot bindings on each event so a hot-reload of config.yaml
-        // takes effect on the very next keystroke.
+        // Snapshot per event so hot-reloaded bindings take effect immediately.
         const bindings = currentBindings(keymap.value);
 
-        // Arrow keys aren't user-configurable today — they're an alias to
-        // next_file / prev_file for ergonomics. Treat them inline.
+        // Arrow keys are hard-coded aliases for next_file/prev_file.
         if (event.key === "ArrowDown" && !event.metaKey && !event.ctrlKey && !event.altKey) {
             event.preventDefault();
             opts.onSelectAdjacent(1);
@@ -133,8 +123,8 @@ export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): () => v
     onMounted(bind);
     onUnmounted(unbind);
 
-    // The component might mount the listener immediately (callers that
-    // don't rely on onMounted lifecycle) — bind synchronously too.
+    // Bind synchronously too so callers that don't rely on onMounted
+    // (e.g. lazy-mounted dialogs) still get the listener.
     bind();
 
     return unbind;

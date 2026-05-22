@@ -1,12 +1,7 @@
 import type { RepositoryMode } from "../repo/index.js";
 
-/**
- * What the user is expected to do with a file in a walkthrough group.
- * The vocabulary lets the UI colour-code consistently.
- */
 export type WalkthroughAction = "review" | "scan" | "skim";
 
-/** How broadly a change reaches across the codebase. */
 export type WalkthroughImpact = "wide" | "contained" | "mechanical";
 
 export interface WalkthroughFileEntry {
@@ -34,10 +29,7 @@ export interface WalkthroughRecord {
     summary: string;
     generatedAt: string;
     stale?: boolean;
-    /**
-     * @deprecated Use {@link groups}. Mirrored for one release so renderer
-     * code that hasn't migrated still has data to display.
-     */
+    /** @deprecated Use {@link groups}. Mirrored for one release. */
     order?: string[];
     /** @deprecated Use {@link groups}. Mirrored for one release. */
     notes?: Record<string, string>;

@@ -1,7 +1,3 @@
-// Pretty-print a keymap binding string for display in the command palette.
-// Pure function — keeps the rendering logic out of the .vue file so it can
-// be unit-tested independently.
-
 const MAC_SYMBOL: Record<string, string> = {
     cmd: "⌘",
     meta: "⌘",
@@ -24,11 +20,7 @@ const KEY_LABEL: Record<string, string> = {
     "\\": "\\",
 };
 
-/**
- * Turn "cmd+shift+p" into "⌘⇧P" on macOS or "Ctrl+Shift+P" elsewhere.
- * Returns the empty string for falsy input — callers can render
- * conditionally without guarding.
- */
+/** Returns "" for falsy input so callers can render unconditionally. */
 export function formatShortcut(binding: string, isMac: boolean = isMacPlatform()): string {
     if (!binding) {
         return "";

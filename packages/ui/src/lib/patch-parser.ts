@@ -1,11 +1,7 @@
 import { parsePatchFiles } from "@pierre/diffs";
 import type { DiffSection } from "@git-diff/contracts";
 
-/**
- * Pure parsing of unified diff text into structured PatchLine and
- * SplitRow arrays. No IO, no expansion logic — see patch-expander.ts
- * for splicing in extra context fetched from the on-disk file.
- */
+// Expansion logic (splicing in fetched context) lives in patch-expander.ts.
 
 export type PatchLineType = "context" | "add" | "del" | "meta";
 

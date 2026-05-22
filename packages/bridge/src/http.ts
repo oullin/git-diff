@@ -40,12 +40,6 @@ interface JsonErrorPayload {
     files?: unknown;
 }
 
-/**
- * HttpTransport is the seam between bridge clients and the unix-socket
- * transport. Per-domain clients depend on this interface so tests can
- * substitute an in-memory transport, and the implementation can grow
- * features (retries, tracing) without leaking into the client surface.
- */
 export interface HttpTransport {
     request<Response>(
         method: HttpMethod,
@@ -234,6 +228,6 @@ function applyJsonErrorPayload(error: BridgeError, raw: string): void {
             }
         }
     } catch {
-        // Fall through with the generic error message.
+        // Generic error message remains in place.
     }
 }

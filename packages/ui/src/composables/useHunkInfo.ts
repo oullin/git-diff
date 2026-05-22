@@ -2,16 +2,8 @@ import { computed, type Ref } from "vue";
 import type { DiffSection } from "@git-diff/contracts";
 import { getHunkInfos, parsePatch, type HunkInfo } from "@lib/patch";
 
-/**
- * Per-instance hunk-info cache. `parsePatch` is deterministic given
- * (section, hideWhitespace); caching per (section.id, whitespace
- * toggle) avoids rewalking the patch on every render.
- *
- * Replaces the hand-rolled `Map` that lived inside DiffBody.vue with a
- * reactive computed that invalidates automatically when
- * `hideWhitespace` flips, so we no longer have a manual cache key
- * encoding the toggle.
- */
+// Cache invalidates automatically when hideWhitespace flips, so no
+// manual key encoding the toggle is needed.
 export function useHunkInfo(hideWhitespace: Ref<boolean>) {
     const cache = computed<Map<string, HunkInfo[]>>(() => {
         // Force re-derivation on whitespace toggle.

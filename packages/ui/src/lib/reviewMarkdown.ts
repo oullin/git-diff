@@ -124,11 +124,6 @@ function stripTags(html: string): string {
     return html.replace(/<[^>]+>/g, "").trim();
 }
 
-/**
- * Format an entire review session — header, per-file groups, and per-comment
- * threads — as a Markdown document suitable for pasting into a PR description
- * or Slack channel.
- */
 export function formatReviewAsMarkdown(review: ReviewDetail): string {
     const session = review.review;
     const lines: string[] = [];

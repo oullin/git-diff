@@ -1,9 +1,7 @@
 import { ref, type Ref } from "vue";
 
-// usePreferences mirrors the renderer-side UI preference map. save() does an
-// optimistic local merge then trusts the backend's response as the source of
-// truth (it normalises empty values into deletions). load() initialises the
-// store from the backend; reset() drops cached values on logout.
+// save() optimistically merges locally then accepts the backend's response
+// as authoritative (it normalises empty values into deletions).
 export interface UsePreferences {
     values: Ref<Record<string, string>>;
     load: () => Promise<void>;

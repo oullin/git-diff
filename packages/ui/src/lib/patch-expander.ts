@@ -1,23 +1,14 @@
 import { type PatchLine, parseHunkHeader } from "@lib/patch-parser";
 
-/**
- * ExpandedContext is one extra context line fetched on demand from the
- * on-disk file when the user clicks the "show more context" affordance.
- * Both `oldLine` and `newLine` are 1-indexed; renderers use them to bind
- * the line to its row in either side of the split view.
- */
+// oldLine/newLine are 1-indexed.
 export interface ExpandedContext {
     oldLine: number;
     newLine: number;
     text: string;
 }
 
-/**
- * Splice expanded context rows into a parsed patch. Each expansion has
- * an old line number from the on-disk file; rows land before the next
- * hunk header whose oldStart they precede, preserving 1-indexed line
- * order.
- */
+// Each expansion lands before the next hunk header whose oldStart it
+// precedes, preserving line order.
 export function applyExpansions(
     lines: ReadonlyArray<PatchLine>,
     expansions: ReadonlyArray<ExpandedContext>,

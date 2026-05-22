@@ -37,12 +37,8 @@ async function fetchRange(
     return { lines: result.lines, eof: result.eof };
 }
 
-/**
- * Returns a per-instance expansion store. Each component that calls
- * useContextExpansion() gets its own map of section → expanded context;
- * mounting two DiffBody instances in the same window no longer shares
- * (and corrupts) expansion state.
- */
+/** Per-instance store — two DiffBody instances no longer corrupt each
+ *  other's expansion state. */
 export function useContextExpansion() {
     const sections = reactive(new Map<string, SectionState>());
 

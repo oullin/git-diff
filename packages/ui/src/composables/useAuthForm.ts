@@ -1,11 +1,5 @@
 import { ref } from "vue";
 
-/**
- * useAuthForm centralises the submitting/error state machine that both
- * AuthLogin and AuthSetup hand-rolled. `submit` wraps an async action
- * that may throw, surfaces the error message, and toggles a submitting
- * flag callers bind to disabled states.
- */
 export function useAuthForm() {
     const submitting = ref(false);
     const error = ref("");

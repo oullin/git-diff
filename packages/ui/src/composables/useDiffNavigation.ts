@@ -7,16 +7,8 @@ export interface UseDiffNavigationOptions {
     onSelect: (path: string) => void;
 }
 
-/**
- * Diff-list and hunk-anchor navigation primitives. `selectAdjacent`
- * walks the changed-file list by delta; `jumpToHunk` scrolls the
- * viewport to the next/previous `[data-hunk-anchor]` element relative
- * to the screen midpoint and flashes a highlight on the target.
- *
- * Keyboard binding lives in @composables/useKeyboardShortcuts; this
- * module owns the navigation actions only so callers can wire them up
- * outside of a keyboard-driven context (e.g. button clicks).
- */
+// Keyboard binding lives in useKeyboardShortcuts; this owns the actions
+// only so callers can wire them up outside keyboard contexts (buttons).
 export function useDiffNavigation({ files, changedIndex, onSelect }: UseDiffNavigationOptions) {
     function selectAdjacent(delta: number): void {
         if (files.value.length === 0) {

@@ -20,12 +20,6 @@ function escapeHtml(value: string): string {
     });
 }
 
-/**
- * Diff-cell text formatting: per-line syntax highlight + word-level
- * diff highlight + HTML escape. The composable closes over the active
- * language so callers don't have to thread it through every render
- * function.
- */
 export function useDiffHighlighting(lang: Ref<BundledLanguage | null>) {
     function highlightHtml(text: string): string {
         // Read the rev so Vue re-runs callers when a language finishes loading.

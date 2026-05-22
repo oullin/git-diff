@@ -10,12 +10,6 @@ import type {
     RepositoryState,
 } from "@git-diff/contracts";
 
-/**
- * RepositoryService wraps every repository-shaped call on
- * `window.diffApp`. The renderer code consumes this surface rather than
- * the IPC shim, so the bridge can be swapped (e.g. for the
- * browser-fallback mock) without touching call sites.
- */
 export interface RepositoryService {
     state(path?: string): Promise<RepositoryState>;
     open(path: string): Promise<RepositoryState>;

@@ -1,9 +1,4 @@
-// Pure key-matching utility: given a binding string like "cmd+shift+p" and
-// a KeyboardEvent, decide whether they match.
-//
-// Single responsibility — no Vue, no DOM listeners, just a function. Makes
-// the matcher trivially unit-testable and keeps the composables that use
-// it focused on lifecycle.
+// Pure key-matching utility for binding strings like "cmd+shift+p".
 
 const MODIFIERS = new Set(["cmd", "ctrl", "alt", "shift", "meta", "mod"]);
 
@@ -20,14 +15,7 @@ export interface ParsedBinding {
     key: string;
 }
 
-/**
- * Parse a binding string into its component flags + key. Returns null
- * for malformed input (empty, missing key, etc.) so callers can drop it
- * rather than wire up a non-functional listener.
- *
- * Supported modifiers: `cmd`, `meta`, `ctrl`, `mod` (cmd on macOS, ctrl
- * elsewhere), `alt`, `shift`. Order is irrelevant.
- */
+/** Returns null for malformed input. `mod` is cmd on macOS, ctrl elsewhere. */
 export function parseBinding(
     binding: string,
     isMac: boolean = isMacPlatform(),
@@ -82,7 +70,6 @@ export function parseBinding(
         }
 
         if (key !== null) {
-            // Multiple non-modifier keys → malformed.
             return null;
         }
 
@@ -96,10 +83,8 @@ export function parseBinding(
     return { cmd, ctrl, alt, shift, key };
 }
 
-/**
- * Returns true when `event` matches `binding`. Modifier requirements are
- * strict — a binding without `shift` won't match a Shift-held keystroke.
- */
+/** Modifier requirements are strict — a binding without `shift` won't
+ *  match a Shift-held keystroke. */
 export function matchesBinding(event: KeyboardEvent, binding: ParsedBinding): boolean {
     if (binding.cmd !== event.metaKey) {
         return false;

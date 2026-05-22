@@ -1,10 +1,7 @@
 import type { BundledLanguage } from "shiki";
 
-/**
- * Message protocol for the highlight worker. Both the worker and the
- * highlightPool import these types so a change to the wire shape breaks
- * the compile on both sides at once.
- */
+// Both the worker and highlightPool import these types so wire-shape
+// changes break both sides at compile time.
 
 export type HighlightThemeId = "Licht" | "Dunkel";
 

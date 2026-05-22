@@ -2,10 +2,8 @@ import { computed, type ComputedRef } from "vue";
 import type { Keymap, KeymapAction } from "@git-diff/contracts";
 import { useUserConfig } from "@/composables/useUserConfig";
 
-// Defaults are duplicated from the Go side intentionally — the Go
-// userconfig.Defaults() is the source of truth, but the UI needs *some*
-// keymap before the first fetch lands. Keep these in sync when changing
-// either side.
+// Mirrors Go's userconfig.Defaults() — keep in sync. The UI needs *some*
+// keymap before the first fetch lands.
 const DEFAULT_KEYMAP: Keymap = {
     command_bar: "cmd+shift+p",
     file_filter: "cmd+f",
@@ -27,11 +25,6 @@ export interface UseKeymap {
     keyFor(action: KeymapAction): string;
 }
 
-/**
- * Returns the active keymap merged from defaults + the YAML config the
- * backend serves. Reactive — when the YAML changes (via refresh()), every
- * consumer updates without manual wiring.
- */
 export function useKeymap(): UseKeymap {
     const { config } = useUserConfig();
 
