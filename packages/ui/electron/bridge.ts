@@ -109,5 +109,4 @@ export async function client(): Promise<ApiClient> {
     return bridgeClient;
 }
 
-// Re-export settingsArgs for any callers that built CLI invocations directly.
 export { settingsArgs } from "#electron/bridge-process.js";

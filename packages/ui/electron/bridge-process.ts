@@ -6,15 +6,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { apiDir } from "#electron/paths.js";
 
-/**
- * Information about a spawned (or attached-to) Go API process.
- */
 export interface BridgeProcessHandle {
     process: ChildProcess | null;
     socketPath: string;
     /** True when we attached to an externally-managed socket via API_BRIDGE_SOCKET. */
     external: boolean;
-    /** Accumulated stderr from the child; empty when external. */
     captureStderr(): string;
 }
 
@@ -22,11 +18,6 @@ export function externalBridgeSocketPath(): string {
     return process.env.API_BRIDGE_SOCKET?.trim() ?? "";
 }
 
-/**
- * spawnBridge starts the Go API binary and returns a handle wrapping the
- * child process plus its socket path. If API_BRIDGE_SOCKET is set, no
- * process is spawned — the handle just points at the existing socket.
- */
 export function spawnBridge(savedSettings: Partial<RuntimeSettings>): BridgeProcessHandle {
     const externalPath = externalBridgeSocketPath();
 

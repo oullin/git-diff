@@ -39,15 +39,12 @@ describe("@pierre/diffs adapter", () => {
             false,
         );
 
-        // Meta header is always first.
         expect(lines[0]?.type).toBe("meta");
 
-        // Body should contain at least one deletion and one addition.
         expect(lines.some((l) => l.type === "del" && l.text.includes("return a + b"))).toBe(true);
         expect(lines.some((l) => l.type === "add" && l.text.includes("const total"))).toBe(true);
         expect(lines.some((l) => l.type === "add" && l.text.includes("return total"))).toBe(true);
 
-        // Context lines retain their numeric anchors.
         const contextLine = lines.find(
             (l) => l.type === "context" && l.text.includes("function add"),
         );

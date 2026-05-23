@@ -14,12 +14,6 @@ import { matchesBinding, parseBinding } from "@/composables/keymapMatcher";
 import { useCommandRegistry, type PaletteCommand } from "@/composables/useCommandRegistry";
 import { useKeymap } from "@/composables/useKeymap";
 
-// The palette is mounted once in App.vue. It owns its own open/close state
-// and listens for the keymap binding for `command_bar`. Commands flow in
-// through the module-singleton registry — any component can register a
-// command and it appears here, with the shortcut text computed live from
-// the current keymap.
-
 const open = ref(false);
 const query = ref("");
 
@@ -67,8 +61,7 @@ function runCommand(cmd: PaletteCommand): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
-    // Open with the configured binding from anywhere in the app. Closing
-    // is handled by Dialog's own Esc listener.
+    // Closing is handled by Dialog's own Esc listener.
     if (matchesBindingString(event, commandBarBinding.value)) {
         event.preventDefault();
         openPalette();

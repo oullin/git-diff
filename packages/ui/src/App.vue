@@ -229,9 +229,6 @@ const { selectAdjacent, jumpToHunk } = useDiffNavigation({
     onSelect: (path) => selectFile(path),
 });
 
-// Command palette commands. Registered once at App scope; the palette
-// component (mounted in the template) reads from the same module
-// singleton via useCommandRegistry().
 {
     const palette = useCommandRegistry();
 
