@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/gocanto/git-diff/internal/storage/db"
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // clock is shared across every repo so SetNow advances time everywhere.
@@ -50,7 +50,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, fmt.Errorf("create database directory: %w", err)
 	}
 
-	conn, err := sql.Open("sqlite", sqliteOpenDSN(path))
+	conn, err := sql.Open("sqlite3", sqliteOpenDSN(path))
 
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
@@ -87,7 +87,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 func sqliteOpenDSN(path string) string {
 	dsn := url.URL{Scheme: "file", Path: path}
 	query := dsn.Query()
-	query.Add("_pragma", "foreign_keys(1)")
+	query.Add("_foreign_keys", "on")
 	dsn.RawQuery = query.Encode()
 
 	return dsn.String()

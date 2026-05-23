@@ -18,6 +18,24 @@ type Branch struct {
 	LastSeenAt string         `json:"last_seen_at"`
 }
 
+type PendingComment struct {
+	ID              string         `json:"id"`
+	UserID          int64          `json:"user_id"`
+	RepoRoot        string         `json:"repo_root"`
+	ContextKind     string         `json:"context_kind"`
+	ContextSha      string         `json:"context_sha"`
+	FilePath        string         `json:"file_path"`
+	DiffSection     string         `json:"diff_section"`
+	Side            string         `json:"side"`
+	LineNumber      int64          `json:"line_number"`
+	StartLineNumber sql.NullInt64  `json:"start_line_number"`
+	StartSide       sql.NullString `json:"start_side"`
+	AuthorLabel     string         `json:"author_label"`
+	BodyHtml        string         `json:"body_html"`
+	CreatedAt       string         `json:"created_at"`
+	UpdatedAt       string         `json:"updated_at"`
+}
+
 type Repository struct {
 	Path         string         `json:"path"`
 	Name         string         `json:"name"`
@@ -34,17 +52,19 @@ type RepositoryUser struct {
 }
 
 type ReviewComment struct {
-	ID          string         `json:"id"`
-	ReviewID    string         `json:"review_id"`
-	FilePath    string         `json:"file_path"`
-	DiffSection string         `json:"diff_section"`
-	Side        string         `json:"side"`
-	LineNumber  int64          `json:"line_number"`
-	AuthorLabel string         `json:"author_label"`
-	BodyHtml    string         `json:"body_html"`
-	CreatedAt   string         `json:"created_at"`
-	UpdatedAt   string         `json:"updated_at"`
-	DeletedAt   sql.NullString `json:"deleted_at"`
+	ID              string         `json:"id"`
+	ReviewID        string         `json:"review_id"`
+	FilePath        string         `json:"file_path"`
+	DiffSection     string         `json:"diff_section"`
+	Side            string         `json:"side"`
+	LineNumber      int64          `json:"line_number"`
+	StartLineNumber sql.NullInt64  `json:"start_line_number"`
+	StartSide       sql.NullString `json:"start_side"`
+	AuthorLabel     string         `json:"author_label"`
+	BodyHtml        string         `json:"body_html"`
+	CreatedAt       string         `json:"created_at"`
+	UpdatedAt       string         `json:"updated_at"`
+	DeletedAt       sql.NullString `json:"deleted_at"`
 }
 
 type ReviewEvent struct {
@@ -71,6 +91,8 @@ type ReviewSession struct {
 	Deletions    int64          `json:"deletions"`
 	StartedAt    string         `json:"started_at"`
 	CompletedAt  sql.NullString `json:"completed_at"`
+	ContextKind  string         `json:"context_kind"`
+	ContextSha   sql.NullString `json:"context_sha"`
 }
 
 type UiPreference struct {
@@ -95,4 +117,18 @@ type UserSession struct {
 	CreatedAt  string `json:"created_at"`
 	ExpiresAt  string `json:"expires_at"`
 	LastUsedAt string `json:"last_used_at"`
+}
+
+type Walkthrough struct {
+	RepoRoot    string `json:"repo_root"`
+	ContextKind string `json:"context_kind"`
+	ContextSha  string `json:"context_sha"`
+	Fingerprint string `json:"fingerprint"`
+	ProviderID  string `json:"provider_id"`
+	ModelID     string `json:"model_id"`
+	OrderJson   string `json:"order_json"`
+	NotesJson   string `json:"notes_json"`
+	GroupsJson  string `json:"groups_json"`
+	Summary     string `json:"summary"`
+	GeneratedAt string `json:"generated_at"`
 }

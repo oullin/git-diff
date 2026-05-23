@@ -3,15 +3,22 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"net/url"
 	"path/filepath"
 	"testing"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func TestMigratorRunDoesNotDropTablesWhenSchemaApplyFails(t *testing.T) {
-	ctx := context.Background()
-	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "test.sqlite3"))
+func openTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	dsn := url.URL{Scheme: "file", Path: filepath.Join(t.TempDir(), "test.sqlite3")}
+	q := dsn.Query()
+	q.Add("_foreign_keys", "on")
+	dsn.RawQuery = q.Encode()
+
+	db, err := sql.Open("sqlite3", dsn.String())
 
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -19,40 +26,253 @@ func TestMigratorRunDoesNotDropTablesWhenSchemaApplyFails(t *testing.T) {
 
 	t.Cleanup(func() { _ = db.Close() })
 
-	if _, err := db.ExecContext(ctx, "CREATE TABLE review_sessions (id TEXT PRIMARY KEY)"); err != nil {
-		t.Fatalf("create incompatible table: %v", err)
+	return db
+}
+
+func TestMigratorRunOnFreshDB(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+
+	if err := NewMigrator(db).Run(ctx); err != nil {
+		t.Fatalf("migrate run: %v", err)
 	}
 
-	if _, err := db.ExecContext(ctx, "CREATE TABLE keepers (id INTEGER PRIMARY KEY, value TEXT NOT NULL)"); err != nil {
-		t.Fatalf("create keepers: %v", err)
+	for _, table := range []string{"users", "review_sessions", "walkthroughs", "pending_comments", "branches", "schema_migrations"} {
+		exists, err := NewMigrator(db).tableExists(ctx, table)
+
+		if err != nil {
+			t.Fatalf("tableExists %s: %v", table, err)
+		}
+
+		if !exists {
+			t.Fatalf("expected table %s to exist after fresh migrate", table)
+		}
 	}
 
-	if _, err := db.ExecContext(ctx, "INSERT INTO keepers (value) VALUES ('still here')"); err != nil {
-		t.Fatalf("insert keeper: %v", err)
+	v, dirty, ok, err := NewMigrator(db).Version()
+
+	if err != nil {
+		t.Fatalf("version: %v", err)
 	}
 
-	if err := NewMigrator(db).Run(ctx); err == nil {
-		t.Fatalf("expected migration to fail instead of resetting schema")
+	if !ok || v != baselineVersion || dirty {
+		t.Fatalf("version = %d dirty=%t ok=%t, want version=%d clean ok=true", v, dirty, ok, baselineVersion)
+	}
+}
+
+func TestMigratorRunIsIdempotent(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+
+	if err := NewMigrator(db).Run(ctx); err != nil {
+		t.Fatalf("first run: %v", err)
 	}
 
-	var value string
+	if err := NewMigrator(db).Run(ctx); err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+}
 
-	if err := db.QueryRowContext(ctx, "SELECT value FROM keepers WHERE id = 1").Scan(&value); err != nil {
-		t.Fatalf("keeper row should remain after migration failure: %v", err)
+// Simulates a legacy DB created by an older binary: tables exist but the
+// additive columns from the four compat ALTERs are missing, and the legacy
+// workflow_events / workflow_runs tables are still present. The migrator must
+// converge it to v1 without re-running the baseline migration.
+func TestMigratorBaselinesLegacyDB(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+
+	preALTERSchema := []string{
+		`CREATE TABLE users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			os_username TEXT NOT NULL UNIQUE,
+			display_name TEXT NOT NULL DEFAULT '',
+			password_hash TEXT NOT NULL DEFAULT '',
+			created_at TEXT NOT NULL,
+			last_login_at TEXT NOT NULL DEFAULT ''
+		)`,
+		`CREATE TABLE review_sessions (
+			id TEXT PRIMARY KEY,
+			repo_root TEXT NOT NULL,
+			user_id INTEGER NOT NULL,
+			branch TEXT NOT NULL,
+			head_sha TEXT NOT NULL,
+			status TEXT NOT NULL,
+			title TEXT NOT NULL,
+			summary TEXT NOT NULL DEFAULT '',
+			files_changed INTEGER NOT NULL DEFAULT 0,
+			additions INTEGER NOT NULL DEFAULT 0,
+			deletions INTEGER NOT NULL DEFAULT 0,
+			started_at TEXT NOT NULL,
+			completed_at TEXT
+		)`,
+		`CREATE TABLE review_comments (
+			id TEXT PRIMARY KEY,
+			review_id TEXT NOT NULL,
+			file_path TEXT NOT NULL,
+			diff_section TEXT NOT NULL,
+			side TEXT NOT NULL,
+			line_number INTEGER NOT NULL,
+			author_label TEXT NOT NULL,
+			body_html TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL,
+			deleted_at TEXT
+		)`,
+		`CREATE TABLE pending_comments (
+			id TEXT PRIMARY KEY,
+			user_id INTEGER NOT NULL,
+			repo_root TEXT NOT NULL,
+			context_kind TEXT NOT NULL DEFAULT 'working',
+			context_sha TEXT NOT NULL DEFAULT '',
+			file_path TEXT NOT NULL,
+			diff_section TEXT NOT NULL,
+			side TEXT NOT NULL,
+			line_number INTEGER NOT NULL,
+			author_label TEXT NOT NULL,
+			body_html TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL
+		)`,
+		`CREATE TABLE walkthroughs (
+			repo_root TEXT NOT NULL,
+			context_kind TEXT NOT NULL,
+			context_sha TEXT NOT NULL DEFAULT '',
+			fingerprint TEXT NOT NULL,
+			model_id TEXT NOT NULL,
+			order_json TEXT NOT NULL,
+			notes_json TEXT NOT NULL,
+			summary TEXT NOT NULL DEFAULT '',
+			generated_at TEXT NOT NULL,
+			PRIMARY KEY (repo_root, context_kind, context_sha)
+		)`,
+		`CREATE TABLE workflow_runs (id INTEGER PRIMARY KEY)`,
+		`CREATE TABLE workflow_events (id INTEGER PRIMARY KEY)`,
 	}
 
-	if value != "still here" {
-		t.Fatalf("keeper value = %q, want still here", value)
+	for _, stmt := range preALTERSchema {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("seed legacy schema: %v", err)
+		}
+	}
+
+	if err := NewMigrator(db).Run(ctx); err != nil {
+		t.Fatalf("migrate run: %v", err)
+	}
+
+	mig := NewMigrator(db)
+
+	for _, table := range []string{"workflow_events", "workflow_runs"} {
+		exists, err := mig.tableExists(ctx, table)
+
+		if err != nil {
+			t.Fatalf("tableExists %s: %v", table, err)
+		}
+
+		if exists {
+			t.Fatalf("legacy table %s should have been dropped", table)
+		}
+	}
+
+	expectedColumns := map[string][]string{
+		"review_sessions":  {"context_kind", "context_sha"},
+		"review_comments":  {"start_line_number", "start_side"},
+		"pending_comments": {"start_line_number", "start_side"},
+		"walkthroughs":     {"groups_json", "provider_id"},
+	}
+
+	for table, cols := range expectedColumns {
+		have, err := mig.columnSet(ctx, table)
+
+		if err != nil {
+			t.Fatalf("columnSet %s: %v", table, err)
+		}
+
+		for _, col := range cols {
+			if !have[col] {
+				t.Fatalf("%s.%s missing after baseline", table, col)
+			}
+		}
+	}
+
+	v, dirty, ok, err := mig.Version()
+
+	if err != nil {
+		t.Fatalf("version: %v", err)
+	}
+
+	if !ok || v != baselineVersion || dirty {
+		t.Fatalf("version = %d dirty=%t ok=%t, want version=%d clean ok=true", v, dirty, ok, baselineVersion)
+	}
+}
+
+func TestMigratorBaselinesFullyMigratedLegacyDB(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+
+	baseline, err := BaselineSchemaSQL()
+
+	if err != nil {
+		t.Fatalf("read baseline: %v", err)
+	}
+
+	if _, err := db.ExecContext(ctx, string(baseline)); err != nil {
+		t.Fatalf("seed full baseline schema: %v", err)
+	}
+
+	if err := NewMigrator(db).Run(ctx); err != nil {
+		t.Fatalf("migrate run: %v", err)
+	}
+
+	v, _, ok, err := NewMigrator(db).Version()
+
+	if err != nil {
+		t.Fatalf("version: %v", err)
+	}
+
+	if !ok || v != baselineVersion {
+		t.Fatalf("version = %d ok=%t, want %d ok=true", v, ok, baselineVersion)
+	}
+}
+
+func TestMigratorVersionEmptyDB(t *testing.T) {
+	db := openTestDB(t)
+	_, _, ok, err := NewMigrator(db).Version()
+
+	if err != nil {
+		t.Fatalf("version: %v", err)
+	}
+
+	if ok {
+		t.Fatalf("expected ok=false on empty DB")
+	}
+}
+
+func TestMigratorDownRollsBackBaseline(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+
+	if err := NewMigrator(db).Run(ctx); err != nil {
+		t.Fatalf("migrate run: %v", err)
+	}
+
+	if err := NewMigrator(db).Down(0); err != nil {
+		t.Fatalf("migrate down: %v", err)
+	}
+
+	exists, err := NewMigrator(db).tableExists(ctx, "users")
+
+	if err != nil {
+		t.Fatalf("tableExists users: %v", err)
+	}
+
+	if exists {
+		t.Fatalf("users should have been dropped after full down migrate")
 	}
 }
 
 func TestColumnSetReturnsQueryErrors(t *testing.T) {
 	ctx := context.Background()
-	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "test.sqlite3"))
-
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
+	db := openTestDB(t)
 
 	if err := db.Close(); err != nil {
 		t.Fatalf("close sqlite: %v", err)
@@ -65,13 +285,7 @@ func TestColumnSetReturnsQueryErrors(t *testing.T) {
 
 func TestColumnSetQuotesTableIdentifiers(t *testing.T) {
 	ctx := context.Background()
-	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "test.sqlite3"))
-
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-
-	t.Cleanup(func() { _ = db.Close() })
+	db := openTestDB(t)
 
 	if _, err := db.ExecContext(ctx, `CREATE TABLE "odd table "" name" (id INTEGER PRIMARY KEY, value TEXT)`); err != nil {
 		t.Fatalf("create oddly named table: %v", err)

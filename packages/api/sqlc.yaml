@@ -1,7 +1,8 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    schema: "internal/storage/schema.sql"
+    schema:
+      - "internal/storage/migrations/0001_baseline.up.sql"
     queries: "internal/storage/query.sql"
     gen:
       go:
