@@ -16,6 +16,8 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 // clock is shared across every repo so SetNow advances time everywhere.
@@ -67,6 +69,9 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unwrap *sql.DB from gorm: %w", err)
 	}
+
+	db.Init(gdb)
+	db.SetNow(time.Now)
 
 	clk := &clock{now: time.Now}
 	reviewEvents := newReviewEventRepo(gdb, clk)
@@ -124,6 +129,7 @@ func (s *Store) DB() *gorm.DB { return s.gdb }
 // SetNow swaps the clock used by every repository.
 func (s *Store) SetNow(fn func() time.Time) {
 	s.clk.now = fn
+	db.SetNow(fn)
 }
 
 func currentOSUsername() string {
