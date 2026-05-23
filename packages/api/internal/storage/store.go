@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -57,7 +58,10 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	}
 
 	gdb, err := gorm.Open(sqlite.Open(sqliteOpenDSN(path)), &gorm.Config{
-		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
+		Logger: gormlogger.New(log.New(os.Stderr, "[gorm] ", log.LstdFlags), gormlogger.Config{
+			LogLevel:                  gormlogger.Warn,
+			IgnoreRecordNotFoundError: true,
+		}),
 	})
 
 	if err != nil {
@@ -79,8 +83,8 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		gdb:             gdb,
 		queries:         queries,
 		clk:             clk,
-		Users:           newUserRepo(conn, queries, clk),
-		Sessions:        newSessionRepo(conn, queries, clk),
+		Users:           newUserRepo(gdb, clk),
+		Sessions:        newSessionRepo(gdb, clk),
 		Reviews:         newReviewRepo(conn, queries, clk, reviewEvents),
 		ReviewEvents:    reviewEvents,
 		Comments:        newCommentRepo(conn, queries, clk, reviewEvents),
@@ -88,8 +92,8 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		Branches:        newBranchRepo(conn, queries, clk),
 		Repos:           newRepoRepo(conn, queries, clk),
 		Collaborators:   newCollaboratorRepo(conn, queries, clk),
-		Preferences:     newPreferenceRepo(conn, queries, clk),
-		Walkthroughs:    newWalkthroughRepo(conn, queries, clk),
+		Preferences:     newPreferenceRepo(gdb, clk),
+		Walkthroughs:    newWalkthroughRepo(gdb, clk),
 	}
 
 	if err := NewMigrator(conn).Run(ctx); err != nil {

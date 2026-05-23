@@ -2,11 +2,11 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type UIPreferences struct {
@@ -15,9 +15,8 @@ type UIPreferences struct {
 }
 
 type PreferenceRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
+	db  *gorm.DB
+	clk *clock
 }
 
 const DefaultTheme = "light"
@@ -35,60 +34,45 @@ const (
 	PrefKeyAnthropicModel     = "llm.anthropicModel"
 )
 
-func newPreferenceRepo(conn *sql.DB, queries *db.Queries, clk *clock) *PreferenceRepo {
-	return &PreferenceRepo{db: conn, queries: queries, clk: clk}
+func newPreferenceRepo(db *gorm.DB, clk *clock) *PreferenceRepo {
+	return &PreferenceRepo{db: db, clk: clk}
 }
 
 func (r *PreferenceRepo) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT key, value, updated_at
-		FROM ui_preferences
-		WHERE user_id = ?
-	`, userID)
+	var rows []UIPreferenceRow
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&rows).Error; err != nil {
 		return UIPreferences{}, err
 	}
 
-	defer rows.Close()
-
 	prefs := UIPreferences{Values: map[string]string{}}
 
-	for rows.Next() {
-		var (
-			key       string
-			value     string
-			updatedAt string
-		)
+	for _, row := range rows {
+		prefs.Values[row.Key] = row.Value
 
-		if err := rows.Scan(&key, &value, &updatedAt); err != nil {
-			return UIPreferences{}, err
-		}
-
-		prefs.Values[key] = value
-
-		if updatedAt > prefs.UpdatedAt {
-			prefs.UpdatedAt = updatedAt
+		if row.UpdatedAt > prefs.UpdatedAt {
+			prefs.UpdatedAt = row.UpdatedAt
 		}
 	}
 
-	return prefs, rows.Err()
+	return prefs, nil
 }
 
+// SaveUIPreferences applies a patch in one transaction with at most two
+// statements: a single batched upsert for set values and a single bulk delete
+// for cleared values. Avoids the per-key INSERT/DELETE loop the original
+// implementation issued.
 func (r *PreferenceRepo) SaveUIPreferences(ctx context.Context, userID int64, patch map[string]string) (UIPreferences, error) {
 	if len(patch) == 0 {
 		return r.GetUIPreferences(ctx, userID)
 	}
 
-	tx, err := r.db.BeginTx(ctx, nil)
-
-	if err != nil {
-		return UIPreferences{}, err
-	}
-
-	defer tx.Rollback()
-
 	updatedAt := r.clk.now().UTC().Format(time.RFC3339Nano)
+
+	var (
+		upserts []UIPreferenceRow
+		deletes []string
+	)
 
 	for key, value := range patch {
 		key = strings.TrimSpace(key)
@@ -98,27 +82,39 @@ func (r *PreferenceRepo) SaveUIPreferences(ctx context.Context, userID int64, pa
 		}
 
 		if value == "" {
-			if _, err := tx.ExecContext(ctx, `
-				DELETE FROM ui_preferences WHERE user_id = ? AND key = ?
-			`, userID, key); err != nil {
-				return UIPreferences{}, err
-			}
+			deletes = append(deletes, key)
 
 			continue
 		}
 
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO ui_preferences (user_id, key, value, updated_at)
-			VALUES (?, ?, ?, ?)
-			ON CONFLICT(user_id, key) DO UPDATE SET
-				value = excluded.value,
-				updated_at = excluded.updated_at
-		`, userID, key, value, updatedAt); err != nil {
-			return UIPreferences{}, err
-		}
+		upserts = append(upserts, UIPreferenceRow{
+			UserID:    userID,
+			Key:       key,
+			Value:     value,
+			UpdatedAt: updatedAt,
+		})
 	}
 
-	if err := tx.Commit(); err != nil {
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if len(upserts) > 0 {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "user_id"}, {Name: "key"}},
+				DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"}),
+			}).Create(&upserts).Error; err != nil {
+				return err
+			}
+		}
+
+		if len(deletes) > 0 {
+			if err := tx.Where("user_id = ? AND key IN ?", userID, deletes).Delete(&UIPreferenceRow{}).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return UIPreferences{}, err
 	}
 

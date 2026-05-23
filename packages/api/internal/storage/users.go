@@ -2,13 +2,13 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type User struct {
@@ -22,13 +22,12 @@ type User struct {
 }
 
 type UserRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
+	db  *gorm.DB
+	clk *clock
 }
 
-func newUserRepo(conn *sql.DB, queries *db.Queries, clk *clock) *UserRepo {
-	return &UserRepo{db: conn, queries: queries, clk: clk}
+func newUserRepo(db *gorm.DB, clk *clock) *UserRepo {
+	return &UserRepo{db: db, clk: clk}
 }
 
 func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, error) {
@@ -40,10 +39,15 @@ func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, err
 
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
-	if _, err := r.db.ExecContext(ctx, `
-		INSERT OR IGNORE INTO users (os_username, display_name, password_hash, created_at, last_login_at)
-		VALUES (?, ?, '', ?, '')
-	`, osUsername, osUsername, now); err != nil {
+	row := UserRow{
+		OSUsername:  osUsername,
+		DisplayName: osUsername,
+		CreatedAt:   now,
+	}
+
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "os_username"}}, DoNothing: true}).
+		Create(&row).Error; err != nil {
 		return User{}, fmt.Errorf("seed user: %w", err)
 	}
 
@@ -51,63 +55,53 @@ func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, err
 }
 
 func (r *UserRepo) GetUserByOSUsername(ctx context.Context, osUsername string) (User, error) {
-	row := r.db.QueryRowContext(ctx, `
-		SELECT id, os_username, display_name, password_hash, created_at, last_login_at
-		FROM users
-		WHERE os_username = ?
-	`, osUsername)
+	var row UserRow
 
-	return scanUser(row)
+	if err := r.db.WithContext(ctx).Where("os_username = ?", osUsername).Take(&row).Error; err != nil {
+		return User{}, err
+	}
+
+	return toUser(row), nil
 }
 
 func (r *UserRepo) GetUserByID(ctx context.Context, id int64) (User, error) {
-	row := r.db.QueryRowContext(ctx, `
-		SELECT id, os_username, display_name, password_hash, created_at, last_login_at
-		FROM users
-		WHERE id = ?
-	`, id)
+	var row UserRow
 
-	return scanUser(row)
+	if err := r.db.WithContext(ctx).Where("id = ?", id).Take(&row).Error; err != nil {
+		return User{}, err
+	}
+
+	return toUser(row), nil
 }
 
 func (r *UserRepo) SetPasswordHash(ctx context.Context, userID int64, hash string) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE users SET password_hash = ? WHERE id = ?`, hash, userID)
-
-	return err
+	return r.db.WithContext(ctx).
+		Model(&UserRow{}).
+		Where("id = ?", userID).
+		Update("password_hash", hash).Error
 }
 
 func (r *UserRepo) TouchUserLogin(ctx context.Context, userID int64) error {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
-	_, err := r.db.ExecContext(ctx, `UPDATE users SET last_login_at = ? WHERE id = ?`, now, userID)
 
-	return err
+	return r.db.WithContext(ctx).
+		Model(&UserRow{}).
+		Where("id = ?", userID).
+		Update("last_login_at", now).Error
 }
 
 func (r *UserRepo) WipeUser(ctx context.Context, userID int64) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, userID)
-
-	return err
+	return r.db.WithContext(ctx).Where("id = ?", userID).Delete(&UserRow{}).Error
 }
 
-func scanUser(row scanner) (User, error) {
-	var (
-		user        User
-		lastLoginAt string
-	)
-
-	if err := row.Scan(
-		&user.ID,
-		&user.OSUsername,
-		&user.DisplayName,
-		&user.PasswordHash,
-		&user.CreatedAt,
-		&lastLoginAt,
-	); err != nil {
-		return User{}, err
+func toUser(row UserRow) User {
+	return User{
+		ID:           row.ID,
+		OSUsername:   row.OSUsername,
+		DisplayName:  row.DisplayName,
+		HasPassword:  row.PasswordHash != "",
+		CreatedAt:    row.CreatedAt,
+		LastLoginAt:  row.LastLoginAt,
+		PasswordHash: row.PasswordHash,
 	}
-
-	user.LastLoginAt = lastLoginAt
-	user.HasPassword = user.PasswordHash != ""
-
-	return user, nil
 }

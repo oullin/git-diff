@@ -2,12 +2,12 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // WalkthroughGroupFile mirrors walkthrough.FileEntry; the storage layer
@@ -41,47 +41,41 @@ type WalkthroughRecord struct {
 }
 
 type WalkthroughRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
+	db  *gorm.DB
+	clk *clock
 }
 
-func newWalkthroughRepo(conn *sql.DB, queries *db.Queries, clk *clock) *WalkthroughRepo {
-	return &WalkthroughRepo{db: conn, queries: queries, clk: clk}
+func newWalkthroughRepo(db *gorm.DB, clk *clock) *WalkthroughRepo {
+	return &WalkthroughRepo{db: db, clk: clk}
 }
 
 func (r *WalkthroughRepo) GetWalkthrough(ctx context.Context, repoRoot, contextKind, contextSHA string) (WalkthroughRecord, bool, error) {
-	row := r.db.QueryRowContext(ctx, `
-		SELECT repo_root, context_kind, context_sha, fingerprint, provider_id, model_id,
-		       groups_json, summary, generated_at
-		FROM walkthroughs
-		WHERE repo_root = ? AND context_kind = ? AND context_sha = ?
-	`, repoRoot, contextKind, contextSHA)
+	var row WalkthroughRow
 
-	var (
-		record     WalkthroughRecord
-		groupsJSON string
-	)
+	err := r.db.WithContext(ctx).
+		Where("repo_root = ? AND context_kind = ? AND context_sha = ?", repoRoot, contextKind, contextSHA).
+		Take(&row).Error
 
-	if err := row.Scan(
-		&record.RepoRoot,
-		&record.ContextKind,
-		&record.ContextSHA,
-		&record.Fingerprint,
-		&record.ProviderID,
-		&record.ModelID,
-		&groupsJSON,
-		&record.Summary,
-		&record.GeneratedAt,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return WalkthroughRecord{}, false, nil
-		}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return WalkthroughRecord{}, false, nil
+	}
 
+	if err != nil {
 		return WalkthroughRecord{}, false, err
 	}
 
-	if err := json.Unmarshal([]byte(groupsJSON), &record.Groups); err != nil {
+	record := WalkthroughRecord{
+		RepoRoot:    row.RepoRoot,
+		ContextKind: row.ContextKind,
+		ContextSHA:  row.ContextSHA,
+		Fingerprint: row.Fingerprint,
+		ProviderID:  row.ProviderID,
+		ModelID:     row.ModelID,
+		Summary:     row.Summary,
+		GeneratedAt: row.GeneratedAt,
+	}
+
+	if err := json.Unmarshal([]byte(row.GroupsJSON), &record.Groups); err != nil {
 		return WalkthroughRecord{}, false, fmt.Errorf("decode walkthrough groups: %w", err)
 	}
 
@@ -95,20 +89,22 @@ func (r *WalkthroughRepo) UpsertWalkthrough(ctx context.Context, record Walkthro
 		return fmt.Errorf("encode walkthrough groups: %w", err)
 	}
 
-	_, err = r.db.ExecContext(ctx, `
-		INSERT INTO walkthroughs (
-			repo_root, context_kind, context_sha, fingerprint, provider_id, model_id,
-			groups_json, summary, generated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(repo_root, context_kind, context_sha) DO UPDATE SET
-			fingerprint  = excluded.fingerprint,
-			provider_id  = excluded.provider_id,
-			model_id     = excluded.model_id,
-			groups_json  = excluded.groups_json,
-			summary      = excluded.summary,
-			generated_at = excluded.generated_at
-	`, record.RepoRoot, record.ContextKind, record.ContextSHA, record.Fingerprint, record.ProviderID, record.ModelID,
-		string(groupsJSON), record.Summary, record.GeneratedAt)
+	row := WalkthroughRow{
+		RepoRoot:    record.RepoRoot,
+		ContextKind: record.ContextKind,
+		ContextSHA:  record.ContextSHA,
+		Fingerprint: record.Fingerprint,
+		ProviderID:  record.ProviderID,
+		ModelID:     record.ModelID,
+		GroupsJSON:  string(groupsJSON),
+		Summary:     record.Summary,
+		GeneratedAt: record.GeneratedAt,
+	}
 
-	return err
+	return r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "repo_root"}, {Name: "context_kind"}, {Name: "context_sha"}},
+			DoUpdates: clause.AssignmentColumns([]string{"fingerprint", "provider_id", "model_id", "groups_json", "summary", "generated_at"}),
+		}).
+		Create(&row).Error
 }
