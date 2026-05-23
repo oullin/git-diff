@@ -20,15 +20,8 @@ import (
 	"github.com/gocanto/git-diff/internal/db"
 )
 
-// clock is shared across every repo so SetNow advances time everywhere.
-type clock struct {
-	now func() time.Time
-}
-
 type Store struct {
-	db  *sql.DB
-	gdb *gorm.DB
-	clk *clock
+	db *sql.DB
 
 	Users           *UserRepo
 	Sessions        *SessionRepo
@@ -73,13 +66,10 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	db.Init(gdb)
 	db.SetNow(time.Now)
 
-	clk := &clock{now: time.Now}
 	reviewEvents := newReviewEventRepo()
 
 	store := &Store{
 		db:              conn,
-		gdb:             gdb,
-		clk:             clk,
 		Users:           newUserRepo(),
 		Sessions:        newSessionRepo(),
 		Reviews:         newReviewRepo(reviewEvents),
@@ -123,12 +113,8 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-// DB exposes the underlying *gorm.DB for repos and advanced chained queries.
-func (s *Store) DB() *gorm.DB { return s.gdb }
-
 // SetNow swaps the clock used by every repository.
 func (s *Store) SetNow(fn func() time.Time) {
-	s.clk.now = fn
 	db.SetNow(fn)
 }
 
