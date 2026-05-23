@@ -68,8 +68,8 @@ func Serve(args []string, cfg ServeConfig) int {
 	}()
 
 	providers := ai.NewRegistry()
-	providers.Register(ai.NewAnthropicProvider())
-	providers.Register(ai.NewCodexProvider())
+	providers.Register(ai.NewAnthropicProvider(userCfg.Reader))
+	providers.Register(ai.NewCodexProvider(userCfg.Reader))
 
 	appServer := Server{
 		Home:             cfg.Home,

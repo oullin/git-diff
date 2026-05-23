@@ -9,11 +9,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/gocanto/git-diff/internal/usercfg"
 )
 
 // CodexProvider shells out to the `codex` CLI. When the binary is
 // missing, Generate returns ErrCodexNotInstalled with no silent fallback.
 type CodexProvider struct {
+	cfg usercfg.Reader
+
 	// resolveBinary lets tests inject a fake lookup.
 	resolveBinary func() (string, error)
 
@@ -21,17 +25,14 @@ type CodexProvider struct {
 	runExec func(ctx context.Context, binary, model, prompt string) ([]byte, error)
 }
 
-const (
-	codexDefaultModel = "gpt-5.3-codex-spark"
-)
-
 // ErrCodexNotInstalled is returned when the `codex` binary can't be
 // located. The HTTP layer maps this to a 412 so the renderer can prompt
 // the user to install Codex or switch providers in their YAML config.
 var ErrCodexNotInstalled = errors.New("codex CLI not found; install from https://github.com/openai/codex or switch walkthrough.provider in ~/.git-diff/config.yaml")
 
-func NewCodexProvider() *CodexProvider {
+func NewCodexProvider(cfg usercfg.Reader) *CodexProvider {
 	return &CodexProvider{
+		cfg:           cfg,
 		resolveBinary: defaultResolveCodexBinary,
 		runExec:       defaultRunCodex,
 	}
@@ -39,7 +40,7 @@ func NewCodexProvider() *CodexProvider {
 
 func (*CodexProvider) ID() string { return "codex" }
 
-func (*CodexProvider) DefaultModel() string { return codexDefaultModel }
+func (p *CodexProvider) DefaultModel() string { return p.cfg.Get().Codex.DefaultModel }
 
 // SupportsModel is permissive: gatekeeping a hard-coded model list here
 // would just race new OpenAI releases.

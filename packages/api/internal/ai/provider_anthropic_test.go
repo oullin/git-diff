@@ -7,12 +7,14 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/gocanto/git-diff/internal/usercfg"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func TestAnthropicSupportsModel(t *testing.T) {
-	p := NewAnthropicProvider()
+	p := NewAnthropicProvider(testReader())
 
 	cases := map[string]bool{
 		"claude-sonnet-4-5": true,
@@ -31,13 +33,13 @@ func TestAnthropicSupportsModel(t *testing.T) {
 }
 
 func TestAnthropicProviderIdentity(t *testing.T) {
-	p := NewAnthropicProvider()
+	p := NewAnthropicProvider(testReader())
 
 	if p.ID() != "anthropic" {
 		t.Fatalf("id = %q", p.ID())
 	}
 
-	if p.DefaultModel() != anthropicDefault {
+	if p.DefaultModel() != usercfg.Defaults().Anthropic.DefaultModel {
 		t.Fatalf("default model = %q", p.DefaultModel())
 	}
 }
@@ -45,12 +47,15 @@ func TestAnthropicProviderIdentity(t *testing.T) {
 func TestAnthropicNonOKResponseReadsBoundedErrorBody(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 
+	errLimit := usercfg.Defaults().Anthropic.ErrorBodyLimit
+
 	p := &AnthropicProvider{
+		cfg: testReader(),
 		http: &http.Client{
 			Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
 				return &http.Response{
 					StatusCode: http.StatusBadGateway,
-					Body:       io.NopCloser(strings.NewReader(strings.Repeat("x", anthropicErrorBodyLimit+1024))),
+					Body:       io.NopCloser(strings.NewReader(strings.Repeat("x", int(errLimit)+1024))),
 					Header:     make(http.Header),
 				}, nil
 			}),
@@ -67,7 +72,7 @@ func TestAnthropicNonOKResponseReadsBoundedErrorBody(t *testing.T) {
 		t.Fatalf("error = %q, want status", err.Error())
 	}
 
-	if len(err.Error()) > anthropicErrorBodyLimit+256 {
+	if int64(len(err.Error())) > errLimit+256 {
 		t.Fatalf("error length = %d, want bounded body", len(err.Error()))
 	}
 }
@@ -75,10 +80,13 @@ func TestAnthropicNonOKResponseReadsBoundedErrorBody(t *testing.T) {
 func TestAnthropicSuccessResponseRejectsOversizedBody(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 
+	successLimit := usercfg.Defaults().Anthropic.SuccessBodyLimit
+
 	p := &AnthropicProvider{
+		cfg: testReader(),
 		http: &http.Client{
 			Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
-				body := `{"content":[{"type":"text","text":"` + strings.Repeat("x", anthropicSuccessBodyLimit+1) + `"}]}`
+				body := `{"content":[{"type":"text","text":"` + strings.Repeat("x", int(successLimit)+1) + `"}]}`
 
 				return &http.Response{
 					StatusCode: http.StatusOK,

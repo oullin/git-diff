@@ -5,10 +5,13 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/gocanto/git-diff/internal/usercfg"
 )
 
 func TestCodexProviderMissingBinaryReturnsSentinel(t *testing.T) {
 	p := &CodexProvider{
+		cfg:           testReader(),
 		resolveBinary: func() (string, error) { return "", ErrCodexNotInstalled },
 	}
 
@@ -23,6 +26,7 @@ func TestCodexProviderShellsOutWithUserPrompt(t *testing.T) {
 	var sawPrompt, sawModel string
 
 	p := &CodexProvider{
+		cfg:           testReader(),
 		resolveBinary: func() (string, error) { return "/fake/codex", nil },
 		runExec: func(_ context.Context, _, model, prompt string) ([]byte, error) {
 			sawPrompt = prompt
@@ -61,7 +65,10 @@ func TestCodexProviderShellsOutWithUserPrompt(t *testing.T) {
 func TestCodexProviderFallsBackToDefaultModel(t *testing.T) {
 	var captured string
 
+	defaultModel := usercfg.Defaults().Codex.DefaultModel
+
 	p := &CodexProvider{
+		cfg:           testReader(),
 		resolveBinary: func() (string, error) { return "/fake/codex", nil },
 		runExec: func(_ context.Context, _, model, _ string) ([]byte, error) {
 			captured = model
@@ -76,13 +83,14 @@ func TestCodexProviderFallsBackToDefaultModel(t *testing.T) {
 		t.Fatalf("generate: %v", err)
 	}
 
-	if captured != codexDefaultModel {
-		t.Fatalf("expected default %q, got %q", codexDefaultModel, captured)
+	if captured != defaultModel {
+		t.Fatalf("expected default %q, got %q", defaultModel, captured)
 	}
 }
 
 func TestCodexProviderRejectsEmptyPrompt(t *testing.T) {
 	p := &CodexProvider{
+		cfg:           testReader(),
 		resolveBinary: func() (string, error) { return "/fake/codex", nil },
 		runExec:       func(context.Context, string, string, string) ([]byte, error) { return nil, nil },
 	}

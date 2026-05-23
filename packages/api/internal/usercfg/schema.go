@@ -5,12 +5,30 @@ package usercfg
 // Config carries value types only so passing one across goroutines is
 // safe without locking.
 type Config struct {
-	Theme               string      `mapstructure:"theme"               yaml:"theme"`
-	ShowWhitespace      bool        `mapstructure:"show_whitespace"     yaml:"show_whitespace"`
+	Theme               string      `mapstructure:"theme"                  yaml:"theme"`
+	ShowWhitespace      bool        `mapstructure:"show_whitespace"        yaml:"show_whitespace"`
 	CopyCommentsOnClose bool        `mapstructure:"copy_comments_on_close" yaml:"copy_comments_on_close"`
-	LastRepositoryPath  string      `mapstructure:"last_repository_path" yaml:"last_repository_path"`
-	Walkthrough         Walkthrough `mapstructure:"walkthrough"         yaml:"walkthrough"`
-	Keymap              Keymap      `mapstructure:"keymap"              yaml:"keymap"`
+	LastRepositoryPath  string      `mapstructure:"last_repository_path"   yaml:"last_repository_path"`
+	Walkthrough         Walkthrough `mapstructure:"walkthrough"            yaml:"walkthrough"`
+	Anthropic           Anthropic   `mapstructure:"anthropic"              yaml:"anthropic"`
+	Codex               Codex       `mapstructure:"codex"                  yaml:"codex"`
+	Keymap              Keymap      `mapstructure:"keymap"                 yaml:"keymap"`
+}
+
+// Anthropic carries provider-level knobs read at request time so changes
+// to ~/.git-diff/config.yaml take effect without a restart.
+type Anthropic struct {
+	Endpoint         string `mapstructure:"endpoint"           yaml:"endpoint"`
+	APIVersion       string `mapstructure:"api_version"        yaml:"api_version"`
+	DefaultModel     string `mapstructure:"default_model"      yaml:"default_model"`
+	ErrorBodyLimit   int64  `mapstructure:"error_body_limit"   yaml:"error_body_limit"`
+	SuccessBodyLimit int64  `mapstructure:"success_body_limit" yaml:"success_body_limit"`
+}
+
+// Codex shells out to a local binary, so only the model fallback is
+// configurable here.
+type Codex struct {
+	DefaultModel string `mapstructure:"default_model" yaml:"default_model"`
 }
 
 // Walkthrough's Model is interpreted by the selected provider; providers

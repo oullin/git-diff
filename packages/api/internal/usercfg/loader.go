@@ -62,6 +62,14 @@ func applyDefaults(v *viper.Viper, d Config) {
 	v.SetDefault("walkthrough.patch_budget_bytes", d.Walkthrough.PatchBudgetBytes)
 	v.SetDefault("walkthrough.per_file_budget_bytes", d.Walkthrough.PerFileBudgetBytes)
 
+	v.SetDefault("anthropic.endpoint", d.Anthropic.Endpoint)
+	v.SetDefault("anthropic.api_version", d.Anthropic.APIVersion)
+	v.SetDefault("anthropic.default_model", d.Anthropic.DefaultModel)
+	v.SetDefault("anthropic.error_body_limit", d.Anthropic.ErrorBodyLimit)
+	v.SetDefault("anthropic.success_body_limit", d.Anthropic.SuccessBodyLimit)
+
+	v.SetDefault("codex.default_model", d.Codex.DefaultModel)
+
 	v.SetDefault("keymap.command_bar", d.Keymap.CommandBar)
 	v.SetDefault("keymap.file_filter", d.Keymap.FileFilter)
 	v.SetDefault("keymap.diff_search", d.Keymap.DiffSearch)

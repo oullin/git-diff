@@ -11,11 +11,15 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/usercfg"
 )
 
-// AnthropicProvider reads $ANTHROPIC_API_KEY at request time so key
-// rotation doesn't require a process restart.
+// AnthropicProvider reads $ANTHROPIC_API_KEY and the anthropic.* config
+// section at request time so key rotation and config edits take effect
+// without a process restart.
 type AnthropicProvider struct {
+	cfg  usercfg.Reader
 	http *http.Client
 }
 
@@ -30,23 +34,15 @@ type anthropicResponse struct {
 	} `json:"usage"`
 }
 
-const (
-	anthropicEndpoint         = "https://api.anthropic.com/v1/messages"
-	anthropicAPIVer           = "2023-06-01"
-	anthropicDefault          = "claude-sonnet-4-5"
-	anthropicErrorBodyLimit   = 64 * 1024
-	anthropicSuccessBodyLimit = 8 * 1024 * 1024
-)
-
 var errAnthropicResponseTooLarge = errors.New("anthropic response body exceeds limit")
 
-func NewAnthropicProvider() *AnthropicProvider {
-	return &AnthropicProvider{http: &http.Client{Timeout: 60 * time.Second}}
+func NewAnthropicProvider(cfg usercfg.Reader) *AnthropicProvider {
+	return &AnthropicProvider{cfg: cfg, http: &http.Client{Timeout: 60 * time.Second}}
 }
 
 func (*AnthropicProvider) ID() string { return "anthropic" }
 
-func (*AnthropicProvider) DefaultModel() string { return anthropicDefault }
+func (p *AnthropicProvider) DefaultModel() string { return p.cfg.Get().Anthropic.DefaultModel }
 
 func (*AnthropicProvider) SupportsModel(model string) bool {
 	m := strings.ToLower(strings.TrimSpace(model))
@@ -65,7 +61,9 @@ func (p *AnthropicProvider) Generate(ctx context.Context, req GenerateRequest) (
 		return GenerateResponse{}, errors.New("ANTHROPIC_API_KEY is required for the anthropic provider")
 	}
 
-	model := strings.TrimSpace(req.userOrDefaultModel(p.DefaultModel()))
+	anth := p.cfg.Get().Anthropic
+
+	model := strings.TrimSpace(req.userOrDefaultModel(anth.DefaultModel))
 
 	if !p.SupportsModel(model) {
 		return GenerateResponse{}, fmt.Errorf("anthropic provider does not support model %q (expected a claude-* name)", model)
@@ -85,14 +83,14 @@ func (p *AnthropicProvider) Generate(ctx context.Context, req GenerateRequest) (
 		return GenerateResponse{}, fmt.Errorf("encode anthropic request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, anthropicEndpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, anth.Endpoint, bytes.NewReader(body))
 
 	if err != nil {
 		return GenerateResponse{}, fmt.Errorf("build anthropic request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("anthropic-version", anthropicAPIVer)
+	httpReq.Header.Set("anthropic-version", anth.APIVersion)
 	httpReq.Header.Set("x-api-key", apiKey)
 
 	resp, err := p.http.Do(httpReq)
@@ -104,7 +102,7 @@ func (p *AnthropicProvider) Generate(ctx context.Context, req GenerateRequest) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		raw, err := readLimited(resp.Body, anthropicErrorBodyLimit)
+		raw, err := readLimited(resp.Body, anth.ErrorBodyLimit)
 
 		if err != nil && !errors.Is(err, errAnthropicResponseTooLarge) {
 			return GenerateResponse{}, fmt.Errorf("read anthropic error response: %w", err)
@@ -113,7 +111,7 @@ func (p *AnthropicProvider) Generate(ctx context.Context, req GenerateRequest) (
 		return GenerateResponse{}, fmt.Errorf("anthropic returned %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 
-	raw, err := readLimited(resp.Body, anthropicSuccessBodyLimit)
+	raw, err := readLimited(resp.Body, anth.SuccessBodyLimit)
 
 	if err != nil {
 		return GenerateResponse{}, fmt.Errorf("read anthropic response: %w", err)
