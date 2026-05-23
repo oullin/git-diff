@@ -165,7 +165,11 @@ async function listSourceFiles(dir: string): Promise<string[]> {
     return files;
 }
 
-function computeInsertPositions(content: string, virtualName: string, baseOffset: number): number[] {
+function computeInsertPositions(
+    content: string,
+    virtualName: string,
+    baseOffset: number,
+): number[] {
     const parsed = parseSync(virtualName, content) as unknown as { program: Node };
     const lists = collectStatementLists(parsed.program);
     const positions: number[] = [];

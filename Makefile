@@ -21,7 +21,7 @@ API_COVERAGE_OUT := $(API_DIR)/coverage.out
 API_COVERAGE_FLOOR := 60.0
 
 .DEFAULT_GOAL := help
-.PHONY: help dev format format-start format-stop format-login fresh test-api test-api-cover
+.PHONY: help dev format format-all format-start format-stop format-login fresh test-api test-api-cover
 
 help: ## Show this help (list of make targets)
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -43,6 +43,30 @@ format: format-start ## Format Go, TS, and Vue sources
 	@$(OXFMT) --write packages/ui packages/bridge package.json turbo.json
 	@echo "oxlint fix in $(ROOT_PATH)"
 	@$(OXLINT) --fix --vue-plugin packages/ui packages/bridge
+
+format-all: format-start ## Format Go + all JS/TS/Vue sources (incl. contracts and scripts)
+	@echo "go-fmt format in $(ROOT_PATH)"; \
+	$(GO_FMT_EXEC) format --cwd $(ROOT_PATH) --host-path $(ROOT_PATH)
+	@echo "blank-lines fix across packages and root scripts"
+	@cd $(ROOT_PATH) && $(TSX) $(BLANK_LINES) \
+		packages/ui \
+		packages/bridge \
+		packages/contracts/src \
+		scripts
+	@echo "oxfmt format across all JS/TS sources"
+	@$(OXFMT) --write \
+		packages/ui \
+		packages/bridge \
+		packages/contracts/src \
+		scripts \
+		package.json \
+		turbo.json
+	@echo "oxlint fix across all JS/TS sources"
+	@$(OXLINT) --fix --vue-plugin \
+		packages/ui \
+		packages/bridge \
+		packages/contracts/src \
+		scripts
 
 format-start:
 	@$(GO_FMT_COMPOSE) up -d $(GO_FMT_SERVICE)
