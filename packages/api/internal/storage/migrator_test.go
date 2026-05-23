@@ -194,6 +194,24 @@ func TestMigratorBaselinesLegacyDB(t *testing.T) {
 		}
 	}
 
+	droppedColumns := map[string][]string{
+		"walkthroughs": {"order_json", "notes_json"},
+	}
+
+	for table, cols := range droppedColumns {
+		have, err := mig.columnSet(ctx, table)
+
+		if err != nil {
+			t.Fatalf("columnSet %s: %v", table, err)
+		}
+
+		for _, col := range cols {
+			if have[col] {
+				t.Fatalf("%s.%s should have been dropped during baseline", table, col)
+			}
+		}
+	}
+
 	v, dirty, ok, err := mig.Version()
 
 	if err != nil {

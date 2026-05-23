@@ -99,7 +99,11 @@ func (m *Migrator) applyLegacyBaselineALTERs(ctx context.Context) error {
 		return err
 	}
 
-	return m.addWalkthroughGroupsColumns(ctx)
+	if err := m.addWalkthroughGroupsColumns(ctx); err != nil {
+		return err
+	}
+
+	return m.dropWalkthroughLegacyColumns(ctx)
 }
 
 func (m *Migrator) newMigrate() (*migrate.Migrate, error) {
@@ -286,6 +290,33 @@ func (m *Migrator) addWalkthroughGroupsColumns(ctx context.Context) error {
 	if !have["provider_id"] {
 		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("walkthroughs")+" ADD COLUMN provider_id TEXT NOT NULL DEFAULT ''"); err != nil {
 			return fmt.Errorf("add walkthroughs.provider_id: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// dropWalkthroughLegacyColumns removes the pre-groups `order_json` / `notes_json`
+// columns from legacy SQLite DBs. The current writer never supplies values for
+// them, so leaving the NOT NULL columns in place would break inserts.
+func (m *Migrator) dropWalkthroughLegacyColumns(ctx context.Context) error {
+	have, err := m.columnSet(ctx, "walkthroughs")
+
+	if err != nil {
+		return err
+	}
+
+	if len(have) == 0 {
+		return nil
+	}
+
+	for _, column := range []string{"order_json", "notes_json"} {
+		if !have[column] {
+			continue
+		}
+
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("walkthroughs")+" DROP COLUMN "+sqliteQuoteIdentifier(column)); err != nil {
+			return fmt.Errorf("drop walkthroughs.%s: %w", column, err)
 		}
 	}
 

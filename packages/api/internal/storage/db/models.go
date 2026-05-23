@@ -126,8 +126,6 @@ type Walkthrough struct {
 	Fingerprint string `json:"fingerprint"`
 	ProviderID  string `json:"provider_id"`
 	ModelID     string `json:"model_id"`
-	OrderJson   string `json:"order_json"`
-	NotesJson   string `json:"notes_json"`
 	GroupsJson  string `json:"groups_json"`
 	Summary     string `json:"summary"`
 	GeneratedAt string `json:"generated_at"`
