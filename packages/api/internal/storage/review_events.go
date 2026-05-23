@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"gorm.io/gorm"
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type ReviewEventInput struct {
@@ -25,17 +25,14 @@ type ReviewEvent struct {
 	UpdatedAt string `json:"updatedAt"`
 }
 
-type ReviewEventRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type ReviewEventRepo struct{}
 
-func newReviewEventRepo(db *gorm.DB, clk *clock) *ReviewEventRepo {
-	return &ReviewEventRepo{db: db, clk: clk}
+func newReviewEventRepo() *ReviewEventRepo {
+	return &ReviewEventRepo{}
 }
 
 func (r *ReviewEventRepo) Add(ctx context.Context, reviewID int64, input ReviewEventInput) (ReviewEvent, error) {
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 	metadata := input.Metadata
 
 	if metadata == "" {
@@ -52,7 +49,7 @@ func (r *ReviewEventRepo) Add(ctx context.Context, reviewID int64, input ReviewE
 		UpdatedAt: now,
 	}
 
-	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Create(&row).Error; err != nil {
 		return ReviewEvent{}, err
 	}
 
@@ -71,7 +68,7 @@ func (r *ReviewEventRepo) Add(ctx context.Context, reviewID int64, input ReviewE
 func (r *ReviewEventRepo) List(ctx context.Context, reviewID int64) ([]ReviewEvent, error) {
 	var rows []ReviewEventRow
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Where("review_id = ?", reviewID).
 		Order("created_at ASC, id ASC").
 		Find(&rows).Error; err != nil {

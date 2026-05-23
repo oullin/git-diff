@@ -74,7 +74,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	db.SetNow(time.Now)
 
 	clk := &clock{now: time.Now}
-	reviewEvents := newReviewEventRepo(gdb, clk)
+	reviewEvents := newReviewEventRepo()
 
 	store := &Store{
 		db:              conn,
@@ -82,10 +82,10 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		clk:             clk,
 		Users:           newUserRepo(),
 		Sessions:        newSessionRepo(),
-		Reviews:         newReviewRepo(gdb, clk, reviewEvents),
+		Reviews:         newReviewRepo(reviewEvents),
 		ReviewEvents:    reviewEvents,
-		Comments:        newCommentRepo(gdb, clk, reviewEvents),
-		PendingComments: newPendingCommentRepo(gdb, clk),
+		Comments:        newCommentRepo(reviewEvents),
+		PendingComments: newPendingCommentRepo(),
 		Branches:        newRepositoryBranchRepo(),
 		Repos:           newRepoRepo(),
 		Collaborators:   newCollaboratorRepo(),

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"gorm.io/gorm"
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type ReviewCommentInput struct {
@@ -36,17 +36,15 @@ type ReviewComment struct {
 }
 
 type CommentRepo struct {
-	db     *gorm.DB
-	clk    *clock
 	events *ReviewEventRepo
 }
 
-func newCommentRepo(db *gorm.DB, clk *clock, events *ReviewEventRepo) *CommentRepo {
-	return &CommentRepo{db: db, clk: clk, events: events}
+func newCommentRepo(events *ReviewEventRepo) *CommentRepo {
+	return &CommentRepo{events: events}
 }
 
 func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID int64, input ReviewCommentInput) (ReviewComment, error) {
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
 	if input.AuthorLabel == "" {
 		input.AuthorLabel = "You"
@@ -66,7 +64,7 @@ func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID int64, i
 		UpdatedAt:       now,
 	}
 
-	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Create(&row).Error; err != nil {
 		return ReviewComment{}, err
 	}
 
@@ -89,9 +87,9 @@ func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID int64, i
 }
 
 func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID int64, commentID int64, bodyHTML string) (ReviewComment, error) {
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Model(&ReviewCommentRow{}).
 		Where("id = ? AND review_id = ?", commentID, reviewID).
 		Updates(map[string]any{
@@ -114,10 +112,10 @@ func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID int64, c
 }
 
 func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID int64, commentID int64) error {
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 	comment, _ := r.GetReviewComment(ctx, reviewID, commentID)
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Model(&ReviewCommentRow{}).
 		Where("id = ? AND review_id = ?", commentID, reviewID).
 		Updates(map[string]any{
@@ -137,7 +135,7 @@ func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID int64, c
 func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID int64, commentID int64) (ReviewComment, error) {
 	var row ReviewCommentRow
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Where("id = ? AND review_id = ?", commentID, reviewID).
 		Take(&row).Error; err != nil {
 		return ReviewComment{}, err
@@ -149,7 +147,7 @@ func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID int64, comm
 func (r *CommentRepo) ListReviewComments(ctx context.Context, reviewID int64) ([]ReviewComment, error) {
 	var rows []ReviewCommentRow
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Where("review_id = ? AND deleted_at IS NULL", reviewID).
 		Order("created_at ASC").
 		Find(&rows).Error; err != nil {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"gorm.io/gorm"
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type ReviewSessionStart struct {
@@ -48,13 +48,11 @@ type ReviewDetail struct {
 }
 
 type ReviewRepo struct {
-	db     *gorm.DB
-	clk    *clock
 	events *ReviewEventRepo
 }
 
-func newReviewRepo(db *gorm.DB, clk *clock, events *ReviewEventRepo) *ReviewRepo {
-	return &ReviewRepo{db: db, clk: clk, events: events}
+func newReviewRepo(events *ReviewEventRepo) *ReviewRepo {
+	return &ReviewRepo{events: events}
 }
 
 func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review ReviewSessionStart) (ReviewSession, error) {
@@ -62,7 +60,7 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 		return ReviewSession{}, errors.New("user id is required")
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 	title := review.Title
 
 	if title == "" {
@@ -93,7 +91,7 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 		UpdatedAt:    now,
 	}
 
-	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Create(&row).Error; err != nil {
 		return ReviewSession{}, err
 	}
 
@@ -135,7 +133,7 @@ func (r *ReviewRepo) ListReviews(ctx context.Context, userID int64, limit int64)
 
 	var rows []ReviewSessionRow
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Where("user_id = ?", userID).
 		Order("started_at DESC").
 		Limit(int(limit)).
@@ -156,7 +154,7 @@ func (r *ReviewRepo) ListReviews(ctx context.Context, userID int64, limit int64)
 func (r *ReviewRepo) GetReviewByID(ctx context.Context, id int64) (ReviewSession, error) {
 	var row ReviewSessionRow
 
-	if err := r.db.WithContext(ctx).Where("id = ?", id).Take(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Where("id = ?", id).Take(&row).Error; err != nil {
 		return ReviewSession{}, err
 	}
 

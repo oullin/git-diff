@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 // PendingComment is a draft scoped by (user_id, repo_root, context_kind,
@@ -43,13 +45,10 @@ type PendingCommentInput struct {
 	BodyHTML        string `json:"bodyHtml"`
 }
 
-type PendingCommentRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type PendingCommentRepo struct{}
 
-func newPendingCommentRepo(db *gorm.DB, clk *clock) *PendingCommentRepo {
-	return &PendingCommentRepo{db: db, clk: clk}
+func newPendingCommentRepo() *PendingCommentRepo {
+	return &PendingCommentRepo{}
 }
 
 func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID int64, input PendingCommentInput) (PendingComment, error) {
@@ -57,7 +56,7 @@ func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID in
 		return PendingComment{}, errors.New("user id is required")
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 	kind := input.ContextKind
 
 	if kind == "" {
@@ -81,7 +80,7 @@ func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID in
 		UpdatedAt:       now,
 	}
 
-	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Create(&row).Error; err != nil {
 		return PendingComment{}, err
 	}
 
@@ -89,9 +88,9 @@ func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID in
 }
 
 func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID int64, id int64, bodyHTML string) (PendingComment, error) {
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
-	result := r.db.WithContext(ctx).
+	result := db.Conn().WithContext(ctx).
 		Model(&PendingCommentRow{}).
 		Where("id = ? AND user_id = ?", id, userID).
 		Updates(map[string]any{
@@ -113,7 +112,7 @@ func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID in
 func (r *PendingCommentRepo) GetPendingComment(ctx context.Context, userID int64, id int64) (PendingComment, error) {
 	var row PendingCommentRow
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Where("id = ? AND user_id = ?", id, userID).
 		Take(&row).Error; err != nil {
 		return PendingComment{}, err
@@ -123,7 +122,7 @@ func (r *PendingCommentRepo) GetPendingComment(ctx context.Context, userID int64
 }
 
 func (r *PendingCommentRepo) DeletePendingComment(ctx context.Context, userID int64, id int64) error {
-	return r.db.WithContext(ctx).
+	return db.Conn().WithContext(ctx).
 		Where("id = ? AND user_id = ?", id, userID).
 		Delete(&PendingCommentRow{}).Error
 }
@@ -135,7 +134,7 @@ func (r *PendingCommentRepo) ListPendingComments(ctx context.Context, userID int
 
 	var rows []PendingCommentRow
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Where("user_id = ? AND repo_root = ? AND context_kind = ? AND context_sha = ?", userID, repoRoot, contextKind, contextSHA).
 		Order("file_path, line_number, created_at").
 		Find(&rows).Error; err != nil {
@@ -158,7 +157,7 @@ func (r *PendingCommentRepo) ListPendingComments(ctx context.Context, userID int
 func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID int64, reviewID int64) (int, error) {
 	var promoted int
 
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := db.Conn().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var review ReviewSessionRow
 
 		if err := tx.Select("repo_root", "context_kind", "context_sha").
@@ -185,7 +184,7 @@ func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID 
 			return nil
 		}
 
-		now := r.clk.now().UTC().Format(time.RFC3339Nano)
+		now := db.Now().UTC().Format(time.RFC3339Nano)
 
 		comments := make([]ReviewCommentRow, 0, len(pending))
 		ids := make([]int64, 0, len(pending))
