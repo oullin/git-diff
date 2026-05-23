@@ -70,19 +70,3 @@ func normaliseImpact(i Impact) Impact {
 		return ImpactContained
 	}
 }
-
-// flattenForLegacy mirrors Groups onto the flat Order/Notes shape kept
-// for one release of legacy renderer code.
-func flattenForLegacy(groups []Group) (order []string, notes map[string]string) {
-	order = []string{}
-	notes = map[string]string{}
-
-	for _, group := range groups {
-		for _, file := range group.Files {
-			order = append(order, file.Path)
-			notes[file.Path] = file.Note
-		}
-	}
-
-	return order, notes
-}

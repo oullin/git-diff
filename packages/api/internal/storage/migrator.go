@@ -44,6 +44,10 @@ func (m *Migrator) Run(ctx context.Context) error {
 		return fmt.Errorf("add walkthrough groups columns: %w", err)
 	}
 
+	if err := m.dropWalkthroughLegacyColumns(ctx); err != nil {
+		return fmt.Errorf("drop walkthrough legacy columns: %w", err)
+	}
+
 	if _, err := m.db.ExecContext(ctx, string(schema)); err != nil {
 		return fmt.Errorf("initialize sqlite schema: %w", err)
 	}
@@ -130,6 +134,30 @@ func (m *Migrator) addWalkthroughGroupsColumns(ctx context.Context) error {
 	if !have["provider_id"] {
 		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("walkthroughs")+" ADD COLUMN provider_id TEXT NOT NULL DEFAULT ''"); err != nil {
 			return fmt.Errorf("add walkthroughs.provider_id: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (m *Migrator) dropWalkthroughLegacyColumns(ctx context.Context) error {
+	have, err := m.columnSet(ctx, "walkthroughs")
+
+	if err != nil {
+		return err
+	}
+
+	if len(have) == 0 {
+		return nil
+	}
+
+	for _, column := range []string{"order_json", "notes_json"} {
+		if !have[column] {
+			continue
+		}
+
+		if _, err := m.db.ExecContext(ctx, "ALTER TABLE "+sqliteQuoteIdentifier("walkthroughs")+" DROP COLUMN "+sqliteQuoteIdentifier(column)); err != nil {
+			return fmt.Errorf("drop walkthroughs.%s: %w", column, err)
 		}
 	}
 

@@ -22,17 +22,13 @@ type Group struct {
 	Files     []FileEntry `json:"files"`
 }
 
-// Walkthrough's Order/Notes are populated from Groups so legacy renderer
-// code keeps working for one release.
 type Walkthrough struct {
-	Groups      []Group           `json:"groups"`
-	Summary     string            `json:"summary,omitempty"`
-	ProviderID  string            `json:"providerId"`
-	ModelID     string            `json:"modelId"`
-	GeneratedAt string            `json:"generatedAt"`
-	Fingerprint string            `json:"fingerprint"`
-	Order       []string          `json:"order,omitempty"`
-	Notes       map[string]string `json:"notes,omitempty"`
+	Groups      []Group `json:"groups"`
+	Summary     string  `json:"summary,omitempty"`
+	ProviderID  string  `json:"providerId"`
+	ModelID     string  `json:"modelId"`
+	GeneratedAt string  `json:"generatedAt"`
+	Fingerprint string  `json:"fingerprint"`
 }
 
 // Budget caps patch sizes when building the prompt. PerFileBytes

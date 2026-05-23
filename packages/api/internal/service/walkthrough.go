@@ -95,8 +95,6 @@ func (s *WalkthroughService) Generate(
 		ProviderID:  result.ProviderID,
 		ModelID:     result.ModelID,
 		Groups:      toStorageGroups(result.Groups),
-		Order:       result.Order,
-		Notes:       result.Notes,
 		Summary:     result.Summary,
 		GeneratedAt: result.GeneratedAt,
 	}

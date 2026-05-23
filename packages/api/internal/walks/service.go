@@ -59,8 +59,6 @@ func Generate(ctx context.Context, req Request) (Walkthrough, error) {
 		return Walkthrough{}, err
 	}
 
-	order, notes := flattenForLegacy(validated.Groups)
-
 	return Walkthrough{
 		Groups:      validated.Groups,
 		Summary:     validated.Summary,
@@ -68,8 +66,6 @@ func Generate(ctx context.Context, req Request) (Walkthrough, error) {
 		ModelID:     resp.ModelID,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),
 		Fingerprint: FingerprintForStateAndProvider(req.State, resp.ProviderID),
-		Order:       order,
-		Notes:       notes,
 	}, nil
 }
 
@@ -78,8 +74,6 @@ const defaultMaxTokens = 2048
 func emptyWalkthrough(provider ai.Provider) Walkthrough {
 	return Walkthrough{
 		Groups:      []Group{},
-		Order:       []string{},
-		Notes:       map[string]string{},
 		ProviderID:  provider.ID(),
 		ModelID:     provider.DefaultModel(),
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339Nano),

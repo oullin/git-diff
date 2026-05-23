@@ -96,7 +96,7 @@ func TestEnforceBudgetStopsAtTotalCap(t *testing.T) {
 	}
 }
 
-func TestParseAcceptsBothNewAndLegacyShapes(t *testing.T) {
+func TestParseDecodesGroupsShape(t *testing.T) {
 	newShape := `{"summary":"refactor","groups":[{"id":"g1","title":"Auth","rationale":"core","files":[{"path":"a.go","note":"check","action":"review","impact":"contained"}]}]}`
 
 	got, err := Parse(newShape)
@@ -106,23 +106,21 @@ func TestParseAcceptsBothNewAndLegacyShapes(t *testing.T) {
 	}
 
 	if len(got.Groups) != 1 || got.Groups[0].Files[0].Path != "a.go" {
-		t.Fatalf("new-shape parse failed: %+v", got)
+		t.Fatalf("groups-shape parse failed: %+v", got)
 	}
+}
 
-	legacy := "```json\n" + `{"summary":"flat","order":["x.go","y.go"],"notes":{"x.go":"first","y.go":"second"}}` + "\n```"
+func TestParseLeavesGroupsEmptyForLegacyOrderNotes(t *testing.T) {
+	legacy := "```json\n" + `{"summary":"flat","order":["x.go","y.go"],"notes":{"x.go":"first"}}` + "\n```"
 
-	got, err = Parse(legacy)
+	got, err := Parse(legacy)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(got.Groups) != 1 || len(got.Groups[0].Files) != 2 {
-		t.Fatalf("legacy parse should hoist to one group: %+v", got)
-	}
-
-	if got.Groups[0].Files[0].Path != "x.go" {
-		t.Fatalf("legacy parse order lost: %+v", got.Groups[0].Files)
+	if len(got.Groups) != 0 {
+		t.Fatalf("legacy order/notes should no longer produce groups: %+v", got)
 	}
 }
 
@@ -201,10 +199,6 @@ func TestGenerateOrchestratesProviderParseValidate(t *testing.T) {
 
 	if got.ProviderID != "mock" {
 		t.Fatalf("provider id = %q", got.ProviderID)
-	}
-
-	if got.Order[0] != "x.go" || got.Notes["x.go"] != "check" {
-		t.Fatalf("legacy mirrors not populated: %+v / %+v", got.Order, got.Notes)
 	}
 }
 
