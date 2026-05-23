@@ -4,9 +4,12 @@ package storage
 // They are the *only* layer that knows about column names and SQL nulls; every
 // repo translates between these and the public domain types.
 //
-// No `gorm:"foreignKey/references/many2many"` tags on purpose: joins are
-// written explicitly via Joins/Select to avoid the implicit per-row Preload
-// queries that turn list endpoints into N+1.
+// Associations are declared with `gorm:"foreignKey/references"` tags so the
+// Go layer mirrors the FK constraints in the migration. They exist for
+// documentation and for explicit `.Joins()` chains in repos — never use
+// `Preload()` or `.Association()`; every join must stay explicit so list
+// endpoints remain O(1) queries. The `repository_users` join table is modeled
+// directly (not via `many2many:`) because it carries its own columns.
 
 type UserRow struct {
 	ID           int64  `gorm:"column:id;primaryKey;autoIncrement"`
@@ -16,6 +19,10 @@ type UserRow struct {
 	LastLoginAt  string `gorm:"column:last_login_at"`
 	CreatedAt    string `gorm:"column:created_at"`
 	UpdatedAt    string `gorm:"column:updated_at"`
+
+	Sessions          []UserSessionRow    `gorm:"foreignKey:UserID;references:ID"`
+	Preferences       []UserPreferenceRow `gorm:"foreignKey:UserID;references:ID"`
+	OwnedRepositories []RepositoryRow     `gorm:"foreignKey:OwnerID;references:ID"`
 }
 
 type UserSessionRow struct {
@@ -26,6 +33,8 @@ type UserSessionRow struct {
 	LastUsedAt string `gorm:"column:last_used_at"`
 	CreatedAt  string `gorm:"column:created_at"`
 	UpdatedAt  string `gorm:"column:updated_at"`
+
+	User *UserRow `gorm:"foreignKey:UserID;references:ID"`
 }
 
 type UserPreferenceRow struct {
@@ -35,6 +44,8 @@ type UserPreferenceRow struct {
 	Value     string `gorm:"column:value"`
 	CreatedAt string `gorm:"column:created_at"`
 	UpdatedAt string `gorm:"column:updated_at"`
+
+	User *UserRow `gorm:"foreignKey:UserID;references:ID"`
 }
 
 type RepositoryRow struct {
@@ -46,6 +57,10 @@ type RepositoryRow struct {
 	LastOpenedAt *string `gorm:"column:last_opened_at"`
 	CreatedAt    string  `gorm:"column:created_at"`
 	UpdatedAt    string  `gorm:"column:updated_at"`
+
+	Owner         *UserRow              `gorm:"foreignKey:OwnerID;references:ID"`
+	Collaborators []RepositoryUserRow   `gorm:"foreignKey:RepositoryID;references:ID"`
+	Branches      []RepositoryBranchRow `gorm:"foreignKey:RepositoryID;references:ID"`
 }
 
 type RepositoryUserRow struct {
@@ -56,6 +71,9 @@ type RepositoryUserRow struct {
 	GrantedAt    string `gorm:"column:granted_at"`
 	CreatedAt    string `gorm:"column:created_at"`
 	UpdatedAt    string `gorm:"column:updated_at"`
+
+	Repository *RepositoryRow `gorm:"foreignKey:RepositoryID;references:ID"`
+	User       *UserRow       `gorm:"foreignKey:UserID;references:ID"`
 }
 
 type RepositoryBranchRow struct {
@@ -68,6 +86,9 @@ type RepositoryBranchRow struct {
 	LastSeenAt   string  `gorm:"column:last_seen_at"`
 	CreatedAt    string  `gorm:"column:created_at"`
 	UpdatedAt    string  `gorm:"column:updated_at"`
+
+	Repository *RepositoryRow `gorm:"foreignKey:RepositoryID;references:ID"`
+	Locker     *UserRow       `gorm:"foreignKey:LockedBy;references:ID"`
 }
 
 type ReviewSessionRow struct {
@@ -88,6 +109,10 @@ type ReviewSessionRow struct {
 	ContextSHA   *string `gorm:"column:context_sha"`
 	CreatedAt    string  `gorm:"column:created_at"`
 	UpdatedAt    string  `gorm:"column:updated_at"`
+
+	User     *UserRow           `gorm:"foreignKey:UserID;references:ID"`
+	Events   []ReviewEventRow   `gorm:"foreignKey:ReviewID;references:ID"`
+	Comments []ReviewCommentRow `gorm:"foreignKey:ReviewID;references:ID"`
 }
 
 type ReviewEventRow struct {
@@ -99,6 +124,8 @@ type ReviewEventRow struct {
 	Metadata  string `gorm:"column:metadata"`
 	CreatedAt string `gorm:"column:created_at"`
 	UpdatedAt string `gorm:"column:updated_at"`
+
+	Session *ReviewSessionRow `gorm:"foreignKey:ReviewID;references:ID"`
 }
 
 type ReviewCommentRow struct {
@@ -117,6 +144,8 @@ type ReviewCommentRow struct {
 	DeletedAt *string `gorm:"column:deleted_at"`
 	CreatedAt string  `gorm:"column:created_at"`
 	UpdatedAt string  `gorm:"column:updated_at"`
+
+	Session *ReviewSessionRow `gorm:"foreignKey:ReviewID;references:ID"`
 }
 
 type WalkthroughRow struct {
@@ -150,6 +179,8 @@ type PendingCommentRow struct {
 	BodyHTML        string  `gorm:"column:body_html"`
 	CreatedAt       string  `gorm:"column:created_at"`
 	UpdatedAt       string  `gorm:"column:updated_at"`
+
+	User *UserRow `gorm:"foreignKey:UserID;references:ID"`
 }
 
 func (UserRow) TableName() string { return "users" }

@@ -37,13 +37,13 @@ func (r *CollaboratorRepo) List(ctx context.Context, ownerID int64, path string)
 
 	var rows []RepositoryCollaborator
 
-	err = db.Conn().WithContext(ctx).Raw(`
-		SELECT ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at
-		FROM repository_users ru
-		JOIN users u ON u.id = ru.user_id
-		WHERE ru.repository_id = ?
-		ORDER BY u.os_username ASC
-	`, repoID).Scan(&rows).Error
+	err = db.Conn().WithContext(ctx).
+		Table("repository_users AS ru").
+		Select("ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at").
+		Joins("JOIN users u ON u.id = ru.user_id").
+		Where("ru.repository_id = ?", repoID).
+		Order("u.os_username ASC").
+		Scan(&rows).Error
 
 	if err != nil {
 		return nil, err
@@ -96,12 +96,12 @@ func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string
 
 	var collaborator RepositoryCollaborator
 
-	err = db.Conn().WithContext(ctx).Raw(`
-		SELECT ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at
-		FROM repository_users ru
-		JOIN users u ON u.id = ru.user_id
-		WHERE ru.repository_id = ? AND ru.user_id = ?
-	`, repoID, userID).Scan(&collaborator).Error
+	err = db.Conn().WithContext(ctx).
+		Table("repository_users AS ru").
+		Select("ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at").
+		Joins("JOIN users u ON u.id = ru.user_id").
+		Where("ru.repository_id = ? AND ru.user_id = ?", repoID, userID).
+		Scan(&collaborator).Error
 
 	if err != nil {
 		return RepositoryCollaborator{}, err

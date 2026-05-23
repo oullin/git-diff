@@ -59,14 +59,15 @@ func (r *RepoRepo) ListRepositoriesForUser(ctx context.Context, userID int64) ([
 
 	var rows []repoListRow
 
-	err := db.Conn().WithContext(ctx).Raw(`
-		SELECT r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at, r.created_at, r.updated_at,
-			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
-		FROM repositories r
-		LEFT JOIN repository_users ru ON ru.repository_id = r.id AND ru.user_id = ?
-		WHERE r.owner_id = ? OR ru.user_id = ?
-		ORDER BY COALESCE(r.last_opened_at, r.added_at) DESC
-	`, userID, userID, userID, userID).Scan(&rows).Error
+	err := db.Conn().WithContext(ctx).
+		Table("repositories AS r").
+		Select(`r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
+			r.created_at, r.updated_at,
+			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role`, userID).
+		Joins("LEFT JOIN repository_users ru ON ru.repository_id = r.id AND ru.user_id = ?", userID).
+		Where("r.owner_id = ? OR ru.user_id = ?", userID, userID).
+		Order("COALESCE(r.last_opened_at, r.added_at) DESC").
+		Scan(&rows).Error
 
 	if err != nil {
 		return nil, err
@@ -92,13 +93,14 @@ func (r *RepoRepo) GetRepository(ctx context.Context, userID int64, path string)
 
 	var row repoListRow
 
-	err := db.Conn().WithContext(ctx).Raw(`
-		SELECT r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at, r.created_at, r.updated_at,
-			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
-		FROM repositories r
-		LEFT JOIN repository_users ru ON ru.repository_id = r.id AND ru.user_id = ?
-		WHERE r.path = ? AND (r.owner_id = ? OR ru.user_id = ?)
-	`, userID, userID, path, userID, userID).Scan(&row).Error
+	err := db.Conn().WithContext(ctx).
+		Table("repositories AS r").
+		Select(`r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
+			r.created_at, r.updated_at,
+			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role`, userID).
+		Joins("LEFT JOIN repository_users ru ON ru.repository_id = r.id AND ru.user_id = ?", userID).
+		Where("r.path = ? AND (r.owner_id = ? OR ru.user_id = ?)", path, userID, userID).
+		Scan(&row).Error
 
 	if err != nil {
 		return Repository{}, err
