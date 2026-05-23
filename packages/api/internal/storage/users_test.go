@@ -3,23 +3,9 @@ package storage
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 )
-
-func newTestStore(t *testing.T) *Store {
-	t.Helper()
-	store, err := Open(context.Background(), filepath.Join(t.TempDir(), "test.sqlite3"))
-
-	if err != nil {
-		t.Fatalf("open store: %v", err)
-	}
-
-	t.Cleanup(func() { _ = store.Close() })
-
-	return store
-}
 
 func TestEnsureUserIsIdempotent(t *testing.T) {
 	ctx := context.Background()

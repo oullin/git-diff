@@ -2,18 +2,14 @@ package httpx
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
-
-	"github.com/oullin/git-diff/internal/app/setting"
 )
 
 func TestHTTPHealthz(t *testing.T) {
-	server := httptest.NewServer(testHTTPServer(t, "/Users/gus", "/repo").BuildMux())
+	srv, _ := testServer(t, testServerOptions{})
+	ts := startHTTPServer(t, srv, false)
 
-	defer server.Close()
-
-	resp, err := http.Get(server.URL + "/v1/healthz")
+	resp, err := http.Get(ts.URL + "/v1/healthz")
 
 	if err != nil {
 		t.Fatal(err)
@@ -26,13 +22,53 @@ func TestHTTPHealthz(t *testing.T) {
 	}
 }
 
-func testHTTPServer(t *testing.T, home, repo string) Server {
-	t.Helper()
+func TestHTTPHealthzWithAuthMiddlewareStillPublic(t *testing.T) {
+	srv, _ := testServer(t, testServerOptions{})
+	ts := startHTTPServer(t, srv, true)
 
-	return Server{
-		Home:     home,
-		Repo:     repo,
-		Settings: setting.DefaultRuntimeSettings(home, repo),
-		Session:  NewAuthState("test"),
+	resp, err := http.Get(ts.URL + "/v1/healthz")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+}
+
+func TestRequireAuthBlocksUnauthenticatedRoutes(t *testing.T) {
+	srv, _ := testServer(t, testServerOptions{})
+	ts := startHTTPServer(t, srv, true)
+
+	resp, err := http.Get(ts.URL + "/v1/preferences")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", resp.StatusCode)
+	}
+}
+
+func TestRequireAuthAllowsAuthenticatedRoutes(t *testing.T) {
+	srv, _ := testServer(t, testServerOptions{Authenticated: true})
+	ts := startHTTPServer(t, srv, true)
+
+	resp, err := http.Get(ts.URL + "/v1/preferences")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		t.Fatalf("authenticated request rejected: %d", resp.StatusCode)
 	}
 }
