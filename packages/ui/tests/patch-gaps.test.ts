@@ -7,7 +7,7 @@ import {
     parseHunkHeader,
     parsePatch,
     splitPatchLines,
-} from "../src/lib/patch";
+} from "@lib/patch";
 
 const SECTION = {
     id: "sec1",

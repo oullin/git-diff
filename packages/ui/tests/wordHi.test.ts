@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
 
-import { computeWordHi, MAX_LINE_WORD_DIFF_LENGTH } from "../src/lib/wordHi";
+import { computeWordHi, MAX_LINE_WORD_DIFF_LENGTH } from "@lib/wordHi";
 
 describe("computeWordHi", () => {
     test("returns ranges for diverging middles", () => {

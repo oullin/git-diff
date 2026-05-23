@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { useCommandRegistry } from "../src/composables/useCommandRegistry.js";
+import { useCommandRegistry } from "@composables/useCommandRegistry.js";
 
 // The registry is a module singleton — clear it between tests so leftover
 // commands from one case don't contaminate the next.

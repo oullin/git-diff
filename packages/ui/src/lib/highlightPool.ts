@@ -1,12 +1,12 @@
 import type { BundledLanguage } from "shiki";
 
-import HighlightWorker from "../workers/highlight.worker.ts?worker";
+import HighlightWorker from "@workers/highlight.worker.ts?worker";
 import type {
     HighlightRequest,
     HighlightThemeId,
     PrewarmRequest,
     WorkerResponse,
-} from "../workers/highlight-protocol";
+} from "@workers/highlight-protocol";
 
 export type ThemeId = HighlightThemeId;
 

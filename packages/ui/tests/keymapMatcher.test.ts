@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { matchesBinding, parseBinding } from "../src/composables/keymapMatcher.js";
+import { matchesBinding, parseBinding } from "@composables/keymapMatcher.js";
 
 describe("parseBinding", () => {
     test("single key", () => {

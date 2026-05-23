@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { parseLaunchArgs } from "../electron/launch-intent.js";
+import { parseLaunchArgs } from "@electron/launch-intent.js";
 
 function tempRepo(): string {
     const dir = mkdtempSync(join(tmpdir(), "launch-intent-"));

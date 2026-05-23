@@ -1,5 +1,15 @@
-export type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole, } from "../common/index.js";
-import type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole } from "../common/index.js";
+export type {
+    DiffSectionKind,
+    GitFileStatus,
+    RepositoryMode,
+    RepositoryRole,
+} from "../common/index.js";
+import type {
+    DiffSectionKind,
+    GitFileStatus,
+    RepositoryMode,
+    RepositoryRole,
+} from "../common/index.js";
 export interface DiffSection {
     id: string;
     kind: DiffSectionKind;

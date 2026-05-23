@@ -20,8 +20,8 @@ import {
     type LineSelectionRange,
     type LineSide,
 } from "@composables/useLineSelection";
-import CommentThread from "./CommentThread.vue";
-import SplitHandle from "./SplitHandle.vue";
+import CommentThread from "@diff/CommentThread.vue";
+import SplitHandle from "@diff/SplitHandle.vue";
 import type {
     ChangedFile,
     DiffHunkStyle,

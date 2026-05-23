@@ -1,11 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, test } from "vitest";
-import {
-    applyHighlights,
-    clearHighlights,
-    searchDiff,
-    setActiveHighlight,
-} from "../src/lib/diffSearch";
+import { applyHighlights, clearHighlights, searchDiff, setActiveHighlight } from "@lib/diffSearch";
 
 function fixture(lines: string[]): HTMLElement {
     const root = document.createElement("div");

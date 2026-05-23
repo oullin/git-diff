@@ -4,15 +4,15 @@ import { createHighlighterCore, type HighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import type { BundledLanguage } from "shiki";
 
-import lichtTheme from "../themes/licht.json" with { type: "json" };
-import dunkelTheme from "../themes/dunkel.json" with { type: "json" };
+import lichtTheme from "@themes/licht.json" with { type: "json" };
+import dunkelTheme from "@themes/dunkel.json" with { type: "json" };
 import type {
     ErrorResponse,
     HighlightResponse,
     HighlightThemeId,
     PrewarmResponse,
     WorkerRequest,
-} from "./highlight-protocol";
+} from "@workers/highlight-protocol";
 
 export type {
     ErrorResponse,
@@ -23,7 +23,7 @@ export type {
     PrewarmResponse,
     WorkerRequest,
     WorkerResponse,
-} from "./highlight-protocol";
+} from "@workers/highlight-protocol";
 
 let highlighter: HighlighterCore | null = null;
 const loadedLangs = new Set<string>();

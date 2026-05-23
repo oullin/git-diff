@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import { MoreHorizontal } from "lucide-vue-next";
 import { LazyRichTextEditor, type RichTextFeatures } from "@ui/rich-text-editor";
 import { SafeHtml } from "@ui/safe-html";
-import Kbd from "./Kbd.vue";
+import Kbd from "@diff/Kbd.vue";
 import {
     DropdownMenu,
     DropdownMenuContent,

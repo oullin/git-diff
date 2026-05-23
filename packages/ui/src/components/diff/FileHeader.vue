@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Check, ChevronDown, ChevronRight, Copy, Eye } from "lucide-vue-next";
-import StatusBadge from "./StatusBadge.vue";
+import StatusBadge from "@diff/StatusBadge.vue";
 import { isMarkdownPath } from "@lib/markdownPreview";
 import type { ChangedFile, DiffSection } from "@git-diff/contracts";
 

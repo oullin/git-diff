@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatShortcut } from "../src/composables/formatShortcut.js";
+import { formatShortcut } from "@composables/formatShortcut.js";
 
 describe("formatShortcut", () => {
     test("mac: cmd+shift+p → ⌘⇧P", () => {

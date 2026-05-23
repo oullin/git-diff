@@ -13,10 +13,12 @@ export type RepositoryRole = "owner" | "write" | "read";
  * into this discriminated union at its boundary; consumers should always
  * read this typed form.
  */
-export type ReviewContext = {
-    kind: "working";
-} | {
-    kind: "commit";
-    sha: string;
-};
+export type ReviewContext =
+    | {
+          kind: "working";
+      }
+    | {
+          kind: "commit";
+          sha: string;
+      };
 //# sourceMappingURL=index.d.ts.map

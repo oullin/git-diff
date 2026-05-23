@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
-import { formatReviewAsMarkdown, htmlToMarkdown } from "../src/lib/reviewMarkdown";
+import { formatReviewAsMarkdown, htmlToMarkdown } from "@lib/reviewMarkdown";
 import type { ReviewComment, ReviewDetail, ReviewSession } from "@git-diff/contracts";
 
 function comment(overrides: Partial<ReviewComment> = {}): ReviewComment {

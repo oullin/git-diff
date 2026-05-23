@@ -7,7 +7,7 @@ import {
     getAddedLineNumbers,
     isMarkdownPath,
     renderMarkdownWithLineAnchors,
-} from "../src/lib/markdownPreview";
+} from "@lib/markdownPreview";
 
 function makeFile(
     status: ChangedFile["status"],

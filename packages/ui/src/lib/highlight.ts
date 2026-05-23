@@ -3,8 +3,8 @@ import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import type { BundledLanguage } from "shiki";
 import { computed, type ComputedRef, shallowRef, watch } from "vue";
 
-import lichtTheme from "../themes/licht.json" with { type: "json" };
-import dunkelTheme from "../themes/dunkel.json" with { type: "json" };
+import lichtTheme from "@themes/licht.json" with { type: "json" };
+import dunkelTheme from "@themes/dunkel.json" with { type: "json" };
 import { resolvedTheme } from "@composables/useTheme";
 import {
     isHighlightPoolAvailable,

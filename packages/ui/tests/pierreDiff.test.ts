@@ -7,7 +7,7 @@
 import { describe, expect, test } from "vitest";
 import { parsePatchFiles } from "@pierre/diffs";
 
-import { getHunkInfos, parsePatch } from "../src/lib/patch.js";
+import { getHunkInfos, parsePatch } from "@lib/patch.js";
 
 const SAMPLE_PATCH = [
     "diff --git a/src/example.ts b/src/example.ts",
