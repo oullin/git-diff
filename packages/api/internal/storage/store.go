@@ -41,10 +41,6 @@ type Store struct {
 	Walkthroughs    *WalkthroughRepo
 }
 
-type scanner interface {
-	Scan(dest ...any) error
-}
-
 var ErrSessionNotFound = errors.New("session not found")
 var ErrBranchLocked = errors.New("branch is locked")
 
@@ -144,32 +140,4 @@ func currentOSUsername() string {
 	}
 
 	return "user"
-}
-
-func nullString(value string) sql.NullString {
-	return sql.NullString{String: value, Valid: value != ""}
-}
-
-func fromNull(value sql.NullString) string {
-	if !value.Valid {
-		return ""
-	}
-
-	return value.String
-}
-
-func nullableString(value string) any {
-	if value == "" {
-		return nil
-	}
-
-	return value
-}
-
-func nullableInt(value *int64) any {
-	if value == nil {
-		return nil
-	}
-
-	return *value
 }
