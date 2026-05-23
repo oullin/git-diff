@@ -2,12 +2,12 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"path/filepath"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Repository struct {
@@ -20,9 +20,19 @@ type Repository struct {
 }
 
 type RepoRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
+	db  *gorm.DB
+	clk *clock
+}
+
+// repoListRow holds the columns returned by the owner-or-collaborator LEFT
+// JOIN below; the join is written as one query to keep listing O(1) statements.
+type repoListRow struct {
+	Path         string
+	Name         string
+	OwnerID      int64
+	AddedAt      string
+	LastOpenedAt *string
+	Role         *string
 }
 
 const (
@@ -33,8 +43,8 @@ const (
 
 var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
 
-func newRepoRepo(conn *sql.DB, queries *db.Queries, clk *clock) *RepoRepo {
-	return &RepoRepo{db: conn, queries: queries, clk: clk}
+func newRepoRepo(db *gorm.DB, clk *clock) *RepoRepo {
+	return &RepoRepo{db: db, clk: clk}
 }
 
 func (r *RepoRepo) ListRepositoriesForUser(ctx context.Context, userID int64) ([]Repository, error) {
@@ -42,40 +52,28 @@ func (r *RepoRepo) ListRepositoriesForUser(ctx context.Context, userID int64) ([
 		return nil, errors.New("user id is required")
 	}
 
-	rows, err := r.db.QueryContext(ctx, `
+	var rows []repoListRow
+
+	err := r.db.WithContext(ctx).Raw(`
 		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
-			CASE WHEN r.owner_id = ?1 THEN 'owner' ELSE ru.role END AS role
+			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
-		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?1
-		WHERE r.owner_id = ?1 OR ru.user_id = ?1
+		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?
+		WHERE r.owner_id = ? OR ru.user_id = ?
 		ORDER BY COALESCE(r.last_opened_at, r.added_at) DESC
-	`, userID)
+	`, userID, userID, userID, userID).Scan(&rows).Error
 
 	if err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
+	repos := make([]Repository, 0, len(rows))
 
-	repos := []Repository{}
-
-	for rows.Next() {
-		var (
-			repo         Repository
-			lastOpenedAt sql.NullString
-			role         sql.NullString
-		)
-
-		if err := rows.Scan(&repo.Path, &repo.Name, &repo.OwnerID, &repo.AddedAt, &lastOpenedAt, &role); err != nil {
-			return nil, err
-		}
-
-		repo.LastOpenedAt = fromNull(lastOpenedAt)
-		repo.Role = fromNull(role)
-		repos = append(repos, repo)
+	for _, row := range rows {
+		repos = append(repos, toRepository(row))
 	}
 
-	return repos, rows.Err()
+	return repos, nil
 }
 
 func (r *RepoRepo) GetRepository(ctx context.Context, userID int64, path string) (Repository, error) {
@@ -87,28 +85,25 @@ func (r *RepoRepo) GetRepository(ctx context.Context, userID int64, path string)
 		return Repository{}, errors.New("repository path is required")
 	}
 
-	row := r.db.QueryRowContext(ctx, `
+	var row repoListRow
+
+	err := r.db.WithContext(ctx).Raw(`
 		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
-			CASE WHEN r.owner_id = ?1 THEN 'owner' ELSE ru.role END AS role
+			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
-		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?1
-		WHERE r.path = ?2 AND (r.owner_id = ?1 OR ru.user_id = ?1)
-	`, userID, path)
+		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?
+		WHERE r.path = ? AND (r.owner_id = ? OR ru.user_id = ?)
+	`, userID, userID, path, userID, userID).Scan(&row).Error
 
-	var (
-		repo         Repository
-		lastOpenedAt sql.NullString
-		role         sql.NullString
-	)
-
-	if err := row.Scan(&repo.Path, &repo.Name, &repo.OwnerID, &repo.AddedAt, &lastOpenedAt, &role); err != nil {
+	if err != nil {
 		return Repository{}, err
 	}
 
-	repo.LastOpenedAt = fromNull(lastOpenedAt)
-	repo.Role = fromNull(role)
+	if row.Path == "" {
+		return Repository{}, gorm.ErrRecordNotFound
+	}
 
-	return repo, nil
+	return toRepository(row), nil
 }
 
 func (r *RepoRepo) UpsertRepository(ctx context.Context, ownerID int64, path string, name string) (Repository, error) {
@@ -125,13 +120,20 @@ func (r *RepoRepo) UpsertRepository(ctx context.Context, ownerID int64, path str
 	}
 
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO repositories (path, name, owner_id, added_at, last_opened_at)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(path) DO UPDATE SET
-			name = excluded.name,
-			last_opened_at = excluded.last_opened_at
-	`, path, name, ownerID, now, now)
+	row := RepositoryRow{
+		Path:         path,
+		Name:         name,
+		OwnerID:      ownerID,
+		AddedAt:      now,
+		LastOpenedAt: &now,
+	}
+
+	err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "path"}},
+			DoUpdates: clause.AssignmentColumns([]string{"name", "last_opened_at"}),
+		}).
+		Create(&row).Error
 
 	if err != nil {
 		return Repository{}, err
@@ -149,23 +151,36 @@ func (r *RepoRepo) RemoveRepository(ctx context.Context, userID int64, path stri
 		return errors.New("repository path is required")
 	}
 
-	result, err := r.db.ExecContext(ctx, `
-		DELETE FROM repositories WHERE path = ? AND owner_id = ?
-	`, path, userID)
+	result := r.db.WithContext(ctx).
+		Where("path = ? AND owner_id = ?", path, userID).
+		Delete(&RepositoryRow{})
 
-	if err != nil {
-		return err
+	if result.Error != nil {
+		return result.Error
 	}
 
-	affected, err := result.RowsAffected()
-
-	if err != nil {
-		return err
-	}
-
-	if affected == 0 {
+	if result.RowsAffected == 0 {
 		return ErrRepositoryNotOwned
 	}
 
 	return nil
+}
+
+func toRepository(row repoListRow) Repository {
+	repo := Repository{
+		Path:    row.Path,
+		Name:    row.Name,
+		OwnerID: row.OwnerID,
+		AddedAt: row.AddedAt,
+	}
+
+	if row.LastOpenedAt != nil {
+		repo.LastOpenedAt = *row.LastOpenedAt
+	}
+
+	if row.Role != nil {
+		repo.Role = *row.Role
+	}
+
+	return repo
 }

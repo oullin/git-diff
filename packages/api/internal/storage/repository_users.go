@@ -2,12 +2,12 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type RepositoryCollaborator struct {
@@ -19,15 +19,14 @@ type RepositoryCollaborator struct {
 }
 
 type CollaboratorRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
+	db  *gorm.DB
+	clk *clock
 }
 
 var ErrRepositoryNotFound = errors.New("repository not found")
 
-func newCollaboratorRepo(conn *sql.DB, queries *db.Queries, clk *clock) *CollaboratorRepo {
-	return &CollaboratorRepo{db: conn, queries: queries, clk: clk}
+func newCollaboratorRepo(db *gorm.DB, clk *clock) *CollaboratorRepo {
+	return &CollaboratorRepo{db: db, clk: clk}
 }
 
 func (r *CollaboratorRepo) List(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
@@ -35,33 +34,25 @@ func (r *CollaboratorRepo) List(ctx context.Context, ownerID int64, path string)
 		return nil, err
 	}
 
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT ru.user_id, u.os_username, u.display_name, ru.role, ru.granted_at
+	var rows []RepositoryCollaborator
+
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at
 		FROM repository_users ru
 		JOIN users u ON u.id = ru.user_id
 		WHERE ru.repo_path = ?
 		ORDER BY u.os_username ASC
-	`, path)
+	`, path).Scan(&rows).Error
 
 	if err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
-
-	collaborators := []RepositoryCollaborator{}
-
-	for rows.Next() {
-		var collaborator RepositoryCollaborator
-
-		if err := rows.Scan(&collaborator.UserID, &collaborator.OSUsername, &collaborator.DisplayName, &collaborator.Role, &collaborator.GrantedAt); err != nil {
-			return nil, err
-		}
-
-		collaborators = append(collaborators, collaborator)
+	if rows == nil {
+		rows = []RepositoryCollaborator{}
 	}
 
-	return collaborators, rows.Err()
+	return rows, nil
 }
 
 func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string, userID int64, role string) (RepositoryCollaborator, error) {
@@ -82,27 +73,32 @@ func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string
 	}
 
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	row := RepositoryUserRow{
+		RepoPath:  path,
+		UserID:    userID,
+		Role:      role,
+		GrantedAt: now,
+	}
 
-	if _, err := r.db.ExecContext(ctx, `
-		INSERT INTO repository_users (repo_path, user_id, role, granted_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(repo_path, user_id) DO UPDATE SET
-			role = excluded.role,
-			granted_at = excluded.granted_at
-	`, path, userID, role, now); err != nil {
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "repo_path"}, {Name: "user_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"role", "granted_at"}),
+		}).
+		Create(&row).Error; err != nil {
 		return RepositoryCollaborator{}, err
 	}
 
-	row := r.db.QueryRowContext(ctx, `
-		SELECT ru.user_id, u.os_username, u.display_name, ru.role, ru.granted_at
+	var collaborator RepositoryCollaborator
+
+	err := r.db.WithContext(ctx).Raw(`
+		SELECT ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at
 		FROM repository_users ru
 		JOIN users u ON u.id = ru.user_id
 		WHERE ru.repo_path = ? AND ru.user_id = ?
-	`, path, userID)
+	`, path, userID).Scan(&collaborator).Error
 
-	var collaborator RepositoryCollaborator
-
-	if err := row.Scan(&collaborator.UserID, &collaborator.OSUsername, &collaborator.DisplayName, &collaborator.Role, &collaborator.GrantedAt); err != nil {
+	if err != nil {
 		return RepositoryCollaborator{}, err
 	}
 
@@ -118,11 +114,9 @@ func (r *CollaboratorRepo) Revoke(ctx context.Context, ownerID int64, path strin
 		return err
 	}
 
-	_, err := r.db.ExecContext(ctx, `
-		DELETE FROM repository_users WHERE repo_path = ? AND user_id = ?
-	`, path, userID)
-
-	return err
+	return r.db.WithContext(ctx).
+		Where("repo_path = ? AND user_id = ?", path, userID).
+		Delete(&RepositoryUserRow{}).Error
 }
 
 func (r *CollaboratorRepo) assertRepositoryOwner(ctx context.Context, ownerID int64, path string) error {
@@ -135,9 +129,14 @@ func (r *CollaboratorRepo) assertRepositoryOwner(ctx context.Context, ownerID in
 	}
 
 	var actualOwner int64
-	err := r.db.QueryRowContext(ctx, `SELECT owner_id FROM repositories WHERE path = ?`, path).Scan(&actualOwner)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	err := r.db.WithContext(ctx).
+		Model(&RepositoryRow{}).
+		Select("owner_id").
+		Where("path = ?", path).
+		Take(&actualOwner).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return ErrRepositoryNotFound
 	}
 
