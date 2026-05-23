@@ -80,8 +80,8 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		db:              conn,
 		gdb:             gdb,
 		clk:             clk,
-		Users:           newUserRepo(gdb, clk),
-		Sessions:        newSessionRepo(gdb, clk),
+		Users:           newUserRepo(),
+		Sessions:        newSessionRepo(),
 		Reviews:         newReviewRepo(gdb, clk, reviewEvents),
 		ReviewEvents:    reviewEvents,
 		Comments:        newCommentRepo(gdb, clk, reviewEvents),
@@ -89,8 +89,8 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		Branches:        newRepositoryBranchRepo(gdb, clk),
 		Repos:           newRepoRepo(gdb, clk),
 		Collaborators:   newCollaboratorRepo(gdb, clk),
-		Preferences:     newPreferenceRepo(gdb, clk),
-		Walkthroughs:    newWalkthroughRepo(gdb, clk),
+		Preferences:     newPreferenceRepo(),
+		Walkthroughs:    newWalkthroughRepo(),
 	}
 
 	if err := NewMigrator(conn).Run(ctx); err != nil {

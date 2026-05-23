@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type Session struct {
@@ -25,13 +27,10 @@ type Session struct {
 	UpdatedAt  string `json:"updatedAt"`
 }
 
-type SessionRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type SessionRepo struct{}
 
-func newSessionRepo(db *gorm.DB, clk *clock) *SessionRepo {
-	return &SessionRepo{db: db, clk: clk}
+func newSessionRepo() *SessionRepo {
+	return &SessionRepo{}
 }
 
 func (r *SessionRepo) CreateSession(ctx context.Context, userID int64, ttl time.Duration) (Session, error) {
@@ -41,7 +40,7 @@ func (r *SessionRepo) CreateSession(ctx context.Context, userID int64, ttl time.
 		return Session{}, fmt.Errorf("generate session token: %w", err)
 	}
 
-	now := r.clk.now().UTC()
+	now := db.Now().UTC()
 	created := now.Format(time.RFC3339Nano)
 	expires := now.Add(ttl).Format(time.RFC3339Nano)
 	stored := hashToken(rawToken)
@@ -55,7 +54,7 @@ func (r *SessionRepo) CreateSession(ctx context.Context, userID int64, ttl time.
 		UpdatedAt:  created,
 	}
 
-	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Create(&row).Error; err != nil {
 		return Session{}, fmt.Errorf("insert session: %w", err)
 	}
 
@@ -81,7 +80,7 @@ func (r *SessionRepo) ResumeSession(ctx context.Context, users *UserRepo, rawTok
 
 	var row UserSessionRow
 
-	switch err := r.db.WithContext(ctx).Select("user_id", "expires_at").Where("token = ?", stored).Take(&row).Error; {
+	switch err := db.Conn().WithContext(ctx).Select("user_id", "expires_at").Where("token = ?", stored).Take(&row).Error; {
 	case errors.Is(err, gorm.ErrRecordNotFound), errors.Is(err, sql.ErrNoRows):
 		return User{}, ErrSessionNotFound
 	case err != nil:
@@ -90,15 +89,15 @@ func (r *SessionRepo) ResumeSession(ctx context.Context, users *UserRepo, rawTok
 
 	expiry, err := time.Parse(time.RFC3339Nano, row.ExpiresAt)
 
-	if err == nil && r.clk.now().After(expiry) {
-		_ = r.db.WithContext(ctx).Where("token = ?", stored).Delete(&UserSessionRow{}).Error
+	if err == nil && db.Now().After(expiry) {
+		_ = db.Conn().WithContext(ctx).Where("token = ?", stored).Delete(&UserSessionRow{}).Error
 
 		return User{}, ErrSessionNotFound
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Model(&UserSessionRow{}).
 		Where("token = ?", stored).
 		Updates(map[string]any{
@@ -118,7 +117,7 @@ func (r *SessionRepo) DeleteSession(ctx context.Context, rawToken string) error 
 		return nil
 	}
 
-	return r.db.WithContext(ctx).Where("token = ?", hashToken(rawToken)).Delete(&UserSessionRow{}).Error
+	return db.Conn().WithContext(ctx).Where("token = ?", hashToken(rawToken)).Delete(&UserSessionRow{}).Error
 }
 
 func generateToken(size int) (string, error) {

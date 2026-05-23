@@ -9,6 +9,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 // WalkthroughGroupFile mirrors walkthrough.FileEntry; the storage layer
@@ -41,19 +43,16 @@ type WalkthroughRecord struct {
 	GeneratedAt string             `json:"generatedAt"`
 }
 
-type WalkthroughRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type WalkthroughRepo struct{}
 
-func newWalkthroughRepo(db *gorm.DB, clk *clock) *WalkthroughRepo {
-	return &WalkthroughRepo{db: db, clk: clk}
+func newWalkthroughRepo() *WalkthroughRepo {
+	return &WalkthroughRepo{}
 }
 
 func (r *WalkthroughRepo) GetWalkthrough(ctx context.Context, repoRoot, contextKind, contextSHA string) (WalkthroughRecord, bool, error) {
 	var row WalkthroughRow
 
-	err := r.db.WithContext(ctx).
+	err := db.Conn().WithContext(ctx).
 		Where("repo_root = ? AND context_kind = ? AND context_sha = ?", repoRoot, contextKind, contextSHA).
 		Take(&row).Error
 
@@ -90,7 +89,7 @@ func (r *WalkthroughRepo) UpsertWalkthrough(ctx context.Context, record Walkthro
 		return fmt.Errorf("encode walkthrough groups: %w", err)
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
 	row := WalkthroughRow{
 		RepoRoot:    record.RepoRoot,
@@ -106,7 +105,7 @@ func (r *WalkthroughRepo) UpsertWalkthrough(ctx context.Context, record Walkthro
 		UpdatedAt:   now,
 	}
 
-	return r.db.WithContext(ctx).
+	return db.Conn().WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "repo_root"}, {Name: "context_kind"}, {Name: "context_sha"}},
 			DoUpdates: clause.AssignmentColumns([]string{"fingerprint", "provider_id", "model_id", "groups_json", "summary", "generated_at", "updated_at"}),

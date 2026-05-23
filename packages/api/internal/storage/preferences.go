@@ -7,6 +7,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type UserPreferences struct {
@@ -14,10 +16,7 @@ type UserPreferences struct {
 	UpdatedAt string            `json:"updatedAt,omitempty"`
 }
 
-type PreferenceRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type PreferenceRepo struct{}
 
 const DefaultTheme = "light"
 const DefaultDiffViewMode = "split"
@@ -34,14 +33,14 @@ const (
 	PrefKeyAnthropicModel     = "llm.anthropicModel"
 )
 
-func newPreferenceRepo(db *gorm.DB, clk *clock) *PreferenceRepo {
-	return &PreferenceRepo{db: db, clk: clk}
+func newPreferenceRepo() *PreferenceRepo {
+	return &PreferenceRepo{}
 }
 
 func (r *PreferenceRepo) GetUserPreferences(ctx context.Context, userID int64) (UserPreferences, error) {
 	var rows []UserPreferenceRow
 
-	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&rows).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Where("user_id = ?", userID).Find(&rows).Error; err != nil {
 		return UserPreferences{}, err
 	}
 
@@ -67,7 +66,7 @@ func (r *PreferenceRepo) SaveUserPreferences(ctx context.Context, userID int64, 
 		return r.GetUserPreferences(ctx, userID)
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
 	var (
 		upserts []UserPreferenceRow
@@ -96,7 +95,7 @@ func (r *PreferenceRepo) SaveUserPreferences(ctx context.Context, userID int64, 
 		})
 	}
 
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err := db.Conn().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if len(upserts) > 0 {
 			if err := tx.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "user_id"}, {Name: "key"}},

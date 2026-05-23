@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type User struct {
@@ -22,13 +23,10 @@ type User struct {
 	PasswordHash string `json:"-"`
 }
 
-type UserRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type UserRepo struct{}
 
-func newUserRepo(db *gorm.DB, clk *clock) *UserRepo {
-	return &UserRepo{db: db, clk: clk}
+func newUserRepo() *UserRepo {
+	return &UserRepo{}
 }
 
 func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, error) {
@@ -38,7 +36,7 @@ func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, err
 		return User{}, errors.New("os username is required")
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
 	row := UserRow{
 		OSUsername:  osUsername,
@@ -47,7 +45,7 @@ func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, err
 		UpdatedAt:   now,
 	}
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "os_username"}}, DoNothing: true}).
 		Create(&row).Error; err != nil {
 		return User{}, fmt.Errorf("seed user: %w", err)
@@ -59,7 +57,7 @@ func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, err
 func (r *UserRepo) GetUserByOSUsername(ctx context.Context, osUsername string) (User, error) {
 	var row UserRow
 
-	if err := r.db.WithContext(ctx).Where("os_username = ?", osUsername).Take(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Where("os_username = ?", osUsername).Take(&row).Error; err != nil {
 		return User{}, err
 	}
 
@@ -69,7 +67,7 @@ func (r *UserRepo) GetUserByOSUsername(ctx context.Context, osUsername string) (
 func (r *UserRepo) GetUserByID(ctx context.Context, id int64) (User, error) {
 	var row UserRow
 
-	if err := r.db.WithContext(ctx).Where("id = ?", id).Take(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Where("id = ?", id).Take(&row).Error; err != nil {
 		return User{}, err
 	}
 
@@ -77,19 +75,19 @@ func (r *UserRepo) GetUserByID(ctx context.Context, id int64) (User, error) {
 }
 
 func (r *UserRepo) SetPasswordHash(ctx context.Context, userID int64, hash string) error {
-	return r.db.WithContext(ctx).
+	return db.Conn().WithContext(ctx).
 		Model(&UserRow{}).
 		Where("id = ?", userID).
 		Updates(map[string]any{
 			"password_hash": hash,
-			"updated_at":    r.clk.now().UTC().Format(time.RFC3339Nano),
+			"updated_at":    db.Now().UTC().Format(time.RFC3339Nano),
 		}).Error
 }
 
 func (r *UserRepo) TouchUserLogin(ctx context.Context, userID int64) error {
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
-	return r.db.WithContext(ctx).
+	return db.Conn().WithContext(ctx).
 		Model(&UserRow{}).
 		Where("id = ?", userID).
 		Updates(map[string]any{
@@ -99,7 +97,7 @@ func (r *UserRepo) TouchUserLogin(ctx context.Context, userID int64) error {
 }
 
 func (r *UserRepo) WipeUser(ctx context.Context, userID int64) error {
-	return r.db.WithContext(ctx).Where("id = ?", userID).Delete(&UserRow{}).Error
+	return db.Conn().WithContext(ctx).Where("id = ?", userID).Delete(&UserRow{}).Error
 }
 
 func toUser(row UserRow) User {
