@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
 func TestCodexProviderMissingBinaryReturnsSentinel(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 
 	_ "github.com/mattn/go-sqlite3"
 )

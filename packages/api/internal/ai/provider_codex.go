@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
 // CodexProvider shells out to the `codex` CLI. When the binary is

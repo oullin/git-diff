@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

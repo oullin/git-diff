@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
 // AnthropicProvider reads $ANTHROPIC_API_KEY and the anthropic.* config

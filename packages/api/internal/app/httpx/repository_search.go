@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/review"
-	"github.com/gocanto/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/service"
 )
 
 type fileSearchResult struct {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
 func (s Server) userConfigGet(w http.ResponseWriter, _ *http.Request) {

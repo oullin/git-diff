@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gocanto/git-diff/internal/ai"
-	"github.com/gocanto/git-diff/internal/review"
-	"github.com/gocanto/git-diff/internal/storage"
-	"github.com/gocanto/git-diff/internal/usercfg"
-	"github.com/gocanto/git-diff/internal/walks"
+	"github.com/oullin/git-diff/internal/ai"
+	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/walks"
 )
 
 type WalkthroughService struct {

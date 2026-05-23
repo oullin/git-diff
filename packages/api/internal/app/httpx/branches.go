@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/service"
 )
 
 func (s Server) handleBranchError(w http.ResponseWriter, err error) {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gocanto/git-diff/internal/ai"
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/ai"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 type mockProvider struct {

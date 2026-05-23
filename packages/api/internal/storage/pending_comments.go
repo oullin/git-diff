@@ -8,7 +8,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/gocanto/git-diff/internal/db"
+	"github.com/oullin/git-diff/internal/db"
 )
 
 // PendingComment is a draft scoped by (user_id, repo_root, context_kind,

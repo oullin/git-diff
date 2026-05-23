@@ -1,4 +1,4 @@
-module github.com/gocanto/git-diff
+module github.com/oullin/git-diff
 
 go 1.26
 

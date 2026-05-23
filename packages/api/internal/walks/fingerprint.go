@@ -4,7 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 // schemaVersion is mixed into the fingerprint so cached rows from older

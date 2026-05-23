@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/oullin/git-diff/internal/app/setting"
 )
 
 func TestHTTPHealthz(t *testing.T) {

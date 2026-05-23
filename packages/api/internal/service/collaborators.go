@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 type CollaboratorService struct {

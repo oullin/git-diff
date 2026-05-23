@@ -6,10 +6,10 @@ import (
 	"os"
 	"runtime"
 
-	apphttpx "github.com/gocanto/git-diff/internal/app/httpx"
-	"github.com/gocanto/git-diff/internal/app/migratex"
-	"github.com/gocanto/git-diff/internal/app/setting"
-	"github.com/gocanto/git-diff/internal/command"
+	apphttpx "github.com/oullin/git-diff/internal/app/httpx"
+	"github.com/oullin/git-diff/internal/app/migratex"
+	"github.com/oullin/git-diff/internal/app/setting"
+	"github.com/oullin/git-diff/internal/command"
 )
 
 type app struct {

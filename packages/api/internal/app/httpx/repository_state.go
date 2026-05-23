@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gocanto/git-diff/internal/review"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func (s Server) repositoryState(w http.ResponseWriter, r *http.Request) {

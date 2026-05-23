@@ -124,7 +124,7 @@ The Electron package is configured with:
 
 - app id: `io.gocanto.git-diff`
 - product name: `Git Diff Review`
-- GitHub release target: `gocanto/git-diff`
+- GitHub release target: `oullin/git-diff`
 
 ## License
 

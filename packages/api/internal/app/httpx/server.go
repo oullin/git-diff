@@ -4,9 +4,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/app/setting"
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/app/setting"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
 type ServeConfig struct {

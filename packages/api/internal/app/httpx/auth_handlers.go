@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 type authUserResponse struct {

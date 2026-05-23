@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/lines"
+	"github.com/oullin/git-diff/internal/lines"
 )
 
 type PullRequestSummary struct {

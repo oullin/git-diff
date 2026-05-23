@@ -12,11 +12,11 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/ai"
-	"github.com/gocanto/git-diff/internal/app/setting"
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
-	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/oullin/git-diff/internal/ai"
+	"github.com/oullin/git-diff/internal/app/setting"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
 // Serve is the CLI entry point for the "serve-http" subcommand.

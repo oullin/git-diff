@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {

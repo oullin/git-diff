@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/gocanto/git-diff/internal/lines"
+	"github.com/oullin/git-diff/internal/lines"
 	"golang.org/x/sync/errgroup"
 )
 

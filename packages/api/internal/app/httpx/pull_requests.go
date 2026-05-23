@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 func (s Server) repositoryPullRequests(w http.ResponseWriter, r *http.Request) {

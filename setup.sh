@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DRY_RUN=0
-REPO_URL="https://github.com/gocanto/git-diff"
+REPO_URL="https://github.com/oullin/git-diff"
 DEFAULT_REPO_DEST="$HOME/Sites/git-diff"
 
 for arg in "$@"; do
@@ -95,7 +95,7 @@ ensure_canonical_location() {
 		local origin
 		origin="$(git -C "$destination" remote get-url origin 2>/dev/null || true)"
 
-		if [[ "$origin" != "$REPO_URL" && "$origin" != "git@github.com:gocanto/git-diff.git" ]]; then
+		if [[ "$origin" != "$REPO_URL" && "$origin" != "git@github.com:oullin/git-diff.git" ]]; then
 			die "$destination is a git checkout but origin is $origin, expected $REPO_URL"
 		fi
 	else

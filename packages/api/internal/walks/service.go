@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/ai"
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/ai"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 // Request configures one Generate call. An empty Budget gets DefaultBudget().

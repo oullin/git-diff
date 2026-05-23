@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/service"
 )
 
 type savePreferencesRequest struct {

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func (s Server) handlePendingCommentError(w http.ResponseWriter, err error) {

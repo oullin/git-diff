@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/lines"
+	"github.com/oullin/git-diff/internal/lines"
 )
 
 func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositoryState, error) {

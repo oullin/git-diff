@@ -3,7 +3,7 @@ package walks
 import (
 	"fmt"
 
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 // Validate keeps only paths present in state, normalises action/impact

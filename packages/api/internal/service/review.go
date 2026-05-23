@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 type ReviewService struct {

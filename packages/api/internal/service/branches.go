@@ -6,8 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/gocanto/git-diff/internal/review"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 type BranchService struct {

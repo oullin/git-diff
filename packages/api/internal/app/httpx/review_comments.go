@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func (s Server) createReviewComment(w http.ResponseWriter, r *http.Request) {

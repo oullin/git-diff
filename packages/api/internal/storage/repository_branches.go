@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/gocanto/git-diff/internal/db"
+	"github.com/oullin/git-diff/internal/db"
 )
 
 type Branch struct {

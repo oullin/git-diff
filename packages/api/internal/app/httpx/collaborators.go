@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func writeCollaboratorError(w http.ResponseWriter, err error) {

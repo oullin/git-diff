@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/ai"
-	"github.com/gocanto/git-diff/internal/review"
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/ai"
+	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 type walkthroughRequest struct {

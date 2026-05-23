@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 type PendingCommentService struct {

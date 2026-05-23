@@ -14,7 +14,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/gocanto/git-diff/internal/db"
+	"github.com/oullin/git-diff/internal/db"
 )
 
 type Session struct {

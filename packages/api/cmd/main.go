@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/gocanto/git-diff/internal/app"
+	"github.com/oullin/git-diff/internal/app"
 )
 
 func main() {

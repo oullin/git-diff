@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
-	"github.com/gocanto/git-diff/internal/db"
+	"github.com/oullin/git-diff/internal/db"
 )
 
 type Store struct {

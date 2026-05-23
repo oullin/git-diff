@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 type truncatedFile struct {

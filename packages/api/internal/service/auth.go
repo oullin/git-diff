@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 	"golang.org/x/crypto/bcrypt"
 )
 
