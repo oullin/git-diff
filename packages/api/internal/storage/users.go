@@ -16,8 +16,9 @@ type User struct {
 	OSUsername   string `json:"osUsername"`
 	DisplayName  string `json:"displayName"`
 	HasPassword  bool   `json:"hasPassword"`
-	CreatedAt    string `json:"createdAt"`
 	LastLoginAt  string `json:"lastLoginAt,omitempty"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt"`
 	PasswordHash string `json:"-"`
 }
 
@@ -43,6 +44,7 @@ func (r *UserRepo) EnsureUser(ctx context.Context, osUsername string) (User, err
 		OSUsername:  osUsername,
 		DisplayName: osUsername,
 		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	if err := r.db.WithContext(ctx).
@@ -78,7 +80,10 @@ func (r *UserRepo) SetPasswordHash(ctx context.Context, userID int64, hash strin
 	return r.db.WithContext(ctx).
 		Model(&UserRow{}).
 		Where("id = ?", userID).
-		Update("password_hash", hash).Error
+		Updates(map[string]any{
+			"password_hash": hash,
+			"updated_at":    r.clk.now().UTC().Format(time.RFC3339Nano),
+		}).Error
 }
 
 func (r *UserRepo) TouchUserLogin(ctx context.Context, userID int64) error {
@@ -87,7 +92,10 @@ func (r *UserRepo) TouchUserLogin(ctx context.Context, userID int64) error {
 	return r.db.WithContext(ctx).
 		Model(&UserRow{}).
 		Where("id = ?", userID).
-		Update("last_login_at", now).Error
+		Updates(map[string]any{
+			"last_login_at": now,
+			"updated_at":    now,
+		}).Error
 }
 
 func (r *UserRepo) WipeUser(ctx context.Context, userID int64) error {
@@ -100,8 +108,9 @@ func toUser(row UserRow) User {
 		OSUsername:   row.OSUsername,
 		DisplayName:  row.DisplayName,
 		HasPassword:  row.PasswordHash != "",
-		CreatedAt:    row.CreatedAt,
 		LastLoginAt:  row.LastLoginAt,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 		PasswordHash: row.PasswordHash,
 	}
 }

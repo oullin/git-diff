@@ -11,12 +11,15 @@ import (
 )
 
 type Repository struct {
+	ID           int64  `json:"id"`
 	Path         string `json:"path"`
 	Name         string `json:"name"`
 	OwnerID      int64  `json:"ownerId"`
 	Role         string `json:"role"`
 	AddedAt      string `json:"addedAt"`
 	LastOpenedAt string `json:"lastOpenedAt,omitempty"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt"`
 }
 
 type RepoRepo struct {
@@ -27,11 +30,14 @@ type RepoRepo struct {
 // repoListRow holds the columns returned by the owner-or-collaborator LEFT
 // JOIN below; the join is written as one query to keep listing O(1) statements.
 type repoListRow struct {
+	ID           int64
 	Path         string
 	Name         string
 	OwnerID      int64
 	AddedAt      string
 	LastOpenedAt *string
+	CreatedAt    string
+	UpdatedAt    string
 	Role         *string
 }
 
@@ -55,10 +61,10 @@ func (r *RepoRepo) ListRepositoriesForUser(ctx context.Context, userID int64) ([
 	var rows []repoListRow
 
 	err := r.db.WithContext(ctx).Raw(`
-		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
+		SELECT r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at, r.created_at, r.updated_at,
 			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
-		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?
+		LEFT JOIN repository_users ru ON ru.repository_id = r.id AND ru.user_id = ?
 		WHERE r.owner_id = ? OR ru.user_id = ?
 		ORDER BY COALESCE(r.last_opened_at, r.added_at) DESC
 	`, userID, userID, userID, userID).Scan(&rows).Error
@@ -88,10 +94,10 @@ func (r *RepoRepo) GetRepository(ctx context.Context, userID int64, path string)
 	var row repoListRow
 
 	err := r.db.WithContext(ctx).Raw(`
-		SELECT r.path, r.name, r.owner_id, r.added_at, r.last_opened_at,
+		SELECT r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at, r.created_at, r.updated_at,
 			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
-		LEFT JOIN repository_users ru ON ru.repo_path = r.path AND ru.user_id = ?
+		LEFT JOIN repository_users ru ON ru.repository_id = r.id AND ru.user_id = ?
 		WHERE r.path = ? AND (r.owner_id = ? OR ru.user_id = ?)
 	`, userID, userID, path, userID, userID).Scan(&row).Error
 
@@ -104,6 +110,37 @@ func (r *RepoRepo) GetRepository(ctx context.Context, userID int64, path string)
 	}
 
 	return toRepository(row), nil
+}
+
+// GetByPath returns the bare row for a path, without joining the role of the
+// requesting user. Used by collaborator wiring where we already authorized the
+// caller as the owner.
+func (r *RepoRepo) GetByPath(ctx context.Context, path string) (Repository, error) {
+	if path == "" {
+		return Repository{}, errors.New("repository path is required")
+	}
+
+	var row RepositoryRow
+
+	if err := r.db.WithContext(ctx).Where("path = ?", path).Take(&row).Error; err != nil {
+		return Repository{}, err
+	}
+
+	repo := Repository{
+		ID:        row.ID,
+		Path:      row.Path,
+		Name:      row.Name,
+		OwnerID:   row.OwnerID,
+		AddedAt:   row.AddedAt,
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
+	}
+
+	if row.LastOpenedAt != nil {
+		repo.LastOpenedAt = *row.LastOpenedAt
+	}
+
+	return repo, nil
 }
 
 func (r *RepoRepo) UpsertRepository(ctx context.Context, ownerID int64, path string, name string) (Repository, error) {
@@ -126,12 +163,14 @@ func (r *RepoRepo) UpsertRepository(ctx context.Context, ownerID int64, path str
 		OwnerID:      ownerID,
 		AddedAt:      now,
 		LastOpenedAt: &now,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	err := r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "path"}},
-			DoUpdates: clause.AssignmentColumns([]string{"name", "last_opened_at"}),
+			DoUpdates: clause.AssignmentColumns([]string{"name", "last_opened_at", "updated_at"}),
 		}).
 		Create(&row).Error
 
@@ -168,10 +207,13 @@ func (r *RepoRepo) RemoveRepository(ctx context.Context, userID int64, path stri
 
 func toRepository(row repoListRow) Repository {
 	repo := Repository{
-		Path:    row.Path,
-		Name:    row.Name,
-		OwnerID: row.OwnerID,
-		AddedAt: row.AddedAt,
+		ID:        row.ID,
+		Path:      row.Path,
+		Name:      row.Name,
+		OwnerID:   row.OwnerID,
+		AddedAt:   row.AddedAt,
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
 	}
 
 	if row.LastOpenedAt != nil {

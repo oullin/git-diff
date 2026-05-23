@@ -89,7 +89,7 @@ func Serve(args []string, cfg ServeConfig) int {
 		repos:         service.NewRepositoryService(store.Repos),
 		collaborators: service.NewCollaboratorService(store.Collaborators),
 		preferences:   service.NewPreferenceService(store.Preferences),
-		branches:      service.NewBranchService(store.Branches),
+		branches:      service.NewBranchService(store.Branches, store.Repos),
 		walkthroughs:  service.NewWalkthroughService(store.Walkthroughs, providers, userCfg.Reader),
 	}
 

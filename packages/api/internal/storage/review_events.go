@@ -16,12 +16,13 @@ type ReviewEventInput struct {
 
 type ReviewEvent struct {
 	ID        int64  `json:"id"`
-	ReviewID  string `json:"reviewId"`
+	ReviewID  int64  `json:"reviewId"`
 	Type      string `json:"type"`
 	FilePath  string `json:"filePath,omitempty"`
 	Message   string `json:"message,omitempty"`
 	Metadata  string `json:"metadata"`
 	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 type ReviewEventRepo struct {
@@ -33,7 +34,7 @@ func newReviewEventRepo(db *gorm.DB, clk *clock) *ReviewEventRepo {
 	return &ReviewEventRepo{db: db, clk: clk}
 }
 
-func (r *ReviewEventRepo) Add(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error) {
+func (r *ReviewEventRepo) Add(ctx context.Context, reviewID int64, input ReviewEventInput) (ReviewEvent, error) {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 	metadata := input.Metadata
 
@@ -48,6 +49,7 @@ func (r *ReviewEventRepo) Add(ctx context.Context, reviewID string, input Review
 		Message:   input.Message,
 		Metadata:  metadata,
 		CreatedAt: now,
+		UpdatedAt: now,
 	}
 
 	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
@@ -62,10 +64,11 @@ func (r *ReviewEventRepo) Add(ctx context.Context, reviewID string, input Review
 		Message:   input.Message,
 		Metadata:  metadata,
 		CreatedAt: now,
+		UpdatedAt: now,
 	}, nil
 }
 
-func (r *ReviewEventRepo) List(ctx context.Context, reviewID string) ([]ReviewEvent, error) {
+func (r *ReviewEventRepo) List(ctx context.Context, reviewID int64) ([]ReviewEvent, error) {
 	var rows []ReviewEventRow
 
 	if err := r.db.WithContext(ctx).
@@ -86,6 +89,7 @@ func (r *ReviewEventRepo) List(ctx context.Context, reviewID string) ([]ReviewEv
 			Message:   row.Message,
 			Metadata:  row.Metadata,
 			CreatedAt: row.CreatedAt,
+			UpdatedAt: row.UpdatedAt,
 		})
 	}
 

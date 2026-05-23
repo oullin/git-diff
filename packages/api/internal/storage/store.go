@@ -34,7 +34,7 @@ type Store struct {
 	ReviewEvents    *ReviewEventRepo
 	Comments        *CommentRepo
 	PendingComments *PendingCommentRepo
-	Branches        *BranchRepo
+	Branches        *RepositoryBranchRepo
 	Repos           *RepoRepo
 	Collaborators   *CollaboratorRepo
 	Preferences     *PreferenceRepo
@@ -81,7 +81,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		ReviewEvents:    reviewEvents,
 		Comments:        newCommentRepo(gdb, clk, reviewEvents),
 		PendingComments: newPendingCommentRepo(gdb, clk),
-		Branches:        newBranchRepo(gdb, clk),
+		Branches:        newRepositoryBranchRepo(gdb, clk),
 		Repos:           newRepoRepo(gdb, clk),
 		Collaborators:   newCollaboratorRepo(gdb, clk),
 		Preferences:     newPreferenceRepo(gdb, clk),

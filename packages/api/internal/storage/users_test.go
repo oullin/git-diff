@@ -46,7 +46,7 @@ func TestEnsureUserIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestSaveUIPreferencesUpsertsAndDeletesOnEmpty(t *testing.T) {
+func TestSaveUserPreferencesUpsertsAndDeletesOnEmpty(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
@@ -56,14 +56,14 @@ func TestSaveUIPreferencesUpsertsAndDeletesOnEmpty(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 
-	if _, err := store.Preferences.SaveUIPreferences(ctx, user.ID, map[string]string{
+	if _, err := store.Preferences.SaveUserPreferences(ctx, user.ID, map[string]string{
 		PrefKeyTheme:          "dark",
 		PrefKeyPanelLeftWidth: "30",
 	}); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 
-	prefs, err := store.Preferences.GetUIPreferences(ctx, user.ID)
+	prefs, err := store.Preferences.GetUserPreferences(ctx, user.ID)
 
 	if err != nil {
 		t.Fatalf("get: %v", err)
@@ -73,13 +73,13 @@ func TestSaveUIPreferencesUpsertsAndDeletesOnEmpty(t *testing.T) {
 		t.Fatalf("unexpected values after upsert: %#v", prefs.Values)
 	}
 
-	if _, err := store.Preferences.SaveUIPreferences(ctx, user.ID, map[string]string{
+	if _, err := store.Preferences.SaveUserPreferences(ctx, user.ID, map[string]string{
 		PrefKeyTheme: "",
 	}); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 
-	prefs, err = store.Preferences.GetUIPreferences(ctx, user.ID)
+	prefs, err = store.Preferences.GetUserPreferences(ctx, user.ID)
 
 	if err != nil {
 		t.Fatalf("get after delete: %v", err)
@@ -157,7 +157,7 @@ func TestWipeUserCascadesPreferencesAndSessions(t *testing.T) {
 		t.Fatalf("ensure: %v", err)
 	}
 
-	if _, err := store.Preferences.SaveUIPreferences(ctx, user.ID, map[string]string{
+	if _, err := store.Preferences.SaveUserPreferences(ctx, user.ID, map[string]string{
 		PrefKeyTheme: "dark",
 	}); err != nil {
 		t.Fatalf("save prefs: %v", err)
@@ -177,7 +177,7 @@ func TestWipeUserCascadesPreferencesAndSessions(t *testing.T) {
 		t.Fatalf("expected cascading session delete, got %v", err)
 	}
 
-	prefs, err := store.Preferences.GetUIPreferences(ctx, user.ID)
+	prefs, err := store.Preferences.GetUserPreferences(ctx, user.ID)
 
 	if err != nil {
 		t.Fatalf("get prefs after wipe: %v", err)

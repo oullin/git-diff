@@ -68,7 +68,13 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) reviewDetail(w http.ResponseWriter, r *http.Request) {
-	detail, err := s.reviews.Detail(r.Context(), r.PathValue("id"))
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
+	detail, err := s.reviews.Detail(r.Context(), id)
 
 	if err != nil {
 		writeError(w, http.StatusNotFound, err)
@@ -80,6 +86,12 @@ func (s Server) reviewDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) addReviewEvent(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
 	var input storage.ReviewEventInput
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -88,7 +100,7 @@ func (s Server) addReviewEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := s.reviews.AddEvent(r.Context(), r.PathValue("id"), input)
+	event, err := s.reviews.AddEvent(r.Context(), id, input)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

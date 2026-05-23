@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"strings"
 
@@ -52,13 +50,14 @@ func (s *PendingCommentService) Create(
 		return storage.PendingComment{}, ErrInvalidCommentInput
 	}
 
-	return s.pending.CreatePendingComment(ctx, userID, "pending-"+randID(8), input)
+	return s.pending.CreatePendingComment(ctx, userID, input)
 }
 
 func (s *PendingCommentService) Update(
 	ctx context.Context,
 	userID int64,
-	id, bodyHTML string,
+	id int64,
+	bodyHTML string,
 ) (storage.PendingComment, error) {
 	if userID == 0 {
 		return storage.PendingComment{}, ErrAuthenticationRequired
@@ -67,7 +66,7 @@ func (s *PendingCommentService) Update(
 	return s.pending.UpdatePendingComment(ctx, userID, id, bodyHTML)
 }
 
-func (s *PendingCommentService) Delete(ctx context.Context, userID int64, id string) error {
+func (s *PendingCommentService) Delete(ctx context.Context, userID int64, id int64) error {
 	if userID == 0 {
 		return ErrAuthenticationRequired
 	}
@@ -78,25 +77,15 @@ func (s *PendingCommentService) Delete(ctx context.Context, userID int64, id str
 func (s *PendingCommentService) Promote(
 	ctx context.Context,
 	userID int64,
-	reviewID string,
+	reviewID int64,
 ) (int, error) {
 	if userID == 0 {
 		return 0, ErrAuthenticationRequired
 	}
 
-	if strings.TrimSpace(reviewID) == "" {
+	if reviewID == 0 {
 		return 0, ErrReviewIDRequired
 	}
 
 	return s.pending.PromotePendingComments(ctx, userID, reviewID)
-}
-
-func randID(n int) string {
-	buf := make([]byte, n)
-
-	if _, err := rand.Read(buf); err != nil {
-		return "0"
-	}
-
-	return hex.EncodeToString(buf)
 }

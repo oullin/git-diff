@@ -2,10 +2,7 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
-	"fmt"
 
 	"github.com/gocanto/git-diff/internal/storage"
 )
@@ -22,7 +19,6 @@ func NewReviewService(reviews *storage.ReviewRepo, events *storage.ReviewEventRe
 
 var ErrAuthenticationRequired = errors.New("authentication required")
 
-// Create auto-fills an empty input.ID with a random identifier.
 func (s *ReviewService) Create(
 	ctx context.Context,
 	userID int64,
@@ -30,10 +26,6 @@ func (s *ReviewService) Create(
 ) (storage.ReviewSession, error) {
 	if userID == 0 {
 		return storage.ReviewSession{}, ErrAuthenticationRequired
-	}
-
-	if input.ID == "" {
-		input.ID = randomID("review")
 	}
 
 	return s.reviews.CreateReview(ctx, userID, input)
@@ -55,47 +47,37 @@ func (s *ReviewService) List(
 	return s.reviews.ListReviews(ctx, userID, limit)
 }
 
-func (s *ReviewService) Detail(ctx context.Context, id string) (storage.ReviewDetail, error) {
+func (s *ReviewService) Detail(ctx context.Context, id int64) (storage.ReviewDetail, error) {
 	return s.reviews.ReviewDetail(ctx, s.comments, id)
 }
 
 func (s *ReviewService) AddEvent(
 	ctx context.Context,
-	reviewID string,
+	reviewID int64,
 	input storage.ReviewEventInput,
 ) (storage.ReviewEvent, error) {
 	return s.events.Add(ctx, reviewID, input)
 }
 
-// CreateComment auto-generates the comment id and records a
-// "comment_added" review event as a side effect.
+// CreateComment records a "comment_added" review event as a side effect.
 func (s *ReviewService) CreateComment(
 	ctx context.Context,
-	reviewID string,
+	reviewID int64,
 	input storage.ReviewCommentInput,
 ) (storage.ReviewComment, error) {
-	return s.comments.CreateReviewComment(ctx, reviewID, randomID("comment"), input)
+	return s.comments.CreateReviewComment(ctx, reviewID, input)
 }
 
 // UpdateComment emits a "comment_edited" event.
 func (s *ReviewService) UpdateComment(
 	ctx context.Context,
-	reviewID, commentID, bodyHTML string,
+	reviewID, commentID int64,
+	bodyHTML string,
 ) (storage.ReviewComment, error) {
 	return s.comments.UpdateReviewComment(ctx, reviewID, commentID, bodyHTML)
 }
 
 // DeleteComment soft-deletes the comment and emits a "comment_deleted" event.
-func (s *ReviewService) DeleteComment(ctx context.Context, reviewID, commentID string) error {
+func (s *ReviewService) DeleteComment(ctx context.Context, reviewID, commentID int64) error {
 	return s.comments.DeleteReviewComment(ctx, reviewID, commentID)
-}
-
-func randomID(prefix string) string {
-	var bytes [12]byte
-
-	if _, err := rand.Read(bytes[:]); err != nil {
-		return fmt.Sprintf("%s-fallback", prefix)
-	}
-
-	return prefix + "-" + hex.EncodeToString(bytes[:])
 }

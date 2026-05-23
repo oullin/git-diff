@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type UIPreferences struct {
+type UserPreferences struct {
 	Values    map[string]string `json:"values"`
 	UpdatedAt string            `json:"updatedAt,omitempty"`
 }
@@ -38,14 +38,14 @@ func newPreferenceRepo(db *gorm.DB, clk *clock) *PreferenceRepo {
 	return &PreferenceRepo{db: db, clk: clk}
 }
 
-func (r *PreferenceRepo) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
-	var rows []UIPreferenceRow
+func (r *PreferenceRepo) GetUserPreferences(ctx context.Context, userID int64) (UserPreferences, error) {
+	var rows []UserPreferenceRow
 
 	if err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&rows).Error; err != nil {
-		return UIPreferences{}, err
+		return UserPreferences{}, err
 	}
 
-	prefs := UIPreferences{Values: map[string]string{}}
+	prefs := UserPreferences{Values: map[string]string{}}
 
 	for _, row := range rows {
 		prefs.Values[row.Key] = row.Value
@@ -58,19 +58,19 @@ func (r *PreferenceRepo) GetUIPreferences(ctx context.Context, userID int64) (UI
 	return prefs, nil
 }
 
-// SaveUIPreferences applies a patch in one transaction with at most two
+// SaveUserPreferences applies a patch in one transaction with at most two
 // statements: a single batched upsert for set values and a single bulk delete
 // for cleared values. Avoids the per-key INSERT/DELETE loop the original
 // implementation issued.
-func (r *PreferenceRepo) SaveUIPreferences(ctx context.Context, userID int64, patch map[string]string) (UIPreferences, error) {
+func (r *PreferenceRepo) SaveUserPreferences(ctx context.Context, userID int64, patch map[string]string) (UserPreferences, error) {
 	if len(patch) == 0 {
-		return r.GetUIPreferences(ctx, userID)
+		return r.GetUserPreferences(ctx, userID)
 	}
 
-	updatedAt := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	var (
-		upserts []UIPreferenceRow
+		upserts []UserPreferenceRow
 		deletes []string
 	)
 
@@ -87,11 +87,12 @@ func (r *PreferenceRepo) SaveUIPreferences(ctx context.Context, userID int64, pa
 			continue
 		}
 
-		upserts = append(upserts, UIPreferenceRow{
+		upserts = append(upserts, UserPreferenceRow{
 			UserID:    userID,
 			Key:       key,
 			Value:     value,
-			UpdatedAt: updatedAt,
+			CreatedAt: now,
+			UpdatedAt: now,
 		})
 	}
 
@@ -106,7 +107,7 @@ func (r *PreferenceRepo) SaveUIPreferences(ctx context.Context, userID int64, pa
 		}
 
 		if len(deletes) > 0 {
-			if err := tx.Where("user_id = ? AND key IN ?", userID, deletes).Delete(&UIPreferenceRow{}).Error; err != nil {
+			if err := tx.Where("user_id = ? AND key IN ?", userID, deletes).Delete(&UserPreferenceRow{}).Error; err != nil {
 				return err
 			}
 		}
@@ -115,8 +116,8 @@ func (r *PreferenceRepo) SaveUIPreferences(ctx context.Context, userID int64, pa
 	})
 
 	if err != nil {
-		return UIPreferences{}, err
+		return UserPreferences{}, err
 	}
 
-	return r.GetUIPreferences(ctx, userID)
+	return r.GetUserPreferences(ctx, userID)
 }

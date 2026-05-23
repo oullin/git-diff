@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -89,6 +90,8 @@ func (r *WalkthroughRepo) UpsertWalkthrough(ctx context.Context, record Walkthro
 		return fmt.Errorf("encode walkthrough groups: %w", err)
 	}
 
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+
 	row := WalkthroughRow{
 		RepoRoot:    record.RepoRoot,
 		ContextKind: record.ContextKind,
@@ -99,12 +102,14 @@ func (r *WalkthroughRepo) UpsertWalkthrough(ctx context.Context, record Walkthro
 		GroupsJSON:  string(groupsJSON),
 		Summary:     record.Summary,
 		GeneratedAt: record.GeneratedAt,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	return r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "repo_root"}, {Name: "context_kind"}, {Name: "context_sha"}},
-			DoUpdates: clause.AssignmentColumns([]string{"fingerprint", "provider_id", "model_id", "groups_json", "summary", "generated_at"}),
+			DoUpdates: clause.AssignmentColumns([]string{"fingerprint", "provider_id", "model_id", "groups_json", "summary", "generated_at", "updated_at"}),
 		}).
 		Create(&row).Error
 }

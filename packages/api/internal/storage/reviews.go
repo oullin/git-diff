@@ -9,7 +9,6 @@ import (
 )
 
 type ReviewSessionStart struct {
-	ID           string `json:"id"`
 	RepoRoot     string `json:"repoRoot"`
 	Branch       string `json:"branch"`
 	HeadSHA      string `json:"headSha"`
@@ -23,7 +22,7 @@ type ReviewSessionStart struct {
 }
 
 type ReviewSession struct {
-	ID           string `json:"id"`
+	ID           int64  `json:"id"`
 	RepoRoot     string `json:"repoRoot"`
 	UserID       int64  `json:"userId"`
 	Branch       string `json:"branch"`
@@ -38,6 +37,8 @@ type ReviewSession struct {
 	CompletedAt  string `json:"completedAt,omitempty"`
 	ContextKind  string `json:"contextKind"`
 	ContextSHA   string `json:"contextSha,omitempty"`
+	CreatedAt    string `json:"createdAt"`
+	UpdatedAt    string `json:"updatedAt"`
 }
 
 type ReviewDetail struct {
@@ -75,7 +76,6 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 	}
 
 	row := ReviewSessionRow{
-		ID:           review.ID,
 		RepoRoot:     review.RepoRoot,
 		UserID:       userID,
 		Branch:       review.Branch,
@@ -89,13 +89,15 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 		StartedAt:    now,
 		ContextKind:  contextKind,
 		ContextSHA:   nullableStringPtr(review.ContextSHA),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
 	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
 		return ReviewSession{}, err
 	}
 
-	if _, err := r.events.Add(ctx, review.ID, ReviewEventInput{
+	if _, err := r.events.Add(ctx, row.ID, ReviewEventInput{
 		Type:    "review_started",
 		Message: title,
 	}); err != nil {
@@ -103,7 +105,7 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 	}
 
 	return ReviewSession{
-		ID:           review.ID,
+		ID:           row.ID,
 		RepoRoot:     review.RepoRoot,
 		UserID:       userID,
 		Branch:       review.Branch,
@@ -117,6 +119,8 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 		StartedAt:    now,
 		ContextKind:  contextKind,
 		ContextSHA:   review.ContextSHA,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}, nil
 }
 
@@ -149,7 +153,7 @@ func (r *ReviewRepo) ListReviews(ctx context.Context, userID int64, limit int64)
 }
 
 // GetReviewByID returns the session without its events or comments.
-func (r *ReviewRepo) GetReviewByID(ctx context.Context, id string) (ReviewSession, error) {
+func (r *ReviewRepo) GetReviewByID(ctx context.Context, id int64) (ReviewSession, error) {
 	var row ReviewSessionRow
 
 	if err := r.db.WithContext(ctx).Where("id = ?", id).Take(&row).Error; err != nil {
@@ -159,7 +163,7 @@ func (r *ReviewRepo) GetReviewByID(ctx context.Context, id string) (ReviewSessio
 	return toReviewSession(row), nil
 }
 
-func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id string) (ReviewDetail, error) {
+func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id int64) (ReviewDetail, error) {
 	review, err := r.GetReviewByID(ctx, id)
 
 	if err != nil {
@@ -196,6 +200,8 @@ func toReviewSession(row ReviewSessionRow) ReviewSession {
 		Deletions:    row.Deletions,
 		StartedAt:    row.StartedAt,
 		ContextKind:  row.ContextKind,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 
 	if row.CompletedAt != nil {

@@ -14,22 +14,22 @@ func NewPreferenceService(preferences *storage.PreferenceRepo) *PreferenceServic
 	return &PreferenceService{preferences: preferences}
 }
 
-func (s *PreferenceService) Get(ctx context.Context, userID int64) (storage.UIPreferences, error) {
+func (s *PreferenceService) Get(ctx context.Context, userID int64) (storage.UserPreferences, error) {
 	if userID == 0 {
-		return storage.UIPreferences{}, ErrAuthenticationRequired
+		return storage.UserPreferences{}, ErrAuthenticationRequired
 	}
 
-	return s.preferences.GetUIPreferences(ctx, userID)
+	return s.preferences.GetUserPreferences(ctx, userID)
 }
 
 func (s *PreferenceService) Save(
 	ctx context.Context,
 	userID int64,
 	patch map[string]string,
-) (storage.UIPreferences, error) {
+) (storage.UserPreferences, error) {
 	if userID == 0 {
-		return storage.UIPreferences{}, ErrAuthenticationRequired
+		return storage.UserPreferences{}, ErrAuthenticationRequired
 	}
 
-	return s.preferences.SaveUIPreferences(ctx, userID, patch)
+	return s.preferences.SaveUserPreferences(ctx, userID, patch)
 }

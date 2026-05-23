@@ -16,11 +16,13 @@ import (
 )
 
 type Session struct {
+	ID         int64  `json:"id"`
 	RawToken   string `json:"token"`
 	UserID     int64  `json:"userId"`
-	CreatedAt  string `json:"createdAt"`
 	ExpiresAt  string `json:"expiresAt"`
 	LastUsedAt string `json:"lastUsedAt"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
 }
 
 type SessionRepo struct {
@@ -47,9 +49,10 @@ func (r *SessionRepo) CreateSession(ctx context.Context, userID int64, ttl time.
 	row := UserSessionRow{
 		Token:      stored,
 		UserID:     userID,
-		CreatedAt:  created,
 		ExpiresAt:  expires,
 		LastUsedAt: created,
+		CreatedAt:  created,
+		UpdatedAt:  created,
 	}
 
 	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
@@ -57,11 +60,13 @@ func (r *SessionRepo) CreateSession(ctx context.Context, userID int64, ttl time.
 	}
 
 	return Session{
+		ID:         row.ID,
 		RawToken:   rawToken,
 		UserID:     userID,
-		CreatedAt:  created,
 		ExpiresAt:  expires,
 		LastUsedAt: created,
+		CreatedAt:  created,
+		UpdatedAt:  created,
 	}, nil
 }
 
@@ -91,10 +96,15 @@ func (r *SessionRepo) ResumeSession(ctx context.Context, users *UserRepo, rawTok
 		return User{}, ErrSessionNotFound
 	}
 
+	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+
 	if err := r.db.WithContext(ctx).
 		Model(&UserSessionRow{}).
 		Where("token = ?", stored).
-		Update("last_used_at", r.clk.now().UTC().Format(time.RFC3339Nano)).Error; err != nil {
+		Updates(map[string]any{
+			"last_used_at": now,
+			"updated_at":   now,
+		}).Error; err != nil {
 		return User{}, err
 	}
 

@@ -20,8 +20,8 @@ type ReviewCommentInput struct {
 }
 
 type ReviewComment struct {
-	ID              string `json:"id"`
-	ReviewID        string `json:"reviewId"`
+	ID              int64  `json:"id"`
+	ReviewID        int64  `json:"reviewId"`
 	FilePath        string `json:"filePath"`
 	DiffSection     string `json:"diffSection"`
 	Side            string `json:"side"`
@@ -30,9 +30,9 @@ type ReviewComment struct {
 	StartSide       string `json:"startSide,omitempty"`
 	AuthorLabel     string `json:"authorLabel"`
 	BodyHTML        string `json:"bodyHtml"`
+	DeletedAt       string `json:"deletedAt,omitempty"`
 	CreatedAt       string `json:"createdAt"`
 	UpdatedAt       string `json:"updatedAt"`
-	DeletedAt       string `json:"deletedAt,omitempty"`
 }
 
 type CommentRepo struct {
@@ -45,7 +45,7 @@ func newCommentRepo(db *gorm.DB, clk *clock, events *ReviewEventRepo) *CommentRe
 	return &CommentRepo{db: db, clk: clk, events: events}
 }
 
-func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, commentID string, input ReviewCommentInput) (ReviewComment, error) {
+func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID int64, input ReviewCommentInput) (ReviewComment, error) {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	if input.AuthorLabel == "" {
@@ -53,7 +53,6 @@ func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, 
 	}
 
 	row := ReviewCommentRow{
-		ID:              commentID,
 		ReviewID:        reviewID,
 		FilePath:        input.FilePath,
 		DiffSection:     input.DiffSection,
@@ -74,7 +73,7 @@ func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, 
 	_, _ = r.events.Add(ctx, reviewID, ReviewEventInput{Type: "comment_added", FilePath: input.FilePath, Message: fmt.Sprintf("Commented on line %d", input.LineNumber)})
 
 	return ReviewComment{
-		ID:              commentID,
+		ID:              row.ID,
 		ReviewID:        reviewID,
 		FilePath:        input.FilePath,
 		DiffSection:     input.DiffSection,
@@ -89,7 +88,7 @@ func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, 
 	}, nil
 }
 
-func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID string, commentID string, bodyHTML string) (ReviewComment, error) {
+func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID int64, commentID int64, bodyHTML string) (ReviewComment, error) {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	if err := r.db.WithContext(ctx).
@@ -114,7 +113,7 @@ func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID string, 
 	return comment, nil
 }
 
-func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID string, commentID string) error {
+func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID int64, commentID int64) error {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 	comment, _ := r.GetReviewComment(ctx, reviewID, commentID)
 
@@ -128,14 +127,14 @@ func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID string, 
 		return err
 	}
 
-	if comment.ID != "" {
+	if comment.ID != 0 {
 		_, _ = r.events.Add(ctx, reviewID, ReviewEventInput{Type: "comment_deleted", FilePath: comment.FilePath, Message: fmt.Sprintf("Deleted comment on line %d", comment.LineNumber)})
 	}
 
 	return nil
 }
 
-func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID string, commentID string) (ReviewComment, error) {
+func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID int64, commentID int64) (ReviewComment, error) {
 	var row ReviewCommentRow
 
 	if err := r.db.WithContext(ctx).
@@ -147,7 +146,7 @@ func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID string, com
 	return toReviewComment(row), nil
 }
 
-func (r *CommentRepo) ListReviewComments(ctx context.Context, reviewID string) ([]ReviewComment, error) {
+func (r *CommentRepo) ListReviewComments(ctx context.Context, reviewID int64) ([]ReviewComment, error) {
 	var rows []ReviewCommentRow
 
 	if err := r.db.WithContext(ctx).

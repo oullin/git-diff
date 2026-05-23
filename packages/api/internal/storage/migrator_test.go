@@ -37,7 +37,7 @@ func TestMigratorRunOnFreshDB(t *testing.T) {
 		t.Fatalf("migrate run: %v", err)
 	}
 
-	for _, table := range []string{"users", "review_sessions", "walkthroughs", "pending_comments", "branches", "schema_migrations"} {
+	for _, table := range []string{"users", "review_sessions", "walkthroughs", "pending_comments", "repository_branches", "schema_migrations"} {
 		exists, err := NewMigrator(db).tableExists(ctx, table)
 
 		if err != nil {
@@ -148,7 +148,7 @@ func TestOpenEnablesForeignKeysOnEachConnection(t *testing.T) {
 		}
 	}
 
-	_, err = second.ExecContext(ctx, "INSERT INTO user_sessions (token, user_id, created_at, expires_at, last_used_at) VALUES ('bad', 999, '', '', '')")
+	_, err = second.ExecContext(ctx, "INSERT INTO user_sessions (token, user_id, expires_at, last_used_at, created_at, updated_at) VALUES ('bad', 999, '', '', '', '')")
 
 	if err == nil {
 		t.Fatalf("expected foreign key violation on second connection")

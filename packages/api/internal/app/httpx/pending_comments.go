@@ -71,6 +71,12 @@ func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
 	var body struct {
 		BodyHTML string `json:"bodyHtml"`
 	}
@@ -84,7 +90,7 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 	comment, err := s.pending.Update(
 		r.Context(),
 		s.Session.CurrentUserID(),
-		r.PathValue("id"),
+		id,
 		body.BodyHTML,
 	)
 
@@ -104,10 +110,16 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
 	if err := s.pending.Delete(
 		r.Context(),
 		s.Session.CurrentUserID(),
-		r.PathValue("id"),
+		id,
 	); err != nil {
 		s.handlePendingCommentError(w, err)
 
@@ -119,7 +131,7 @@ func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
 
 func (s Server) promotePendingComments(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		ReviewID string `json:"reviewId"`
+		ReviewID int64 `json:"reviewId"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

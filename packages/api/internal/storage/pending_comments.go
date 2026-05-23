@@ -12,7 +12,7 @@ import (
 // PendingComment is a draft scoped by (user_id, repo_root, context_kind,
 // context_sha); PromotePendingComments moves matching rows into review_comments.
 type PendingComment struct {
-	ID              string `json:"id"`
+	ID              int64  `json:"id"`
 	UserID          int64  `json:"userId"`
 	RepoRoot        string `json:"repoRoot"`
 	ContextKind     string `json:"contextKind"`
@@ -52,7 +52,7 @@ func newPendingCommentRepo(db *gorm.DB, clk *clock) *PendingCommentRepo {
 	return &PendingCommentRepo{db: db, clk: clk}
 }
 
-func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID int64, id string, input PendingCommentInput) (PendingComment, error) {
+func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID int64, input PendingCommentInput) (PendingComment, error) {
 	if userID == 0 {
 		return PendingComment{}, errors.New("user id is required")
 	}
@@ -65,7 +65,6 @@ func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID in
 	}
 
 	row := PendingCommentRow{
-		ID:              id,
 		UserID:          userID,
 		RepoRoot:        input.RepoRoot,
 		ContextKind:     kind,
@@ -89,7 +88,7 @@ func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID in
 	return toPendingComment(row), nil
 }
 
-func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID int64, id, bodyHTML string) (PendingComment, error) {
+func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID int64, id int64, bodyHTML string) (PendingComment, error) {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 	result := r.db.WithContext(ctx).
@@ -111,7 +110,7 @@ func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID in
 	return r.GetPendingComment(ctx, userID, id)
 }
 
-func (r *PendingCommentRepo) GetPendingComment(ctx context.Context, userID int64, id string) (PendingComment, error) {
+func (r *PendingCommentRepo) GetPendingComment(ctx context.Context, userID int64, id int64) (PendingComment, error) {
 	var row PendingCommentRow
 
 	if err := r.db.WithContext(ctx).
@@ -123,7 +122,7 @@ func (r *PendingCommentRepo) GetPendingComment(ctx context.Context, userID int64
 	return toPendingComment(row), nil
 }
 
-func (r *PendingCommentRepo) DeletePendingComment(ctx context.Context, userID int64, id string) error {
+func (r *PendingCommentRepo) DeletePendingComment(ctx context.Context, userID int64, id int64) error {
 	return r.db.WithContext(ctx).
 		Where("id = ? AND user_id = ?", id, userID).
 		Delete(&PendingCommentRow{}).Error
@@ -156,7 +155,7 @@ func (r *PendingCommentRepo) ListPendingComments(ctx context.Context, userID int
 // into review_comments inside a single transaction. Issues exactly three
 // statements regardless of row count: one SELECT for the review scope, one
 // batched INSERT, one bulk DELETE — replacing the previous per-row loop.
-func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID int64, reviewID string) (int, error) {
+func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID int64, reviewID int64) (int, error) {
 	var promoted int
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -189,11 +188,10 @@ func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID 
 		now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
 		comments := make([]ReviewCommentRow, 0, len(pending))
-		ids := make([]string, 0, len(pending))
+		ids := make([]int64, 0, len(pending))
 
 		for _, p := range pending {
 			comments = append(comments, ReviewCommentRow{
-				ID:              "comment-" + p.ID,
 				ReviewID:        reviewID,
 				FilePath:        p.FilePath,
 				DiffSection:     p.DiffSection,
