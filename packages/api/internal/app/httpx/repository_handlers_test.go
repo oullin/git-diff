@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -224,6 +225,243 @@ func TestRepositoryFileRangeRejectsMissingParams(t *testing.T) {
 
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Fatalf("%s: expected 400, got %d", p, resp.StatusCode)
+		}
+	}
+}
+
+func TestRepositoryFileRawReadsWorktree(t *testing.T) {
+	repo := newGitRepo(t)
+	want := []byte("PNG-WORKTREE-BYTES")
+	repo.WriteFile("images/logo.png", string(want))
+
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	resp, err := http.Get(ts.URL + "/v1/repository/file/raw?path=images/logo.png")
+
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	if ct := resp.Header.Get("Content-Type"); ct != "image/png" {
+		t.Fatalf("expected image/png, got %q", ct)
+	}
+
+	if cc := resp.Header.Get("Cache-Control"); cc != "no-store" {
+		t.Fatalf("expected no-store, got %q", cc)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if !bytes.Equal(body, want) {
+		t.Fatalf("body mismatch: got %q want %q", body, want)
+	}
+}
+
+func TestRepositoryFileRawReadsCommittedBlobAtRef(t *testing.T) {
+	repo := newGitRepo(t)
+	committed := []byte("PNG-AT-HEAD")
+	repo.WriteFile("images/logo.png", string(committed))
+	repo.Commit("add logo")
+
+	// Overwrite the worktree with different bytes after committing; the ref
+	// read must return the committed bytes, not the worktree bytes.
+	repo.WriteFile("images/logo.png", "WORKTREE-DIFFERENT")
+
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	resp, err := http.Get(ts.URL + "/v1/repository/file/raw?path=images/logo.png&ref=HEAD")
+
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if !bytes.Equal(body, committed) {
+		t.Fatalf("expected committed bytes %q, got %q", committed, body)
+	}
+}
+
+func TestRepositoryFileRawReadsStagedBlobAtIndex(t *testing.T) {
+	repo := newGitRepo(t)
+	repo.WriteFile("images/logo.png", "OLD")
+	repo.Commit("add logo")
+
+	staged := []byte("STAGED-VERSION")
+	repo.WriteFile("images/logo.png", string(staged))
+	repo.run("-C", repo.Root, "add", "images/logo.png")
+
+	// Make worktree differ from index again, so a `:0` read can be
+	// distinguished from a worktree read.
+	repo.WriteFile("images/logo.png", "WORKTREE-AGAIN")
+
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	resp, err := http.Get(ts.URL + "/v1/repository/file/raw?path=images/logo.png&ref=:0")
+
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if !bytes.Equal(body, staged) {
+		t.Fatalf("expected staged bytes %q, got %q", staged, body)
+	}
+}
+
+func TestRepositoryFileRawRequiresPath(t *testing.T) {
+	repo := newGitRepo(t)
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	resp, err := http.Get(ts.URL + "/v1/repository/file/raw")
+
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", resp.StatusCode)
+	}
+}
+
+func TestRepositoryFileRawReturns404ForMissingWorktreeFile(t *testing.T) {
+	repo := newGitRepo(t)
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	resp, err := http.Get(ts.URL + "/v1/repository/file/raw?path=does/not/exist.png")
+
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestRepositoryFileRawReturns404ForMissingBlobAtRef(t *testing.T) {
+	repo := newGitRepo(t)
+	// File exists in worktree but was never committed → not present at HEAD.
+	repo.WriteFile("new.png", "JUST-IN-WORKTREE")
+
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	resp, err := http.Get(ts.URL + "/v1/repository/file/raw?path=new.png&ref=HEAD")
+
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestRepositoryFileRawRejectsPathTraversal(t *testing.T) {
+	repo := newGitRepo(t)
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	cases := []string{
+		"/v1/repository/file/raw?path=../etc/passwd",
+		"/v1/repository/file/raw?path=/etc/passwd",
+	}
+
+	for _, p := range cases {
+		resp, err := http.Get(ts.URL + p)
+
+		if err != nil {
+			t.Fatalf("get %s: %v", p, err)
+		}
+
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("%s: expected 400, got %d", p, resp.StatusCode)
+		}
+	}
+}
+
+func TestRepositoryFileRawRejectsOversizeWithStatus413(t *testing.T) {
+	repo := newGitRepo(t)
+	// 3 MB > maxFileReadBytes (2 MB).
+	big := bytes.Repeat([]byte{'x'}, 3*1024*1024)
+	repo.WriteFile("big.png", string(big))
+
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	resp, err := http.Get(ts.URL + "/v1/repository/file/raw?path=big.png")
+
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413, got %d", resp.StatusCode)
+	}
+}
+
+func TestRepositoryFileRawContentTypeByExtension(t *testing.T) {
+	repo := newGitRepo(t)
+	srv, _ := testServer(t, testServerOptions{Repo: repo.Root})
+	ts := startHTTPServer(t, srv, false)
+
+	// Just enough bytes to satisfy a successful read; Content-Type is derived
+	// from the extension alone, not from the body.
+	for path, wantPrefix := range map[string]string{
+		"a.png":  "image/png",
+		"a.jpg":  "image/jpeg",
+		"a.gif":  "image/gif",
+		"a.webp": "image/webp",
+		"a.svg":  "image/svg+xml",
+	} {
+		repo.WriteFile(path, "BYTES")
+
+		resp, err := http.Get(ts.URL + "/v1/repository/file/raw?path=" + path)
+
+		if err != nil {
+			t.Fatalf("%s: get: %v", path, err)
+		}
+
+		ct := resp.Header.Get("Content-Type")
+		resp.Body.Close()
+
+		if !strings.HasPrefix(ct, wantPrefix) {
+			t.Fatalf("%s: expected Content-Type starting with %q, got %q", path, wantPrefix, ct)
 		}
 	}
 }

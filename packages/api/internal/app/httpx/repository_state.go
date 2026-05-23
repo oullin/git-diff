@@ -2,8 +2,11 @@ package httpx
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/oullin/git-diff/internal/review"
@@ -215,4 +218,53 @@ func (s Server) repositoryFileRange(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, result)
+}
+
+func (s Server) repositoryFileRaw(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	root := query.Get("root")
+	path := query.Get("path")
+	ref := query.Get("ref")
+
+	if root == "" {
+		root = s.Repo
+	}
+
+	if root == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("root is required"))
+
+		return
+	}
+
+	if path == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("path is required"))
+
+		return
+	}
+
+	content, err := review.ReadRepositoryBlob(r.Context(), root, path, ref)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, review.ErrBlobNotFound):
+			writeError(w, http.StatusNotFound, err)
+		case errors.Is(err, review.ErrBlobTooLarge):
+			writeError(w, http.StatusRequestEntityTooLarge, err)
+		default:
+			writeError(w, http.StatusBadRequest, err)
+		}
+
+		return
+	}
+
+	ct := mime.TypeByExtension(filepath.Ext(path))
+
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
+
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Length", strconv.Itoa(len(content)))
+	_, _ = w.Write(content)
 }

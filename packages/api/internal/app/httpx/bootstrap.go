@@ -78,6 +78,7 @@ func Serve(args []string, cfg ServeConfig) int {
 		Session:          NewAuthState(osUsername),
 		UserConfig:       userCfg.Reader,
 		UserConfigEvents: userCfg.Broker,
+		UserConfigPath:   userCfg.Path,
 
 		auth: service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
 			BcryptCost:        bcryptCost,

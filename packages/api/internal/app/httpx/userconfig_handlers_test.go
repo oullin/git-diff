@@ -36,6 +36,18 @@ func TestUserConfigGetReturnsDefaults(t *testing.T) {
 		t.Fatalf("expected theme=system, got %#v", cfg["theme"])
 	}
 
+	// The handler must surface the config-file path so the renderer can
+	// pass it to shell.openPath without re-deriving it.
+	path, ok := cfg["path"].(string)
+
+	if !ok || path == "" {
+		t.Fatalf("expected non-empty path, got %#v", cfg["path"])
+	}
+
+	if !strings.HasSuffix(path, "/.git-diff/config.yaml") {
+		t.Fatalf("expected path ending in /.git-diff/config.yaml, got %q", path)
+	}
+
 	walkthrough, ok := cfg["walkthrough"].(map[string]any)
 
 	if !ok {
@@ -92,12 +104,25 @@ func TestUserConfigStreamEmitsInitialEvent(t *testing.T) {
 	done := make(chan struct{})
 	gotEvent := false
 
+	var dataLine string
+
 	go func() {
 		defer close(done)
 
+		sawEvent := false
+
 		for scanner.Scan() {
-			if strings.HasPrefix(scanner.Text(), "event: config") {
+			line := scanner.Text()
+
+			if strings.HasPrefix(line, "event: config") {
 				gotEvent = true
+				sawEvent = true
+
+				continue
+			}
+
+			if sawEvent && strings.HasPrefix(line, "data: ") {
+				dataLine = strings.TrimPrefix(line, "data: ")
 
 				return
 			}
@@ -112,6 +137,20 @@ func TestUserConfigStreamEmitsInitialEvent(t *testing.T) {
 
 	if !gotEvent {
 		t.Fatalf("expected an `event: config` line on the stream")
+	}
+
+	if dataLine == "" {
+		t.Fatalf("expected a `data:` line after `event: config`")
+	}
+
+	var payload map[string]any
+
+	if err := json.Unmarshal([]byte(dataLine), &payload); err != nil {
+		t.Fatalf("decode SSE data: %v\n%s", err, dataLine)
+	}
+
+	if path, _ := payload["path"].(string); path == "" {
+		t.Fatalf("expected SSE payload to include path, got %#v", payload["path"])
 	}
 }
 

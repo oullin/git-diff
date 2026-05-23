@@ -103,6 +103,7 @@ func testServer(t *testing.T, opts testServerOptions) (Server, *storage.Store) {
 		Session:          state,
 		UserConfig:       reader,
 		UserConfigEvents: broker,
+		UserConfigPath:   usercfg.DefaultPath(home),
 
 		auth: service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
 			BcryptCost:        bcryptCost,

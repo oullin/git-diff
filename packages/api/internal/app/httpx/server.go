@@ -22,6 +22,7 @@ type Server struct {
 	Session          *AuthState
 	UserConfig       usercfg.Reader
 	UserConfigEvents *usercfg.Broker
+	UserConfigPath   string
 
 	auth          *service.AuthService
 	reviews       *service.ReviewService

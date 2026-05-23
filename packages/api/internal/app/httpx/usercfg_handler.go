@@ -14,7 +14,10 @@ func (s Server) userConfigGet(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, marshalConfig(s.UserConfig.Get()))
+	payload := marshalConfig(s.UserConfig.Get())
+	payload["path"] = s.UserConfigPath
+
+	writeJSON(w, http.StatusOK, payload)
 }
 
 // userConfigStream emits the current config immediately, then a "config"
@@ -33,7 +36,10 @@ func (s Server) userConfigStream(w http.ResponseWriter, r *http.Request) {
 
 	rc := http.NewResponseController(w)
 
-	if err := writeSSE(w, rc, "config", marshalConfig(s.UserConfig.Get())); err != nil {
+	initial := marshalConfig(s.UserConfig.Get())
+	initial["path"] = s.UserConfigPath
+
+	if err := writeSSE(w, rc, "config", initial); err != nil {
 		return
 	}
 
@@ -50,7 +56,10 @@ func (s Server) userConfigStream(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			if err := writeSSE(w, rc, "config", marshalConfig(cfg)); err != nil {
+			update := marshalConfig(cfg)
+			update["path"] = s.UserConfigPath
+
+			if err := writeSSE(w, rc, "config", update); err != nil {
 				return
 			}
 		}
