@@ -5,11 +5,6 @@ import AuthLogin from "@entry/components/AuthLogin.vue";
 import AuthSetup from "@entry/components/AuthSetup.vue";
 import { useAuthStore } from "@/stores/auth.store";
 
-// AuthGate renders the auth state machine: while we don't know whether the
-// user is set up the slot stays hidden behind a Loading placeholder; the
-// setup / login screens take over when needed; once the user is
-// authenticated the default slot (the main app shell) gets shown.
-//
 // Cross-domain follow-up actions (hydrating preferences, opening the last
 // repo, replaying the launch intent) live on the host because they span
 // multiple stores -- the host listens to the @entered / @wiped events and

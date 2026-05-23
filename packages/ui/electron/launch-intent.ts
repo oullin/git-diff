@@ -63,17 +63,9 @@ Usage:
 `;
 
 /**
- * Parse the raw process.argv into a LaunchIntent. Electron prepends its own
- * argv entries (the binary path, and in dev the app path); strip those before
- * applying the user-facing grammar.
- *
- * The parser intentionally accepts both `-w <ref>` and `<ref> -w`; flag order
- * is irrelevant.
- *
- * @param argv      The argv array to consume (typically process.argv).
- * @param isPackaged Whether the app is running from a packaged build. Strips
- *                  one extra entry in dev (the app path passed to `electron .`).
- * @param cwd       The working directory to resolve relative paths against.
+ * Electron prepends its own argv entries (the binary path, and in dev the app
+ * path); strip those before applying the user-facing grammar. Flag order is
+ * intentionally irrelevant: both `-w <ref>` and `<ref> -w` are accepted.
  */
 export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string): LaunchIntent {
     const userArgs = argv.slice(isPackaged ? 1 : 2).filter((arg) => !isElectronInternal(arg));
@@ -114,7 +106,6 @@ export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string
         return classifyPositional(positionals[0]!, cwd, walkthrough);
     }
 
-    // Two positionals: support `git-diff <path> <ref>`.
     if (positionals.length === 2) {
         const pathArg = positionals[0]!;
         const refArg = positionals[1]!;

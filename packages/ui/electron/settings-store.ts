@@ -11,12 +11,6 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 
-/**
- * SettingsStore hides electron's `app.getPath()` + filesystem access
- * behind a small surface so callers can be tested without an Electron
- * runtime, and the persistence layer can be swapped (e.g. in-memory for
- * tests) without touching consumers.
- */
 export interface SettingsStore {
     read(): Partial<RuntimeSettings>;
     write(settings: Partial<RuntimeSettings>): void;
@@ -79,7 +73,7 @@ class ElectronSettingsStore implements SettingsStore {
 
 let activeStore: SettingsStore = new ElectronSettingsStore();
 
-/** Swap the active SettingsStore. Returns a restore func for scoped overrides. */
+/** Returns a restore func for scoped overrides. */
 export function setSettingsStore(store: SettingsStore): () => void {
     const prev = activeStore;
 

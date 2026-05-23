@@ -7,13 +7,9 @@ import type {
     WalkthroughRecord,
 } from "@git-diff/contracts";
 
-// WalkthroughPanel renders the AI-generated walkthrough — summary +
-// collapsible groups + per-file rows with action/impact chips.
-//
 // Backwards compatible: when `groups` is empty but legacy `order`/`notes`
 // are present (cached row from before phase 5), we hoist them into a
 // single synthetic group so renderings stay non-empty.
-
 const props = defineProps<{
     record: WalkthroughRecord | null;
     error: string;

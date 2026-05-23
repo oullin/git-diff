@@ -15,13 +15,6 @@ import {
     setIntentForWindow,
 } from "#electron/windows.js";
 
-/**
- * runApp wires every Electron-lifecycle event for a normal launch. The
- * caller resolves the initial intent (working tree, commit, PR) and hands
- * it in; this module owns the single-instance lock, the whenReady chain
- * (icon, settings, IPC, menu, window, bridge), and the quit/activate
- * handlers.
- */
 export function runApp(initialIntent: LaunchIntent): void {
     const singleInstanceLock = app.requestSingleInstanceLock();
 

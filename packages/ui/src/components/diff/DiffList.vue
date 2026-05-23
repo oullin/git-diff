@@ -10,15 +10,6 @@ import type { LineSelectionRange } from "@composables/useLineSelection";
 import type { DiffViewMode } from "@git-diff/contracts";
 import type { Tweaks } from "@composables/useTweaks";
 
-// DiffList renders the right-hand column of the diff view: either a
-// FileContentViewer fallback (when the selected path isn't part of the
-// diff), an empty-state message (when the repo has no changes), or a
-// scrolling list of FileHeader + DiffBody cards for each changed file.
-//
-// The component is intentionally thin -- nothing it owns survives a
-// route change. State (selection, collapse map, split ratios, viewed
-// flags, comments) is read from props; mutating actions are emitted up
-// so App.vue keeps a single source of truth.
 defineProps<{
     files: ChangedFile[];
     selectedPath: string;

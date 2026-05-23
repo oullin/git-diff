@@ -3,12 +3,6 @@ import type { CommitSummary, PullRequestSummary, RepositoryState } from "@git-di
 import CommitPicker from "@entry/components/commits/CommitPicker.vue";
 import PullRequestPicker from "@entry/components/commits/PullRequestPicker.vue";
 
-// RepoToolbar is the secondary header that sits below TopBar: commit and
-// pull-request pickers on the left, a walkthrough refresh / generate
-// button on the right, and a "Copy review as Markdown" button that only
-// appears while a review is active. The component is intentionally
-// dumb -- it consumes the lists/loaders/active pointers as props and
-// emits select / open / regen events the host wires up.
 defineProps<{
     state: RepositoryState;
     commits: CommitSummary[];

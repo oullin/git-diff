@@ -1,21 +1,10 @@
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 
-/**
- * Handler signature for an IPC invoke channel. Renderer args follow the
- * event, exactly like `ipcMain.handle`.
- */
 export type IpcHandler<Args extends unknown[] = unknown[], Result = unknown> = (
     event: IpcMainInvokeEvent,
     ...args: Args
 ) => Result | Promise<Result>;
 
-/**
- * IpcRouter accumulates channel → handler bindings and applies them to
- * `ipcMain` in a single pass. Each domain module registers its channels
- * through the router, which keeps the wiring discoverable (one place to
- * grep for a channel name) and decouples handler registration from the
- * electron runtime — tests can inspect the handler map directly.
- */
 export class IpcRouter {
     private readonly handlers = new Map<string, IpcHandler>();
 
@@ -35,7 +24,6 @@ export class IpcRouter {
         }
     }
 
-    /** Useful for tests: returns the registered handler for a channel, if any. */
     handlerFor(channel: string): IpcHandler | undefined {
         return this.handlers.get(channel);
     }
