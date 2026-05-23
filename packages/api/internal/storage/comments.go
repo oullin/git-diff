@@ -2,11 +2,10 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
 )
 
 type ReviewCommentInput struct {
@@ -37,14 +36,13 @@ type ReviewComment struct {
 }
 
 type CommentRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
-	events  *ReviewEventRepo
+	db     *gorm.DB
+	clk    *clock
+	events *ReviewEventRepo
 }
 
-func newCommentRepo(conn *sql.DB, queries *db.Queries, clk *clock, events *ReviewEventRepo) *CommentRepo {
-	return &CommentRepo{db: conn, queries: queries, clk: clk, events: events}
+func newCommentRepo(db *gorm.DB, clk *clock, events *ReviewEventRepo) *CommentRepo {
+	return &CommentRepo{db: db, clk: clk, events: events}
 }
 
 func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, commentID string, input ReviewCommentInput) (ReviewComment, error) {
@@ -54,39 +52,54 @@ func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, 
 		input.AuthorLabel = "You"
 	}
 
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO review_comments (
-			id, review_id, file_path, diff_section, side, line_number,
-			start_line_number, start_side,
-			author_label, body_html, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, commentID, reviewID, input.FilePath, input.DiffSection, input.Side, input.LineNumber,
-		nullableInt(input.StartLineNumber), nullableString(input.StartSide),
-		input.AuthorLabel, input.BodyHTML, now, now)
+	row := ReviewCommentRow{
+		ID:              commentID,
+		ReviewID:        reviewID,
+		FilePath:        input.FilePath,
+		DiffSection:     input.DiffSection,
+		Side:            input.Side,
+		LineNumber:      input.LineNumber,
+		StartLineNumber: input.StartLineNumber,
+		StartSide:       nullableStringPtr(input.StartSide),
+		AuthorLabel:     input.AuthorLabel,
+		BodyHTML:        input.BodyHTML,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
 		return ReviewComment{}, err
 	}
 
 	_, _ = r.events.Add(ctx, reviewID, ReviewEventInput{Type: "comment_added", FilePath: input.FilePath, Message: fmt.Sprintf("Commented on line %d", input.LineNumber)})
 
 	return ReviewComment{
-		ID: commentID, ReviewID: reviewID, FilePath: input.FilePath, DiffSection: input.DiffSection,
-		Side: input.Side, LineNumber: input.LineNumber,
-		StartLineNumber: input.StartLineNumber, StartSide: input.StartSide,
-		AuthorLabel: input.AuthorLabel, BodyHTML: input.BodyHTML, CreatedAt: now, UpdatedAt: now,
+		ID:              commentID,
+		ReviewID:        reviewID,
+		FilePath:        input.FilePath,
+		DiffSection:     input.DiffSection,
+		Side:            input.Side,
+		LineNumber:      input.LineNumber,
+		StartLineNumber: input.StartLineNumber,
+		StartSide:       input.StartSide,
+		AuthorLabel:     input.AuthorLabel,
+		BodyHTML:        input.BodyHTML,
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}, nil
 }
 
 func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID string, commentID string, bodyHTML string) (ReviewComment, error) {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
-	_, err := r.db.ExecContext(ctx, `
-		UPDATE review_comments
-		SET body_html = ?, updated_at = ?, deleted_at = NULL
-		WHERE id = ? AND review_id = ?
-	`, bodyHTML, now, commentID, reviewID)
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).
+		Model(&ReviewCommentRow{}).
+		Where("id = ? AND review_id = ?", commentID, reviewID).
+		Updates(map[string]any{
+			"body_html":  bodyHTML,
+			"updated_at": now,
+			"deleted_at": nil,
+		}).Error; err != nil {
 		return ReviewComment{}, err
 	}
 
@@ -104,13 +117,14 @@ func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID string, 
 func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID string, commentID string) error {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 	comment, _ := r.GetReviewComment(ctx, reviewID, commentID)
-	_, err := r.db.ExecContext(ctx, `
-		UPDATE review_comments
-		SET deleted_at = ?, updated_at = ?
-		WHERE id = ? AND review_id = ?
-	`, now, now, commentID, reviewID)
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).
+		Model(&ReviewCommentRow{}).
+		Where("id = ? AND review_id = ?", commentID, reviewID).
+		Updates(map[string]any{
+			"deleted_at": now,
+			"updated_at": now,
+		}).Error; err != nil {
 		return err
 	}
 
@@ -122,77 +136,58 @@ func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID string, 
 }
 
 func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID string, commentID string) (ReviewComment, error) {
-	row := r.db.QueryRowContext(ctx, `
-		SELECT id, review_id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html, created_at, updated_at, deleted_at
-		FROM review_comments
-		WHERE id = ? AND review_id = ?
-	`, commentID, reviewID)
+	var row ReviewCommentRow
 
-	return scanComment(row)
-}
-
-func (r *CommentRepo) ListReviewComments(ctx context.Context, reviewID string) ([]ReviewComment, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, review_id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html, created_at, updated_at, deleted_at
-		FROM review_comments
-		WHERE review_id = ? AND deleted_at IS NULL
-		ORDER BY created_at ASC
-	`, reviewID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	comments := []ReviewComment{}
-
-	for rows.Next() {
-		comment, err := scanComment(rows)
-
-		if err != nil {
-			return nil, err
-		}
-
-		comments = append(comments, comment)
-	}
-
-	return comments, rows.Err()
-}
-
-func scanComment(row scanner) (ReviewComment, error) {
-	var (
-		comment         ReviewComment
-		startLineNumber sql.NullInt64
-		startSide       sql.NullString
-		deletedAt       sql.NullString
-	)
-
-	if err := row.Scan(
-		&comment.ID,
-		&comment.ReviewID,
-		&comment.FilePath,
-		&comment.DiffSection,
-		&comment.Side,
-		&comment.LineNumber,
-		&startLineNumber,
-		&startSide,
-		&comment.AuthorLabel,
-		&comment.BodyHTML,
-		&comment.CreatedAt,
-		&comment.UpdatedAt,
-		&deletedAt,
-	); err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("id = ? AND review_id = ?", commentID, reviewID).
+		Take(&row).Error; err != nil {
 		return ReviewComment{}, err
 	}
 
-	if startLineNumber.Valid {
-		v := startLineNumber.Int64
-		comment.StartLineNumber = &v
+	return toReviewComment(row), nil
+}
+
+func (r *CommentRepo) ListReviewComments(ctx context.Context, reviewID string) ([]ReviewComment, error) {
+	var rows []ReviewCommentRow
+
+	if err := r.db.WithContext(ctx).
+		Where("review_id = ? AND deleted_at IS NULL", reviewID).
+		Order("created_at ASC").
+		Find(&rows).Error; err != nil {
+		return nil, err
 	}
 
-	comment.StartSide = fromNull(startSide)
-	comment.DeletedAt = fromNull(deletedAt)
+	comments := make([]ReviewComment, 0, len(rows))
 
-	return comment, nil
+	for _, row := range rows {
+		comments = append(comments, toReviewComment(row))
+	}
+
+	return comments, nil
+}
+
+func toReviewComment(row ReviewCommentRow) ReviewComment {
+	comment := ReviewComment{
+		ID:              row.ID,
+		ReviewID:        row.ReviewID,
+		FilePath:        row.FilePath,
+		DiffSection:     row.DiffSection,
+		Side:            row.Side,
+		LineNumber:      row.LineNumber,
+		StartLineNumber: row.StartLineNumber,
+		AuthorLabel:     row.AuthorLabel,
+		BodyHTML:        row.BodyHTML,
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
+	}
+
+	if row.StartSide != nil {
+		comment.StartSide = *row.StartSide
+	}
+
+	if row.DeletedAt != nil {
+		comment.DeletedAt = *row.DeletedAt
+	}
+
+	return comment
 }

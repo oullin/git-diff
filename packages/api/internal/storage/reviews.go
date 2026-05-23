@@ -2,11 +2,10 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
 )
 
 type ReviewSessionStart struct {
@@ -48,14 +47,13 @@ type ReviewDetail struct {
 }
 
 type ReviewRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
-	events  *ReviewEventRepo
+	db     *gorm.DB
+	clk    *clock
+	events *ReviewEventRepo
 }
 
-func newReviewRepo(conn *sql.DB, queries *db.Queries, clk *clock, events *ReviewEventRepo) *ReviewRepo {
-	return &ReviewRepo{db: conn, queries: queries, clk: clk, events: events}
+func newReviewRepo(db *gorm.DB, clk *clock, events *ReviewEventRepo) *ReviewRepo {
+	return &ReviewRepo{db: db, clk: clk, events: events}
 }
 
 func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review ReviewSessionStart) (ReviewSession, error) {
@@ -76,14 +74,24 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 		contextKind = "working"
 	}
 
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO review_sessions (
-			id, repo_root, user_id, branch, head_sha, status, title, summary,
-			files_changed, additions, deletions, started_at, context_kind, context_sha
-		) VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?)
-	`, review.ID, review.RepoRoot, userID, review.Branch, review.HeadSHA, title, review.Summary, review.FilesChanged, review.Additions, review.Deletions, now, contextKind, nullString(review.ContextSHA))
+	row := ReviewSessionRow{
+		ID:           review.ID,
+		RepoRoot:     review.RepoRoot,
+		UserID:       userID,
+		Branch:       review.Branch,
+		HeadSHA:      review.HeadSHA,
+		Status:       "open",
+		Title:        title,
+		Summary:      review.Summary,
+		FilesChanged: review.FilesChanged,
+		Additions:    review.Additions,
+		Deletions:    review.Deletions,
+		StartedAt:    now,
+		ContextKind:  contextKind,
+		ContextSHA:   nullableStringPtr(review.ContextSHA),
+	}
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
 		return ReviewSession{}, err
 	}
 
@@ -121,48 +129,34 @@ func (r *ReviewRepo) ListReviews(ctx context.Context, userID int64, limit int64)
 		limit = 50
 	}
 
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
-			files_changed, additions, deletions, started_at, completed_at,
-			context_kind, context_sha
-		FROM review_sessions
-		WHERE user_id = ?
-		ORDER BY started_at DESC
-		LIMIT ?
-	`, userID, limit)
+	var rows []ReviewSessionRow
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).
+		Order("started_at DESC").
+		Limit(int(limit)).
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
+	reviews := make([]ReviewSession, 0, len(rows))
 
-	reviews := []ReviewSession{}
-
-	for rows.Next() {
-		review, err := scanReview(rows)
-
-		if err != nil {
-			return nil, err
-		}
-
-		reviews = append(reviews, review)
+	for _, row := range rows {
+		reviews = append(reviews, toReviewSession(row))
 	}
 
-	return reviews, rows.Err()
+	return reviews, nil
 }
 
 // GetReviewByID returns the session without its events or comments.
 func (r *ReviewRepo) GetReviewByID(ctx context.Context, id string) (ReviewSession, error) {
-	row := r.db.QueryRowContext(ctx, `
-		SELECT id, repo_root, user_id, branch, head_sha, status, title, summary,
-			files_changed, additions, deletions, started_at, completed_at,
-			context_kind, context_sha
-		FROM review_sessions
-		WHERE id = ?
-	`, id)
+	var row ReviewSessionRow
 
-	return scanReview(row)
+	if err := r.db.WithContext(ctx).Where("id = ?", id).Take(&row).Error; err != nil {
+		return ReviewSession{}, err
+	}
+
+	return toReviewSession(row), nil
 }
 
 func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id string) (ReviewDetail, error) {
@@ -187,36 +181,38 @@ func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id
 	return ReviewDetail{Review: review, Events: events, Comments: commentList}, nil
 }
 
-func scanReview(row scanner) (ReviewSession, error) {
-	var review ReviewSession
-
-	var (
-		completedAt sql.NullString
-		contextSHA  sql.NullString
-	)
-
-	if err := row.Scan(
-		&review.ID,
-		&review.RepoRoot,
-		&review.UserID,
-		&review.Branch,
-		&review.HeadSHA,
-		&review.Status,
-		&review.Title,
-		&review.Summary,
-		&review.FilesChanged,
-		&review.Additions,
-		&review.Deletions,
-		&review.StartedAt,
-		&completedAt,
-		&review.ContextKind,
-		&contextSHA,
-	); err != nil {
-		return ReviewSession{}, err
+func toReviewSession(row ReviewSessionRow) ReviewSession {
+	review := ReviewSession{
+		ID:           row.ID,
+		RepoRoot:     row.RepoRoot,
+		UserID:       row.UserID,
+		Branch:       row.Branch,
+		HeadSHA:      row.HeadSHA,
+		Status:       row.Status,
+		Title:        row.Title,
+		Summary:      row.Summary,
+		FilesChanged: row.FilesChanged,
+		Additions:    row.Additions,
+		Deletions:    row.Deletions,
+		StartedAt:    row.StartedAt,
+		ContextKind:  row.ContextKind,
 	}
 
-	review.CompletedAt = fromNull(completedAt)
-	review.ContextSHA = fromNull(contextSHA)
+	if row.CompletedAt != nil {
+		review.CompletedAt = *row.CompletedAt
+	}
 
-	return review, nil
+	if row.ContextSHA != nil {
+		review.ContextSHA = *row.ContextSHA
+	}
+
+	return review
+}
+
+func nullableStringPtr(value string) *string {
+	if value == "" {
+		return nil
+	}
+
+	return &value
 }

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
 )
 
 // PendingComment is a draft scoped by (user_id, repo_root, context_kind,
@@ -44,13 +44,12 @@ type PendingCommentInput struct {
 }
 
 type PendingCommentRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
+	db  *gorm.DB
+	clk *clock
 }
 
-func newPendingCommentRepo(conn *sql.DB, queries *db.Queries, clk *clock) *PendingCommentRepo {
-	return &PendingCommentRepo{db: conn, queries: queries, clk: clk}
+func newPendingCommentRepo(db *gorm.DB, clk *clock) *PendingCommentRepo {
+	return &PendingCommentRepo{db: db, clk: clk}
 }
 
 func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID int64, id string, input PendingCommentInput) (PendingComment, error) {
@@ -65,23 +64,7 @@ func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID in
 		kind = "working"
 	}
 
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO pending_comments (
-			id, user_id, repo_root, context_kind, context_sha,
-			file_path, diff_section, side, line_number,
-			start_line_number, start_side,
-			author_label, body_html, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, id, userID, input.RepoRoot, kind, input.ContextSHA,
-		input.FilePath, input.DiffSection, input.Side, input.LineNumber,
-		nullableInt(input.StartLineNumber), nullableString(input.StartSide),
-		input.AuthorLabel, input.BodyHTML, now, now)
-
-	if err != nil {
-		return PendingComment{}, err
-	}
-
-	return PendingComment{
+	row := PendingCommentRow{
 		ID:              id,
 		UserID:          userID,
 		RepoRoot:        input.RepoRoot,
@@ -92,29 +75,36 @@ func (r *PendingCommentRepo) CreatePendingComment(ctx context.Context, userID in
 		Side:            input.Side,
 		LineNumber:      input.LineNumber,
 		StartLineNumber: input.StartLineNumber,
-		StartSide:       input.StartSide,
+		StartSide:       nullableStringPtr(input.StartSide),
 		AuthorLabel:     input.AuthorLabel,
 		BodyHTML:        input.BodyHTML,
 		CreatedAt:       now,
 		UpdatedAt:       now,
-	}, nil
+	}
+
+	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
+		return PendingComment{}, err
+	}
+
+	return toPendingComment(row), nil
 }
 
 func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID int64, id, bodyHTML string) (PendingComment, error) {
 	now := r.clk.now().UTC().Format(time.RFC3339Nano)
 
-	result, err := r.db.ExecContext(ctx, `
-		UPDATE pending_comments SET body_html = ?, updated_at = ?
-		WHERE id = ? AND user_id = ?
-	`, bodyHTML, now, id, userID)
+	result := r.db.WithContext(ctx).
+		Model(&PendingCommentRow{}).
+		Where("id = ? AND user_id = ?", id, userID).
+		Updates(map[string]any{
+			"body_html":  bodyHTML,
+			"updated_at": now,
+		})
 
-	if err != nil {
-		return PendingComment{}, err
+	if result.Error != nil {
+		return PendingComment{}, result.Error
 	}
 
-	affected, _ := result.RowsAffected()
-
-	if affected == 0 {
+	if result.RowsAffected == 0 {
 		return PendingComment{}, sql.ErrNoRows
 	}
 
@@ -122,22 +112,21 @@ func (r *PendingCommentRepo) UpdatePendingComment(ctx context.Context, userID in
 }
 
 func (r *PendingCommentRepo) GetPendingComment(ctx context.Context, userID int64, id string) (PendingComment, error) {
-	row := r.db.QueryRowContext(ctx, `
-		SELECT id, user_id, repo_root, context_kind, context_sha,
-			file_path, diff_section, side, line_number,
-			start_line_number, start_side,
-			author_label, body_html, created_at, updated_at
-		FROM pending_comments
-		WHERE id = ? AND user_id = ?
-	`, id, userID)
+	var row PendingCommentRow
 
-	return scanPendingComment(row)
+	if err := r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", id, userID).
+		Take(&row).Error; err != nil {
+		return PendingComment{}, err
+	}
+
+	return toPendingComment(row), nil
 }
 
 func (r *PendingCommentRepo) DeletePendingComment(ctx context.Context, userID int64, id string) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM pending_comments WHERE id = ? AND user_id = ?", id, userID)
-
-	return err
+	return r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", id, userID).
+		Delete(&PendingCommentRow{}).Error
 }
 
 func (r *PendingCommentRepo) ListPendingComments(ctx context.Context, userID int64, repoRoot, contextKind, contextSHA string) ([]PendingComment, error) {
@@ -145,160 +134,123 @@ func (r *PendingCommentRepo) ListPendingComments(ctx context.Context, userID int
 		contextKind = "working"
 	}
 
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, repo_root, context_kind, context_sha,
-			file_path, diff_section, side, line_number,
-			start_line_number, start_side,
-			author_label, body_html, created_at, updated_at
-		FROM pending_comments
-		WHERE user_id = ? AND repo_root = ? AND context_kind = ? AND context_sha = ?
-		ORDER BY file_path, line_number, created_at
-	`, userID, repoRoot, contextKind, contextSHA)
+	var rows []PendingCommentRow
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ? AND repo_root = ? AND context_kind = ? AND context_sha = ?", userID, repoRoot, contextKind, contextSHA).
+		Order("file_path, line_number, created_at").
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
+	comments := make([]PendingComment, 0, len(rows))
 
-	comments := []PendingComment{}
-
-	for rows.Next() {
-		comment, err := scanPendingComment(rows)
-
-		if err != nil {
-			return nil, err
-		}
-
-		comments = append(comments, comment)
+	for _, row := range rows {
+		comments = append(comments, toPendingComment(row))
 	}
 
-	return comments, rows.Err()
+	return comments, nil
 }
 
-// PromotePendingComments runs in one transaction so a mid-promotion crash
-// can't leave partial state across pending and review tables.
+// PromotePendingComments moves every pending row that matches a review's scope
+// into review_comments inside a single transaction. Issues exactly three
+// statements regardless of row count: one SELECT for the review scope, one
+// batched INSERT, one bulk DELETE — replacing the previous per-row loop.
 func (r *PendingCommentRepo) PromotePendingComments(ctx context.Context, userID int64, reviewID string) (int, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+	var promoted int
+
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var review ReviewSessionRow
+
+		if err := tx.Select("repo_root", "context_kind", "context_sha").
+			Where("id = ? AND user_id = ?", reviewID, userID).
+			Take(&review).Error; err != nil {
+			return err
+		}
+
+		contextSHA := ""
+
+		if review.ContextSHA != nil {
+			contextSHA = *review.ContextSHA
+		}
+
+		var pending []PendingCommentRow
+
+		if err := tx.Where("user_id = ? AND repo_root = ? AND context_kind = ? AND context_sha = ?",
+			userID, review.RepoRoot, review.ContextKind, contextSHA).
+			Find(&pending).Error; err != nil {
+			return err
+		}
+
+		if len(pending) == 0 {
+			return nil
+		}
+
+		now := r.clk.now().UTC().Format(time.RFC3339Nano)
+
+		comments := make([]ReviewCommentRow, 0, len(pending))
+		ids := make([]string, 0, len(pending))
+
+		for _, p := range pending {
+			comments = append(comments, ReviewCommentRow{
+				ID:              "comment-" + p.ID,
+				ReviewID:        reviewID,
+				FilePath:        p.FilePath,
+				DiffSection:     p.DiffSection,
+				Side:            p.Side,
+				LineNumber:      p.LineNumber,
+				StartLineNumber: p.StartLineNumber,
+				StartSide:       p.StartSide,
+				AuthorLabel:     p.AuthorLabel,
+				BodyHTML:        p.BodyHTML,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			})
+
+			ids = append(ids, p.ID)
+		}
+
+		if err := tx.CreateInBatches(&comments, 200).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("id IN ?", ids).Delete(&PendingCommentRow{}).Error; err != nil {
+			return err
+		}
+
+		promoted = len(pending)
+
+		return nil
+	})
 
 	if err != nil {
 		return 0, err
 	}
 
-	defer func() { _ = tx.Rollback() }()
-
-	row := tx.QueryRowContext(ctx, `
-		SELECT repo_root, context_kind, context_sha FROM review_sessions WHERE id = ? AND user_id = ?
-	`, reviewID, userID)
-
-	var (
-		repoRoot   string
-		kind       string
-		contextSHA sql.NullString
-	)
-
-	if err := row.Scan(&repoRoot, &kind, &contextSHA); err != nil {
-		return 0, err
-	}
-
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
-
-	rows, err := tx.QueryContext(ctx, `
-		SELECT id, file_path, diff_section, side, line_number, start_line_number, start_side, author_label, body_html
-		FROM pending_comments
-		WHERE user_id = ? AND repo_root = ? AND context_kind = ? AND context_sha = ?
-	`, userID, repoRoot, kind, fromNull(contextSHA))
-
-	if err != nil {
-		return 0, err
-	}
-
-	type promote struct {
-		id, filePath, diffSection, side, authorLabel, bodyHTML string
-		lineNumber                                             int64
-		startLineNumber                                        sql.NullInt64
-		startSide                                              sql.NullString
-	}
-
-	pending := []promote{}
-
-	for rows.Next() {
-		var p promote
-
-		if err := rows.Scan(&p.id, &p.filePath, &p.diffSection, &p.side, &p.lineNumber, &p.startLineNumber, &p.startSide, &p.authorLabel, &p.bodyHTML); err != nil {
-			rows.Close()
-
-			return 0, err
-		}
-
-		pending = append(pending, p)
-	}
-
-	rows.Close()
-
-	for _, p := range pending {
-		newID := "comment-" + p.id
-
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO review_comments (
-				id, review_id, file_path, diff_section, side, line_number,
-				start_line_number, start_side,
-				author_label, body_html, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, newID, reviewID, p.filePath, p.diffSection, p.side, p.lineNumber,
-			p.startLineNumber, p.startSide,
-			p.authorLabel, p.bodyHTML, now, now); err != nil {
-			return 0, err
-		}
-
-		if _, err := tx.ExecContext(ctx, `DELETE FROM pending_comments WHERE id = ?`, p.id); err != nil {
-			return 0, err
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
-
-	return len(pending), nil
+	return promoted, nil
 }
 
-func scanPendingComment(row scanner) (PendingComment, error) {
-	var (
-		comment         PendingComment
-		contextSHA      sql.NullString
-		startLineNumber sql.NullInt64
-		startSide       sql.NullString
-	)
-
-	if err := row.Scan(
-		&comment.ID,
-		&comment.UserID,
-		&comment.RepoRoot,
-		&comment.ContextKind,
-		&contextSHA,
-		&comment.FilePath,
-		&comment.DiffSection,
-		&comment.Side,
-		&comment.LineNumber,
-		&startLineNumber,
-		&startSide,
-		&comment.AuthorLabel,
-		&comment.BodyHTML,
-		&comment.CreatedAt,
-		&comment.UpdatedAt,
-	); err != nil {
-		return PendingComment{}, err
+func toPendingComment(row PendingCommentRow) PendingComment {
+	comment := PendingComment{
+		ID:              row.ID,
+		UserID:          row.UserID,
+		RepoRoot:        row.RepoRoot,
+		ContextKind:     row.ContextKind,
+		ContextSHA:      row.ContextSHA,
+		FilePath:        row.FilePath,
+		DiffSection:     row.DiffSection,
+		Side:            row.Side,
+		LineNumber:      row.LineNumber,
+		StartLineNumber: row.StartLineNumber,
+		AuthorLabel:     row.AuthorLabel,
+		BodyHTML:        row.BodyHTML,
+		CreatedAt:       row.CreatedAt,
+		UpdatedAt:       row.UpdatedAt,
 	}
 
-	comment.ContextSHA = fromNull(contextSHA)
-
-	if startLineNumber.Valid {
-		v := startLineNumber.Int64
-		comment.StartLineNumber = &v
+	if row.StartSide != nil {
+		comment.StartSide = *row.StartSide
 	}
 
-	comment.StartSide = fromNull(startSide)
-
-	return comment, nil
+	return comment
 }

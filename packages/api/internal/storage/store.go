@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
 	_ "github.com/mattn/go-sqlite3"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -25,10 +24,9 @@ type clock struct {
 }
 
 type Store struct {
-	db      *sql.DB
-	gdb     *gorm.DB
-	queries *db.Queries
-	clk     *clock
+	db  *sql.DB
+	gdb *gorm.DB
+	clk *clock
 
 	Users           *UserRepo
 	Sessions        *SessionRepo
@@ -75,20 +73,18 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	}
 
 	clk := &clock{now: time.Now}
-	queries := db.New(conn)
-	reviewEvents := newReviewEventRepo(conn, queries, clk)
+	reviewEvents := newReviewEventRepo(gdb, clk)
 
 	store := &Store{
 		db:              conn,
 		gdb:             gdb,
-		queries:         queries,
 		clk:             clk,
 		Users:           newUserRepo(gdb, clk),
 		Sessions:        newSessionRepo(gdb, clk),
-		Reviews:         newReviewRepo(conn, queries, clk, reviewEvents),
+		Reviews:         newReviewRepo(gdb, clk, reviewEvents),
 		ReviewEvents:    reviewEvents,
-		Comments:        newCommentRepo(conn, queries, clk, reviewEvents),
-		PendingComments: newPendingCommentRepo(conn, queries, clk),
+		Comments:        newCommentRepo(gdb, clk, reviewEvents),
+		PendingComments: newPendingCommentRepo(gdb, clk),
 		Branches:        newBranchRepo(gdb, clk),
 		Repos:           newRepoRepo(gdb, clk),
 		Collaborators:   newCollaboratorRepo(gdb, clk),

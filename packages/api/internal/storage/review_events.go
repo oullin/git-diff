@@ -2,10 +2,9 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/storage/db"
+	"gorm.io/gorm"
 )
 
 type ReviewEventInput struct {
@@ -26,13 +25,12 @@ type ReviewEvent struct {
 }
 
 type ReviewEventRepo struct {
-	db      *sql.DB
-	queries *db.Queries
-	clk     *clock
+	db  *gorm.DB
+	clk *clock
 }
 
-func newReviewEventRepo(conn *sql.DB, queries *db.Queries, clk *clock) *ReviewEventRepo {
-	return &ReviewEventRepo{db: conn, queries: queries, clk: clk}
+func newReviewEventRepo(db *gorm.DB, clk *clock) *ReviewEventRepo {
+	return &ReviewEventRepo{db: db, clk: clk}
 }
 
 func (r *ReviewEventRepo) Add(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error) {
@@ -43,49 +41,53 @@ func (r *ReviewEventRepo) Add(ctx context.Context, reviewID string, input Review
 		metadata = "{}"
 	}
 
-	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO review_events (review_id, event_type, file_path, message, metadata, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, reviewID, input.Type, input.FilePath, input.Message, metadata, now)
+	row := ReviewEventRow{
+		ReviewID:  reviewID,
+		EventType: input.Type,
+		FilePath:  input.FilePath,
+		Message:   input.Message,
+		Metadata:  metadata,
+		CreatedAt: now,
+	}
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).Create(&row).Error; err != nil {
 		return ReviewEvent{}, err
 	}
 
-	id, err := result.LastInsertId()
-
-	if err != nil {
-		return ReviewEvent{}, err
-	}
-
-	return ReviewEvent{ID: id, ReviewID: reviewID, Type: input.Type, FilePath: input.FilePath, Message: input.Message, Metadata: metadata, CreatedAt: now}, nil
+	return ReviewEvent{
+		ID:        row.ID,
+		ReviewID:  reviewID,
+		Type:      input.Type,
+		FilePath:  input.FilePath,
+		Message:   input.Message,
+		Metadata:  metadata,
+		CreatedAt: now,
+	}, nil
 }
 
 func (r *ReviewEventRepo) List(ctx context.Context, reviewID string) ([]ReviewEvent, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, review_id, event_type, file_path, message, metadata, created_at
-		FROM review_events
-		WHERE review_id = ?
-		ORDER BY created_at ASC, id ASC
-	`, reviewID)
+	var rows []ReviewEventRow
 
-	if err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("review_id = ?", reviewID).
+		Order("created_at ASC, id ASC").
+		Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
+	events := make([]ReviewEvent, 0, len(rows))
 
-	events := []ReviewEvent{}
-
-	for rows.Next() {
-		var event ReviewEvent
-
-		if err := rows.Scan(&event.ID, &event.ReviewID, &event.Type, &event.FilePath, &event.Message, &event.Metadata, &event.CreatedAt); err != nil {
-			return nil, err
-		}
-
-		events = append(events, event)
+	for _, row := range rows {
+		events = append(events, ReviewEvent{
+			ID:        row.ID,
+			ReviewID:  row.ReviewID,
+			Type:      row.EventType,
+			FilePath:  row.FilePath,
+			Message:   row.Message,
+			Metadata:  row.Metadata,
+			CreatedAt: row.CreatedAt,
+		})
 	}
 
-	return events, rows.Err()
+	return events, nil
 }
