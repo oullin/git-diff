@@ -25,6 +25,11 @@ export interface BridgeError extends Error {
     files?: string[];
 }
 export declare function isBridgeError(value: unknown): value is BridgeError;
+/** Raw byte response from a binary endpoint (e.g. /v1/repository/file/raw). */
+export interface BytesResponse {
+    data: Uint8Array;
+    mime: string;
+}
 export interface HttpTransport {
     request<Response>(
         method: HttpMethod,
@@ -32,6 +37,12 @@ export interface HttpTransport {
         body?: JsonBody,
         timeoutMs?: number,
     ): Promise<Response>;
+    /**
+     * GET path and return the raw response body plus its Content-Type.
+     * Errors follow the same BridgeError shape as request(). For non-JSON
+     * error responses the message is the raw body.
+     */
+    requestBytes(path: string, timeoutMs?: number): Promise<BytesResponse>;
 }
 export declare class SocketHttpTransport implements HttpTransport {
     private readonly socketPath;
@@ -42,6 +53,7 @@ export declare class SocketHttpTransport implements HttpTransport {
         body?: JsonBody,
         timeoutMs?: number,
     ): Promise<Response>;
+    requestBytes(path: string, timeoutMs?: number): Promise<BytesResponse>;
 }
 export declare function requestJson<Response>(
     socketPath: string,
@@ -50,4 +62,10 @@ export declare function requestJson<Response>(
     body?: JsonBody,
     timeoutMs?: number,
 ): Promise<Response>;
+export declare function requestBytes(
+    socketPath: string,
+    path: string,
+    timeoutMs?: number,
+): Promise<BytesResponse>;
+export declare function consumeBytes(res: IncomingMessage): Promise<Uint8Array>;
 export declare function consumeBody(res: IncomingMessage): Promise<string>;

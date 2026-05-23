@@ -43,6 +43,12 @@ export function register(router: IpcRouter, deps: IpcDeps): void {
         ) => (await client()).repository.readFileRange(request),
     );
 
+    router.on(
+        "repository:file:bytes",
+        async (_event, request: { root?: string; path: string; ref?: string }) =>
+            (await client()).repository.readFileBytes(request),
+    );
+
     router.on("repository:choose", async (_event, defaultPath?: string) => {
         const options: OpenDialogOptions = {
             defaultPath,

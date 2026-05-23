@@ -39,6 +39,22 @@ export class RepositoryClient {
         const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
         return this.transport.request("GET", `/v1/repository/file${query}`);
     }
+    /**
+     * Fetch the raw bytes of a file at a given ref. Empty ref reads the
+     * working tree, ":0" reads the index, otherwise treated as a git ref.
+     * Returns the bytes plus the Content-Type so the renderer can build
+     * an object URL for inline image display.
+     */
+    readFileBytes(request) {
+        const parts = [`path=${encodeURIComponent(request.path)}`];
+        if (request.root) {
+            parts.push(`root=${encodeURIComponent(request.root)}`);
+        }
+        if (request.ref !== undefined) {
+            parts.push(`ref=${encodeURIComponent(request.ref)}`);
+        }
+        return this.transport.requestBytes(`/v1/repository/file/raw?${parts.join("&")}`);
+    }
     readFileRange(request) {
         const parts = [
             `root=${encodeURIComponent(request.root)}`,

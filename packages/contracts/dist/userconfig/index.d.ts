@@ -21,5 +21,8 @@ export interface UserConfig {
     last_repository_path: string;
     walkthrough: WalkthroughConfig;
     keymap: Keymap;
+    /** Absolute path to the YAML file (~/.git-diff/config.yaml). The
+     *  renderer uses this to invoke shell.openPath without re-deriving it. */
+    path: string;
 }
 //# sourceMappingURL=index.d.ts.map

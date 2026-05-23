@@ -11,6 +11,9 @@ export class SocketHttpTransport {
     request(method, path, body, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
         return requestJson(this.socketPath, method, path, body, timeoutMs);
     }
+    requestBytes(path, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
+        return requestBytes(this.socketPath, path, timeoutMs);
+    }
 }
 export function requestJson(
     socketPath,
@@ -78,6 +81,64 @@ export function requestJson(
             req.write(payload);
         }
         req.end();
+    });
+}
+export function requestBytes(socketPath, path, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        const fail = (error) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            reject(error);
+        };
+        const succeed = (value) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            resolve(value);
+        };
+        const req = httpRequest(
+            { socketPath, method: "GET", path, headers: { Accept: "*/*" } },
+            (res) => {
+                consumeBytes(res)
+                    .then((data) => {
+                        const status = res.statusCode ?? 0;
+                        if (status === 200 || status === 201) {
+                            succeed({
+                                data,
+                                mime: res.headers["content-type"] ?? "application/octet-stream",
+                            });
+                            return;
+                        }
+                        // Error bodies come back as JSON via writeError on the
+                        // Go side; reuse the JSON error path by decoding the
+                        // body as UTF-8.
+                        const raw = Buffer.from(data).toString("utf8");
+                        fail(buildHttpError("GET", path, res, raw));
+                    })
+                    .catch((error) =>
+                        fail(transportError(`GET ${path} response read failed`, error)),
+                    );
+            },
+        );
+        req.setTimeout(timeoutMs, () => {
+            req.destroy(transportError(`GET ${path} timed out after ${timeoutMs}ms`));
+        });
+        req.on("error", (error) => fail(transportError(`GET ${path} transport error`, error)));
+        req.end();
+    });
+}
+export function consumeBytes(res) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        res.on("data", (chunk) => {
+            chunks.push(chunk);
+        });
+        res.on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))));
+        res.on("error", reject);
     });
 }
 export function consumeBody(res) {

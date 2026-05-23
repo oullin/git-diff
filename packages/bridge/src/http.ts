@@ -40,6 +40,12 @@ interface JsonErrorPayload {
     files?: unknown;
 }
 
+/** Raw byte response from a binary endpoint (e.g. /v1/repository/file/raw). */
+export interface BytesResponse {
+    data: Uint8Array;
+    mime: string;
+}
+
 export interface HttpTransport {
     request<Response>(
         method: HttpMethod,
@@ -47,6 +53,13 @@ export interface HttpTransport {
         body?: JsonBody,
         timeoutMs?: number,
     ): Promise<Response>;
+
+    /**
+     * GET path and return the raw response body plus its Content-Type.
+     * Errors follow the same BridgeError shape as request(). For non-JSON
+     * error responses the message is the raw body.
+     */
+    requestBytes(path: string, timeoutMs?: number): Promise<BytesResponse>;
 }
 
 export class SocketHttpTransport implements HttpTransport {
@@ -59,6 +72,10 @@ export class SocketHttpTransport implements HttpTransport {
         timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
     ): Promise<Response> {
         return requestJson<Response>(this.socketPath, method, path, body, timeoutMs);
+    }
+
+    requestBytes(path: string, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS): Promise<BytesResponse> {
+        return requestBytes(this.socketPath, path, timeoutMs);
     }
 }
 
@@ -142,6 +159,87 @@ export function requestJson<Response>(
         }
 
         req.end();
+    });
+}
+
+export function requestBytes(
+    socketPath: string,
+    path: string,
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+): Promise<BytesResponse> {
+    return new Promise<BytesResponse>((resolve, reject) => {
+        let settled = false;
+
+        const fail = (error: Error): void => {
+            if (settled) {
+                return;
+            }
+
+            settled = true;
+            reject(error);
+        };
+
+        const succeed = (value: BytesResponse): void => {
+            if (settled) {
+                return;
+            }
+
+            settled = true;
+            resolve(value);
+        };
+
+        const req = httpRequest(
+            { socketPath, method: "GET", path, headers: { Accept: "*/*" } },
+            (res) => {
+                consumeBytes(res)
+                    .then((data) => {
+                        const status = res.statusCode ?? 0;
+
+                        if (status === 200 || status === 201) {
+                            succeed({
+                                data,
+                                mime: (res.headers["content-type"] ??
+                                    "application/octet-stream") as string,
+                            });
+
+                            return;
+                        }
+
+                        // Error bodies come back as JSON via writeError on the
+                        // Go side; reuse the JSON error path by decoding the
+                        // body as UTF-8.
+                        const raw = Buffer.from(data).toString("utf8");
+
+                        fail(buildHttpError("GET", path, res, raw));
+                    })
+                    .catch((error: unknown) =>
+                        fail(transportError(`GET ${path} response read failed`, error)),
+                    );
+            },
+        );
+
+        req.setTimeout(timeoutMs, () => {
+            req.destroy(transportError(`GET ${path} timed out after ${timeoutMs}ms`));
+        });
+
+        req.on("error", (error: Error) =>
+            fail(transportError(`GET ${path} transport error`, error)),
+        );
+
+        req.end();
+    });
+}
+
+export function consumeBytes(res: IncomingMessage): Promise<Uint8Array> {
+    return new Promise<Uint8Array>((resolve, reject) => {
+        const chunks: Buffer[] = [];
+
+        res.on("data", (chunk: Buffer) => {
+            chunks.push(chunk);
+        });
+
+        res.on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))));
+        res.on("error", reject);
     });
 }
 

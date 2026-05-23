@@ -55,6 +55,8 @@ contextBridge.exposeInMainWorld("diffApp", {
         startLine: number;
         endLine: number;
     }) => ipcRenderer.invoke("repository:file:range", request),
+    readRepositoryFileBytes: (request: { root?: string; path: string; ref?: string }) =>
+        ipcRenderer.invoke("repository:file:bytes", request),
     listBranches: (path?: string) => ipcRenderer.invoke("repository:branches", path),
     checkoutBranch: (path: string, branch: string) =>
         ipcRenderer.invoke("repository:checkout", path, branch),
@@ -96,6 +98,7 @@ contextBridge.exposeInMainWorld("diffApp", {
     saveUIPreferences: (patch: Record<string, string>) =>
         ipcRenderer.invoke("ui-prefs:save", patch),
     getUserConfig: () => ipcRenderer.invoke("user-config:get"),
+    openUserConfigFile: () => ipcRenderer.invoke("user-config:open"),
     getAuthState: () => ipcRenderer.invoke("auth:state"),
     authBootstrap: () => ipcRenderer.invoke("auth:bootstrap"),
     authSetup: (password: string) => ipcRenderer.invoke("auth:setup", { password }),

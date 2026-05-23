@@ -1,6 +1,31 @@
-import { app, dialog, Menu, type MenuItemConstructorOptions } from "electron";
+import { app, dialog, Menu, type MenuItemConstructorOptions, shell } from "electron";
+import { client } from "#electron/bridge.js";
+import { recordDiagnostic } from "#electron/diagnostics.js";
 import { installTerminalHelper } from "#electron/terminal-helper.js";
 import { createWindow, focusMainWindow, getMainWindow } from "#electron/windows.js";
+
+async function openUserConfigInEditor(): Promise<void> {
+    try {
+        const cfg = await (await client()).userConfig.get();
+
+        if (!cfg.path) {
+            throw new Error("user config path is unavailable");
+        }
+
+        const err = await shell.openPath(cfg.path);
+
+        if (err) {
+            throw new Error(err);
+        }
+    } catch (error) {
+        recordDiagnostic({
+            level: "error",
+            source: "User Config",
+            message: "Failed to open user config in editor",
+            details: error instanceof Error ? error.stack || error.message : String(error),
+        });
+    }
+}
 
 function newWindowItem(): MenuItemConstructorOptions {
     return {
@@ -41,6 +66,13 @@ export function installApplicationMenu(): void {
                               label: "Install Terminal Helper…",
                               async click() {
                                   await installTerminalHelper();
+                              },
+                          },
+                          {
+                              label: "Open Config in Editor…",
+                              accelerator: "CmdOrCtrl+,",
+                              click: () => {
+                                  void openUserConfigInEditor();
                               },
                           },
                           { type: "separator" },

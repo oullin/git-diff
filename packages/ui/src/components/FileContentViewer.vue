@@ -1,16 +1,22 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { FileText, Loader2 } from "lucide-vue-next";
+import { isImagePath } from "@git-diff/contracts";
 import type { RepositoryFile } from "@git-diff/contracts";
 
 type Props = {
     file: RepositoryFile | null;
     path: string;
+    repoRoot?: string;
     loading?: boolean;
     error?: string;
 };
 
 const props = defineProps<Props>();
+
+const imageUrl = ref<string | null>(null);
+const imageError = ref<string | null>(null);
+const imageLoading = ref(false);
 
 const sizeLabel = computed(() => {
     const size = props.file?.size ?? 0;
@@ -25,6 +31,51 @@ const sizeLabel = computed(() => {
 
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 });
+
+const isImage = computed(() => isImagePath(props.path));
+
+function revoke(): void {
+    if (imageUrl.value) {
+        URL.revokeObjectURL(imageUrl.value);
+        imageUrl.value = null;
+    }
+}
+
+async function loadImage(): Promise<void> {
+    revoke();
+    imageError.value = null;
+
+    if (!isImage.value || !props.repoRoot) {
+        return;
+    }
+
+    imageLoading.value = true;
+
+    try {
+        const { data, mime } = await window.diffApp.readRepositoryFileBytes({
+            root: props.repoRoot,
+            path: props.path,
+        });
+
+        // Cast: IPC always backs Uint8Array with an ArrayBuffer (not Shared),
+        // but TS infers ArrayBufferLike which Blob's typing rejects.
+        const blob = new Blob([data as BlobPart], { type: mime || "application/octet-stream" });
+
+        imageUrl.value = URL.createObjectURL(blob);
+    } catch (error) {
+        imageError.value = error instanceof Error ? error.message : String(error);
+    } finally {
+        imageLoading.value = false;
+    }
+}
+
+watch(
+    () => [props.path, props.repoRoot, isImage.value].join("|"),
+    () => void loadImage(),
+    { immediate: true },
+);
+
+onBeforeUnmount(() => revoke());
 </script>
 
 <template>
@@ -56,7 +107,35 @@ const sizeLabel = computed(() => {
             </header>
 
             <div
-                v-if="file.binary"
+                v-if="isImage && imageLoading"
+                class="grid flex-1 place-items-center text-sm text-muted-foreground"
+            >
+                <div class="flex items-center gap-2">
+                    <Loader2 class="h-4 w-4 animate-spin" />
+                    Loading image…
+                </div>
+            </div>
+
+            <div
+                v-else-if="isImage && imageError"
+                class="grid flex-1 place-items-center p-8 text-sm text-destructive"
+            >
+                {{ imageError }}
+            </div>
+
+            <div
+                v-else-if="isImage && imageUrl"
+                class="grid flex-1 place-items-center overflow-auto p-4"
+            >
+                <img
+                    :src="imageUrl"
+                    :alt="path"
+                    :style="{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }"
+                />
+            </div>
+
+            <div
+                v-else-if="file.binary"
                 class="grid flex-1 place-items-center p-8 text-sm text-muted-foreground"
             >
                 Binary file ({{ sizeLabel }}) — preview unavailable.

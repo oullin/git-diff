@@ -7,6 +7,7 @@ export {
 export {
     type BridgeError,
     type BridgeErrorKind,
+    type BytesResponse,
     type HttpMethod,
     type HttpTransport,
     type JsonBody,

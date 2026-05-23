@@ -43,6 +43,7 @@ function fallbackUserConfig(): UserConfig {
             toggle_viewed: "v",
             toggle_whitespace: "w",
         },
+        path: "",
     };
 }
 
@@ -197,6 +198,10 @@ export function createMockDiffApp(): DiffAppApi {
             lines: [],
             eof: true,
         }),
+        readRepositoryFileBytes: async () => ({
+            data: new Uint8Array(),
+            mime: "application/octet-stream",
+        }),
         listBranches: async () => ({ branches: [state.branch] }),
         checkoutBranch: async () => state,
         createBranch: async (_path: string, name: string) => ({ ...state, branch: name }),
@@ -345,6 +350,9 @@ export function createMockDiffApp(): DiffAppApi {
         },
         getUIPreferences: async () => preferences,
         getUserConfig: async () => fallbackUserConfig(),
+        openUserConfigFile: async () => {
+            // No-op in browser fallback: there is no shell to invoke.
+        },
         saveUIPreferences: async (patch) => {
             const values = { ...preferences.values };
 

@@ -67,4 +67,12 @@ export interface RepositoryCollaborator {
     role: "write" | "read";
     grantedAt: string;
 }
+/**
+ * Lowercase file extensions (with leading dot) the renderer can display
+ * via the inline image-diff component. The backend serves the raw bytes
+ * regardless of extension — this list is purely a UI routing decision.
+ */
+export declare const IMAGE_EXTENSIONS: ReadonlyArray<string>;
+/** True when path's extension is in IMAGE_EXTENSIONS (case-insensitive). */
+export declare function isImagePath(path: string): boolean;
 //# sourceMappingURL=index.d.ts.map

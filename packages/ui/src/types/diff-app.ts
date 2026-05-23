@@ -73,6 +73,13 @@ export interface DiffAppApi {
         startLine: number;
         endLine: number;
     }): Promise<RepositoryFileRange>;
+    /** Fetches raw blob bytes for inline image rendering. ref="" reads the
+     *  working tree; ref=":0" reads the index; otherwise it's a git ref. */
+    readRepositoryFileBytes(request: {
+        root?: string;
+        path: string;
+        ref?: string;
+    }): Promise<{ data: Uint8Array; mime: string }>;
     listBranches(path?: string): Promise<{ branches: string[]; records?: Branch[] }>;
     checkoutBranch(path: string, branch: string): Promise<RepositoryState>;
     createBranch(path: string, name: string): Promise<RepositoryState>;
@@ -121,6 +128,10 @@ export interface DiffAppApi {
     getUIPreferences(): Promise<UserPreferences>;
     saveUIPreferences(patch: Record<string, string>): Promise<UserPreferences>;
     getUserConfig(): Promise<UserConfig>;
+    /** Opens ~/.git-diff/config.yaml in the OS default editor. The path is
+     *  resolved in the main process from the backend — the renderer cannot
+     *  pass an arbitrary path. */
+    openUserConfigFile(): Promise<void>;
     getAuthState(): Promise<AuthStateResponse>;
     authBootstrap(): Promise<AuthBootstrapResponse>;
     authSetup(password: string): Promise<AuthLoginResponse>;
