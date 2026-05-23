@@ -10,16 +10,16 @@ import type {
 export interface ReviewService {
     create(request: Partial<ReviewSession>): Promise<ReviewSession>;
     list(limit?: number): Promise<{ reviews: ReviewSession[] }>;
-    detail(id: string): Promise<ReviewDetail>;
+    detail(id: number): Promise<ReviewDetail>;
     addEvent(request: {
-        reviewId: string;
+        reviewId: number;
         type: string;
         filePath?: string;
         message?: string;
         metadata?: string;
     }): Promise<ReviewEvent>;
     createComment(request: {
-        reviewId: string;
+        reviewId: number;
         filePath: string;
         diffSection: string;
         side: string;
@@ -30,11 +30,11 @@ export interface ReviewService {
         bodyHtml: string;
     }): Promise<ReviewComment>;
     updateComment(request: {
-        reviewId: string;
-        commentId: string;
+        reviewId: number;
+        commentId: number;
         bodyHtml: string;
     }): Promise<ReviewComment>;
-    deleteComment(request: { reviewId: string; commentId: string }): Promise<void>;
+    deleteComment(request: { reviewId: number; commentId: number }): Promise<void>;
     listPendingComments(request: {
         path?: string;
         kind?: RepositoryMode;
@@ -53,9 +53,9 @@ export interface ReviewService {
         authorLabel: string;
         bodyHtml: string;
     }): Promise<PendingComment>;
-    updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment>;
-    deletePendingComment(id: string): Promise<void>;
-    promotePendingComments(reviewId: string): Promise<{ promoted: number }>;
+    updatePendingComment(request: { id: number; bodyHtml: string }): Promise<PendingComment>;
+    deletePendingComment(id: number): Promise<void>;
+    promotePendingComments(reviewId: number): Promise<{ promoted: number }>;
 }
 
 export function createReviewService(): ReviewService {

@@ -138,6 +138,6 @@ function applyJsonErrorPayload(error, raw) {
             }
         }
     } catch {
-        // Fall through with the generic error message.
+        // Generic error message remains in place.
     }
 }

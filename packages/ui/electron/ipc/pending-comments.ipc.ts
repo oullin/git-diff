@@ -18,15 +18,15 @@ export function register(router: IpcRouter): void {
 
     router.on(
         "pending-comments:update",
-        async (_event, request: { id: string; bodyHtml: string }) =>
+        async (_event, request: { id: number; bodyHtml: string }) =>
             (await client()).pendingComments.update(request),
     );
 
-    router.on("pending-comments:delete", async (_event, id: string) =>
+    router.on("pending-comments:delete", async (_event, id: number) =>
         (await client()).pendingComments.delete({ id }),
     );
 
-    router.on("pending-comments:promote", async (_event, reviewId: string) =>
+    router.on("pending-comments:promote", async (_event, reviewId: number) =>
         (await client()).pendingComments.promote({ reviewId }),
     );
 }

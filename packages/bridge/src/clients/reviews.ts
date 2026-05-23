@@ -18,15 +18,12 @@ export class ReviewClient {
         return this.transport.request<{ reviews: ReviewSession[] }>("GET", `/v1/reviews${query}`);
     }
 
-    detail(request: { id: string }): Promise<ReviewDetail> {
-        return this.transport.request<ReviewDetail>(
-            "GET",
-            `/v1/reviews/${encodeURIComponent(request.id)}`,
-        );
+    detail(request: { id: number }): Promise<ReviewDetail> {
+        return this.transport.request<ReviewDetail>("GET", `/v1/reviews/${request.id}`);
     }
 
     addEvent(request: {
-        reviewId: string;
+        reviewId: number;
         type: string;
         filePath?: string;
         message?: string;
@@ -34,7 +31,7 @@ export class ReviewClient {
     }): Promise<ReviewEvent> {
         return this.transport.request<ReviewEvent>(
             "POST",
-            `/v1/reviews/${encodeURIComponent(request.reviewId)}/events`,
+            `/v1/reviews/${request.reviewId}/events`,
             {
                 type: request.type,
                 filePath: request.filePath,
@@ -45,7 +42,7 @@ export class ReviewClient {
     }
 
     createComment(request: {
-        reviewId: string;
+        reviewId: number;
         filePath: string;
         diffSection: string;
         side: string;
@@ -57,7 +54,7 @@ export class ReviewClient {
     }): Promise<ReviewComment> {
         return this.transport.request<ReviewComment>(
             "POST",
-            `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments`,
+            `/v1/reviews/${request.reviewId}/comments`,
             {
                 filePath: request.filePath,
                 diffSection: request.diffSection,
@@ -72,21 +69,21 @@ export class ReviewClient {
     }
 
     updateComment(request: {
-        reviewId: string;
-        commentId: string;
+        reviewId: number;
+        commentId: number;
         bodyHtml: string;
     }): Promise<ReviewComment> {
         return this.transport.request<ReviewComment>(
             "PATCH",
-            `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
+            `/v1/reviews/${request.reviewId}/comments/${request.commentId}`,
             { bodyHtml: request.bodyHtml },
         );
     }
 
-    deleteComment(request: { reviewId: string; commentId: string }): Promise<void> {
+    deleteComment(request: { reviewId: number; commentId: number }): Promise<void> {
         return this.transport.request<void>(
             "DELETE",
-            `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
+            `/v1/reviews/${request.reviewId}/comments/${request.commentId}`,
         );
     }
 }

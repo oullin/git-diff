@@ -19,9 +19,9 @@ export declare class PendingCommentClient {
         authorLabel: string;
         bodyHtml: string;
     }): Promise<PendingComment>;
-    update(request: { id: string; bodyHtml: string }): Promise<PendingComment>;
-    delete(request: { id: string }): Promise<void>;
-    promote(request: { reviewId: string }): Promise<{
+    update(request: { id: number; bodyHtml: string }): Promise<PendingComment>;
+    delete(request: { id: number }): Promise<void>;
+    promote(request: { reviewId: number }): Promise<{
         promoted: number;
     }>;
 }

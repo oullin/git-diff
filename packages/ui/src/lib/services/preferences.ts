@@ -1,8 +1,8 @@
-import type { UIPreferences } from "@git-diff/contracts";
+import type { UserPreferences } from "@git-diff/contracts";
 
 export interface PreferenceService {
-    get(): Promise<UIPreferences>;
-    save(patch: Record<string, string>): Promise<UIPreferences>;
+    get(): Promise<UserPreferences>;
+    save(patch: Record<string, string>): Promise<UserPreferences>;
 }
 
 export function createPreferenceService(): PreferenceService {

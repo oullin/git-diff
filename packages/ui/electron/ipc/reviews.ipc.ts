@@ -10,7 +10,7 @@ export function register(router: IpcRouter): void {
         (await client()).reviews.list({ limit }),
     );
 
-    router.on("reviews:detail", async (_event, id: string) =>
+    router.on("reviews:detail", async (_event, id: number) =>
         (await client()).reviews.detail({ id }),
     );
 
@@ -19,7 +19,7 @@ export function register(router: IpcRouter): void {
         async (
             _event,
             request: {
-                reviewId: string;
+                reviewId: number;
                 type: string;
                 filePath?: string;
                 message?: string;
@@ -33,7 +33,7 @@ export function register(router: IpcRouter): void {
         async (
             _event,
             request: {
-                reviewId: string;
+                reviewId: number;
                 filePath: string;
                 diffSection: string;
                 side: string;
@@ -49,8 +49,8 @@ export function register(router: IpcRouter): void {
         async (
             _event,
             request: {
-                reviewId: string;
-                commentId: string;
+                reviewId: number;
+                commentId: number;
                 bodyHtml: string;
             },
         ) => (await client()).reviews.updateComment(request),
@@ -61,8 +61,8 @@ export function register(router: IpcRouter): void {
         async (
             _event,
             request: {
-                reviewId: string;
-                commentId: string;
+                reviewId: number;
+                commentId: number;
             },
         ) => (await client()).reviews.deleteComment(request),
     );

@@ -7,16 +7,16 @@ export declare class ReviewClient {
     list(request?: { limit?: number }): Promise<{
         reviews: ReviewSession[];
     }>;
-    detail(request: { id: string }): Promise<ReviewDetail>;
+    detail(request: { id: number }): Promise<ReviewDetail>;
     addEvent(request: {
-        reviewId: string;
+        reviewId: number;
         type: string;
         filePath?: string;
         message?: string;
         metadata?: string;
     }): Promise<ReviewEvent>;
     createComment(request: {
-        reviewId: string;
+        reviewId: number;
         filePath: string;
         diffSection: string;
         side: string;
@@ -27,9 +27,9 @@ export declare class ReviewClient {
         bodyHtml: string;
     }): Promise<ReviewComment>;
     updateComment(request: {
-        reviewId: string;
-        commentId: string;
+        reviewId: number;
+        commentId: number;
         bodyHtml: string;
     }): Promise<ReviewComment>;
-    deleteComment(request: { reviewId: string; commentId: string }): Promise<void>;
+    deleteComment(request: { reviewId: number; commentId: number }): Promise<void>;
 }

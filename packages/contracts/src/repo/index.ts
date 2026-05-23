@@ -62,12 +62,15 @@ export interface RepositoryFileRange {
 }
 
 export interface Repository {
+    id: number;
     path: string;
     name: string;
     ownerId: number;
     role: RepositoryRole;
     addedAt: string;
     lastOpenedAt?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface FileSearchResult {

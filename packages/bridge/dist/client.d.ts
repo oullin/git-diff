@@ -10,12 +10,6 @@ import { SystemClient } from "#bridge/clients/system.js";
 import { UserConfigClient } from "#bridge/clients/userconfig.js";
 import { WalkthroughClient } from "#bridge/clients/walkthrough.js";
 import { type HttpTransport } from "#bridge/http.js";
-/**
- * ApiClient bundles every per-domain client. Consumers depend on the
- * shape of this object (one field per domain) rather than the wire
- * format or the transport — this keeps Electron IPC handlers stable
- * across transport changes.
- */
 export interface ApiClient {
     readonly auth: AuthClient;
     readonly branches: BranchClient;

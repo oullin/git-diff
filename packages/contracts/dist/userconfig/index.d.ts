@@ -12,19 +12,7 @@ export interface WalkthroughConfig {
  * Go backend mirrors this list — keep them in sync if either side adds
  * a new shortcut.
  */
-export type KeymapAction =
-    | "command_bar"
-    | "file_filter"
-    | "diff_search"
-    | "submit_comment"
-    | "discard_comment"
-    | "toggle_sidebar"
-    | "next_file"
-    | "prev_file"
-    | "next_hunk"
-    | "prev_hunk"
-    | "toggle_viewed"
-    | "toggle_whitespace";
+export type KeymapAction = "command_bar" | "file_filter" | "diff_search" | "submit_comment" | "discard_comment" | "toggle_sidebar" | "next_file" | "prev_file" | "next_hunk" | "prev_hunk" | "toggle_viewed" | "toggle_whitespace";
 export type Keymap = Record<KeymapAction, string>;
 export interface UserConfig {
     theme: ThemeChoice;

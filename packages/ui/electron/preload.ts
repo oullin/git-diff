@@ -41,10 +41,10 @@ contextBridge.exposeInMainWorld("diffApp", {
         authorLabel: string;
         bodyHtml: string;
     }) => ipcRenderer.invoke("pending-comments:create", request),
-    updatePendingComment: (request: { id: string; bodyHtml: string }) =>
+    updatePendingComment: (request: { id: number; bodyHtml: string }) =>
         ipcRenderer.invoke("pending-comments:update", request),
-    deletePendingComment: (id: string) => ipcRenderer.invoke("pending-comments:delete", id),
-    promotePendingComments: (reviewId: string) =>
+    deletePendingComment: (id: number) => ipcRenderer.invoke("pending-comments:delete", id),
+    promotePendingComments: (reviewId: number) =>
         ipcRenderer.invoke("pending-comments:promote", reviewId),
     readRepositoryFile: (root: string, path: string) =>
         ipcRenderer.invoke("repository:file:read", root, path),
@@ -83,7 +83,7 @@ contextBridge.exposeInMainWorld("diffApp", {
     createReview: (request: Record<string, unknown>) =>
         ipcRenderer.invoke("reviews:create", request),
     listReviews: (limit?: number) => ipcRenderer.invoke("reviews:list", limit),
-    reviewDetail: (id: string) => ipcRenderer.invoke("reviews:detail", id),
+    reviewDetail: (id: number) => ipcRenderer.invoke("reviews:detail", id),
     addReviewEvent: (request: Record<string, unknown>) =>
         ipcRenderer.invoke("reviews:event", request),
     createReviewComment: (request: Record<string, unknown>) =>

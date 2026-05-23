@@ -1,7 +1,7 @@
 import type { RepositoryMode } from "../repo/index.js";
 
 export interface ReviewSession {
-    id: string;
+    id: number;
     repoRoot: string;
     userId: number;
     branch: string;
@@ -16,21 +16,24 @@ export interface ReviewSession {
     completedAt?: string;
     contextKind: RepositoryMode;
     contextSha?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface ReviewEvent {
     id: number;
-    reviewId: string;
+    reviewId: number;
     type: string;
     filePath?: string;
     message?: string;
     metadata: string;
     createdAt: string;
+    updatedAt: string;
 }
 
 export interface ReviewComment {
-    id: string;
-    reviewId: string;
+    id: number;
+    reviewId: number;
     filePath: string;
     diffSection: string;
     side: string;
@@ -53,7 +56,7 @@ export interface ReviewDetail {
 }
 
 export interface PendingComment {
-    id: string;
+    id: number;
     userId: number;
     repoRoot: string;
     contextKind: RepositoryMode;

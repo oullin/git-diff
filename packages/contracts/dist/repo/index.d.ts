@@ -1,15 +1,5 @@
-export type {
-    DiffSectionKind,
-    GitFileStatus,
-    RepositoryMode,
-    RepositoryRole,
-} from "../common/index.js";
-import type {
-    DiffSectionKind,
-    GitFileStatus,
-    RepositoryMode,
-    RepositoryRole,
-} from "../common/index.js";
+export type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole, } from "../common/index.js";
+import type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole } from "../common/index.js";
 export interface DiffSection {
     id: string;
     kind: DiffSectionKind;
@@ -54,12 +44,15 @@ export interface RepositoryFileRange {
     eof: boolean;
 }
 export interface Repository {
+    id: number;
     path: string;
     name: string;
     ownerId: number;
     role: RepositoryRole;
     addedAt: string;
     lastOpenedAt?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 export interface FileSearchResult {
     repoPath: string;

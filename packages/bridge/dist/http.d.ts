@@ -25,12 +25,6 @@ export interface BridgeError extends Error {
     files?: string[];
 }
 export declare function isBridgeError(value: unknown): value is BridgeError;
-/**
- * HttpTransport is the seam between bridge clients and the unix-socket
- * transport. Per-domain clients depend on this interface so tests can
- * substitute an in-memory transport, and the implementation can grow
- * features (retries, tracing) without leaking into the client surface.
- */
 export interface HttpTransport {
     request<Response>(
         method: HttpMethod,

@@ -15,17 +15,12 @@ export class PendingCommentClient {
         return this.transport.request("POST", "/v1/pending-comments", request);
     }
     update(request) {
-        return this.transport.request(
-            "PATCH",
-            `/v1/pending-comments/${encodeURIComponent(request.id)}`,
-            { bodyHtml: request.bodyHtml },
-        );
+        return this.transport.request("PATCH", `/v1/pending-comments/${request.id}`, {
+            bodyHtml: request.bodyHtml,
+        });
     }
     delete(request) {
-        return this.transport.request(
-            "DELETE",
-            `/v1/pending-comments/${encodeURIComponent(request.id)}`,
-        );
+        return this.transport.request("DELETE", `/v1/pending-comments/${request.id}`);
     }
     promote(request) {
         return this.transport.request("POST", "/v1/pending-comments/promote", request);

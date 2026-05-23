@@ -19,7 +19,7 @@ import type {
     ReviewEvent,
     ReviewSession,
     SystemStats,
-    UIPreferences,
+    UserPreferences,
     UserConfig,
     WalkthroughRecord,
 } from "@git-diff/contracts";
@@ -62,9 +62,9 @@ export interface DiffAppApi {
         authorLabel: string;
         bodyHtml: string;
     }): Promise<PendingComment>;
-    updatePendingComment(request: { id: string; bodyHtml: string }): Promise<PendingComment>;
-    deletePendingComment(id: string): Promise<void>;
-    promotePendingComments(reviewId: string): Promise<{ promoted: number }>;
+    updatePendingComment(request: { id: number; bodyHtml: string }): Promise<PendingComment>;
+    deletePendingComment(id: number): Promise<void>;
+    promotePendingComments(reviewId: number): Promise<{ promoted: number }>;
     readRepositoryFile(root: string, path: string): Promise<RepositoryFile>;
     readRepositoryFileRange(request: {
         root: string;
@@ -93,16 +93,16 @@ export interface DiffAppApi {
     removeCollaborator(request: { path: string; userId: number }): Promise<void>;
     createReview(request: Partial<ReviewSession>): Promise<ReviewSession>;
     listReviews(limit?: number): Promise<{ reviews: ReviewSession[] }>;
-    reviewDetail(id: string): Promise<ReviewDetail>;
+    reviewDetail(id: number): Promise<ReviewDetail>;
     addReviewEvent(request: {
-        reviewId: string;
+        reviewId: number;
         type: string;
         filePath?: string;
         message?: string;
         metadata?: string;
     }): Promise<ReviewEvent>;
     createReviewComment(request: {
-        reviewId: string;
+        reviewId: number;
         filePath: string;
         diffSection: string;
         side: string;
@@ -113,13 +113,13 @@ export interface DiffAppApi {
         bodyHtml: string;
     }): Promise<ReviewComment>;
     updateReviewComment(request: {
-        reviewId: string;
-        commentId: string;
+        reviewId: number;
+        commentId: number;
         bodyHtml: string;
     }): Promise<ReviewComment>;
-    deleteReviewComment(request: { reviewId: string; commentId: string }): Promise<void>;
-    getUIPreferences(): Promise<UIPreferences>;
-    saveUIPreferences(patch: Record<string, string>): Promise<UIPreferences>;
+    deleteReviewComment(request: { reviewId: number; commentId: number }): Promise<void>;
+    getUIPreferences(): Promise<UserPreferences>;
+    saveUIPreferences(patch: Record<string, string>): Promise<UserPreferences>;
     getUserConfig(): Promise<UserConfig>;
     getAuthState(): Promise<AuthStateResponse>;
     authBootstrap(): Promise<AuthBootstrapResponse>;

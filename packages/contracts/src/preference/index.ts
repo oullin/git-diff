@@ -3,7 +3,7 @@ export type DiffHunkStyle = "soft" | "punchy" | "bar";
 export type DiffDensity = "comfortable" | "compact";
 export type UIAccent = "copper" | "indigo" | "emerald" | "amber" | "rose";
 
-export interface UIPreferences {
+export interface UserPreferences {
     values: Record<string, string>;
     updatedAt?: string;
 }

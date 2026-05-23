@@ -41,22 +41,19 @@ export class PendingCommentClient {
         return this.transport.request<PendingComment>("POST", "/v1/pending-comments", request);
     }
 
-    update(request: { id: string; bodyHtml: string }): Promise<PendingComment> {
+    update(request: { id: number; bodyHtml: string }): Promise<PendingComment> {
         return this.transport.request<PendingComment>(
             "PATCH",
-            `/v1/pending-comments/${encodeURIComponent(request.id)}`,
+            `/v1/pending-comments/${request.id}`,
             { bodyHtml: request.bodyHtml },
         );
     }
 
-    delete(request: { id: string }): Promise<void> {
-        return this.transport.request<void>(
-            "DELETE",
-            `/v1/pending-comments/${encodeURIComponent(request.id)}`,
-        );
+    delete(request: { id: number }): Promise<void> {
+        return this.transport.request<void>("DELETE", `/v1/pending-comments/${request.id}`);
     }
 
-    promote(request: { reviewId: string }): Promise<{ promoted: number }> {
+    promote(request: { reviewId: number }): Promise<{ promoted: number }> {
         return this.transport.request<{ promoted: number }>(
             "POST",
             "/v1/pending-comments/promote",

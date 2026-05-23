@@ -8,7 +8,7 @@ import type {
     ReviewComment,
     ReviewDetail,
     ReviewSession,
-    UIPreferences,
+    UserPreferences,
     UserConfig,
 } from "@git-diff/contracts";
 import { PREF_KEYS } from "@git-diff/contracts";
@@ -47,7 +47,7 @@ function fallbackUserConfig(): UserConfig {
 }
 
 export function createMockDiffApp(): DiffAppApi {
-    let preferences: UIPreferences = {
+    let preferences: UserPreferences = {
         values: {
             [PREF_KEYS.theme]: "system",
             [PREF_KEYS.diffViewMode]: "split",
@@ -56,14 +56,18 @@ export function createMockDiffApp(): DiffAppApi {
     };
     const fallbackUser: AuthUser = { id: 1, osUsername: "local", displayName: "local" };
     let reviews: ReviewDetail[] = [];
+    let nextRepoID = 2;
     let repositories: Repository[] = [
         {
+            id: 1,
             path: "/Users/local/project",
             name: "project",
             ownerId: fallbackUser.id,
             role: "owner",
             addedAt: new Date().toISOString(),
             lastOpenedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         },
     ];
     const state: RepositoryState = {
@@ -149,7 +153,7 @@ export function createMockDiffApp(): DiffAppApi {
         readPullRequest: async () => state,
         listPendingComments: async () => ({ comments: [] }),
         createPendingComment: async (request) => ({
-            id: `pending-${Date.now()}`,
+            id: Date.now(),
             userId: fallbackUser.id,
             repoRoot: request.repoRoot,
             contextKind: request.contextKind,
@@ -208,6 +212,8 @@ export function createMockDiffApp(): DiffAppApi {
 
             if (existing) {
                 existing.lastOpenedAt = now;
+                existing.updatedAt = now;
+
                 if (name) {
                     existing.name = name;
                 }
@@ -216,12 +222,15 @@ export function createMockDiffApp(): DiffAppApi {
             }
 
             const repo: Repository = {
+                id: nextRepoID++,
                 path,
                 name: name || path.split("/").filter(Boolean).pop() || path,
                 ownerId: fallbackUser.id,
                 role: "owner",
                 addedAt: now,
                 lastOpenedAt: now,
+                createdAt: now,
+                updatedAt: now,
             };
 
             repositories = [repo, ...repositories];
@@ -241,8 +250,9 @@ export function createMockDiffApp(): DiffAppApi {
         }),
         removeCollaborator: async () => {},
         createReview: async (request) => {
+            const now = new Date().toISOString();
             const review: ReviewSession = {
-                id: `review-${Date.now()}`,
+                id: Date.now(),
                 repoRoot: request.repoRoot ?? state.root,
                 userId: fallbackUser.id,
                 branch: request.branch ?? state.branch,
@@ -253,9 +263,11 @@ export function createMockDiffApp(): DiffAppApi {
                 filesChanged: request.filesChanged ?? state.files.length,
                 additions: request.additions ?? state.additions,
                 deletions: request.deletions ?? state.deletions,
-                startedAt: new Date().toISOString(),
+                startedAt: now,
                 contextKind: request.contextKind ?? "working",
                 contextSha: request.contextSha,
+                createdAt: now,
+                updatedAt: now,
             };
 
             reviews = [{ review, events: [], comments: [] }, ...reviews];
@@ -274,18 +286,24 @@ export function createMockDiffApp(): DiffAppApi {
 
             throw new Error("Review not found");
         },
-        addReviewEvent: async (request) => ({
-            id: Date.now(),
-            reviewId: request.reviewId,
-            type: request.type,
-            filePath: request.filePath,
-            message: request.message,
-            metadata: request.metadata ?? "{}",
-            createdAt: new Date().toISOString(),
-        }),
+        addReviewEvent: async (request) => {
+            const now = new Date().toISOString();
+
+            return {
+                id: Date.now(),
+                reviewId: request.reviewId,
+                type: request.type,
+                filePath: request.filePath,
+                message: request.message,
+                metadata: request.metadata ?? "{}",
+                createdAt: now,
+                updatedAt: now,
+            };
+        },
         createReviewComment: async (request) => {
+            const now = new Date().toISOString();
             const comment: ReviewComment = {
-                id: `comment-${Date.now()}`,
+                id: Date.now(),
                 reviewId: request.reviewId,
                 filePath: request.filePath,
                 diffSection: request.diffSection,
@@ -293,8 +311,8 @@ export function createMockDiffApp(): DiffAppApi {
                 lineNumber: request.lineNumber,
                 authorLabel: request.authorLabel,
                 bodyHtml: request.bodyHtml,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                createdAt: now,
+                updatedAt: now,
             };
             const detail = reviews.find((item) => item.review.id === request.reviewId);
 
