@@ -13,6 +13,9 @@ import (
 
 	"github.com/gocanto/git-diff/internal/storage/db"
 	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // clock is shared across every repo so SetNow advances time everywhere.
@@ -22,6 +25,7 @@ type clock struct {
 
 type Store struct {
 	db      *sql.DB
+	gdb     *gorm.DB
 	queries *db.Queries
 	clk     *clock
 
@@ -52,10 +56,18 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		return nil, fmt.Errorf("create database directory: %w", err)
 	}
 
-	conn, err := sql.Open("sqlite3", sqliteOpenDSN(path))
+	gdb, err := gorm.Open(sqlite.Open(sqliteOpenDSN(path)), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
+	}
+
+	conn, err := gdb.DB()
+
+	if err != nil {
+		return nil, fmt.Errorf("unwrap *sql.DB from gorm: %w", err)
 	}
 
 	clk := &clock{now: time.Now}
@@ -64,6 +76,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 
 	store := &Store{
 		db:              conn,
+		gdb:             gdb,
 		queries:         queries,
 		clk:             clk,
 		Users:           newUserRepo(conn, queries, clk),
@@ -108,6 +121,9 @@ func DefaultPath(home string) string {
 func (s *Store) Close() error {
 	return s.db.Close()
 }
+
+// DB exposes the underlying *gorm.DB for repos and advanced chained queries.
+func (s *Store) DB() *gorm.DB { return s.gdb }
 
 // SetNow swaps the clock used by every repository.
 func (s *Store) SetNow(fn func() time.Time) {
