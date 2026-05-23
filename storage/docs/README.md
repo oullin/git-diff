@@ -273,15 +273,9 @@ Format code:
 make format
 ```
 
-`make format` runs the private `ghcr.io/oullin/go-fmt` image through
-`go-fmt.compose.yaml`, then runs `oxfmt` and `oxlint`. Before the first pull,
-Docker needs a GHCR credential:
-
-```sh
-gh auth status
-gh auth refresh -h github.com -s read:packages
-make format-login
-```
+`make format` runs the public `ghcr.io/oullin/go-fmt` image through
+`go-fmt.compose.yaml`, then runs `oxfmt` and `oxlint`. No GHCR
+authentication is required — Docker pulls the image anonymously.
 
 Build an unsigned macOS DMG and ZIP while Developer ID approval is pending:
 
