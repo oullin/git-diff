@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/lineparse"
+	"github.com/gocanto/git-diff/internal/lines"
 )
 
 type PullRequestSummary struct {
@@ -193,7 +193,7 @@ func readPullRequestPatches(ctx context.Context, root, baseSHA, headSHA string) 
 		return nil, fmt.Errorf("read PR patches: %w", err)
 	}
 
-	return lineparse.SplitUnifiedPatch(raw), nil
+	return lines.SplitUnifiedPatch(raw), nil
 }
 
 func buildPullRequestChangedFiles(entries []commitDiffEntry, patches map[string][]byte, number int) []ChangedFile {

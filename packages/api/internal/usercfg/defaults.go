@@ -1,4 +1,4 @@
-package userconfig
+package usercfg
 
 // Defaults must always be a complete, valid Config so the app boots even
 // when no YAML file exists.

@@ -1,4 +1,4 @@
-package walkthrough
+package walks
 
 import (
 	"crypto/sha1"

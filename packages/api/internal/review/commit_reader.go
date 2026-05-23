@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocanto/git-diff/internal/lineparse"
+	"github.com/gocanto/git-diff/internal/lines"
 )
 
 func ReadCommitState(ctx context.Context, launchPath, sha string) (RepositoryState, error) {
@@ -85,7 +85,7 @@ func readCommitPatches(ctx context.Context, root, sha string) (map[string][]byte
 		return nil, fmt.Errorf("read commit patches: %w", err)
 	}
 
-	return lineparse.SplitUnifiedPatch(raw), nil
+	return lines.SplitUnifiedPatch(raw), nil
 }
 
 func buildCommitChangedFiles(entries []commitDiffEntry, patches map[string][]byte, sha string) []ChangedFile {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/gocanto/git-diff/internal/app/setting"
 	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/userconfig"
+	"github.com/gocanto/git-diff/internal/usercfg"
 )
 
 type ServeConfig struct {
@@ -20,8 +20,8 @@ type Server struct {
 	Repo             string
 	Settings         setting.RuntimeSettings
 	Session          *AuthState
-	UserConfig       userconfig.Reader
-	UserConfigEvents *userconfig.Broker
+	UserConfig       usercfg.Reader
+	UserConfigEvents *usercfg.Broker
 
 	auth         *service.AuthService
 	reviews      *service.ReviewService

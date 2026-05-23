@@ -1,6 +1,6 @@
-// Package userconfig owns the user-editable YAML config at
+// Package usercfg owns the user-editable YAML config at
 // ~/.git-diff/config.yaml.
-package userconfig
+package usercfg
 
 // Config carries value types only so passing one across goroutines is
 // safe without locking.

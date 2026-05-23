@@ -1,4 +1,4 @@
-package lineparse
+package lines
 
 import (
 	"bufio"

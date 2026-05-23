@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/gocanto/git-diff/internal/lineparse"
+	"github.com/gocanto/git-diff/internal/lines"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -70,7 +70,7 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 			return fmt.Errorf("read staged diff: %w", err)
 		}
 
-		staged = lineparse.SplitUnifiedPatch(raw)
+		staged = lines.SplitUnifiedPatch(raw)
 
 		return nil
 	})
@@ -82,7 +82,7 @@ func ReadRepositoryState(ctx context.Context, launchPath string) (RepositoryStat
 			return fmt.Errorf("read unstaged diff: %w", err)
 		}
 
-		unstaged = lineparse.SplitUnifiedPatch(raw)
+		unstaged = lines.SplitUnifiedPatch(raw)
 
 		return nil
 	})

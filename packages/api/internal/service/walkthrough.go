@@ -8,14 +8,14 @@ import (
 	"github.com/gocanto/git-diff/internal/ai"
 	"github.com/gocanto/git-diff/internal/review"
 	"github.com/gocanto/git-diff/internal/storage"
-	"github.com/gocanto/git-diff/internal/userconfig"
-	"github.com/gocanto/git-diff/internal/walkthrough"
+	"github.com/gocanto/git-diff/internal/usercfg"
+	"github.com/gocanto/git-diff/internal/walks"
 )
 
 type WalkthroughService struct {
 	walkthroughs *storage.WalkthroughRepo
 	providers    *ai.Registry
-	userConfig   userconfig.Reader
+	userConfig   usercfg.Reader
 }
 
 type GenerateRequest struct {
@@ -41,7 +41,7 @@ var ErrProviderUnavailable = errors.New("ai provider unavailable")
 func NewWalkthroughService(
 	walkthroughs *storage.WalkthroughRepo,
 	providers *ai.Registry,
-	userConfig userconfig.Reader,
+	userConfig usercfg.Reader,
 ) *WalkthroughService {
 	return &WalkthroughService{
 		walkthroughs: walkthroughs,
@@ -62,7 +62,7 @@ func (s *WalkthroughService) Generate(
 		return GenerateResult{}, fmt.Errorf("%w: %w", ErrProviderUnavailable, err)
 	}
 
-	fingerprint := walkthrough.FingerprintForStateAndProvider(req.State, provider.ID())
+	fingerprint := walks.FingerprintForStateAndProvider(req.State, provider.ID())
 
 	cached, found, err := s.walkthroughs.GetWalkthrough(ctx, req.State.Root, req.Kind, req.ContextSHA)
 
@@ -74,10 +74,10 @@ func (s *WalkthroughService) Generate(
 		return GenerateResult{Record: cached, Cached: true}, nil
 	}
 
-	result, err := walkthrough.Generate(ctx, walkthrough.Request{
+	result, err := walks.Generate(ctx, walks.Request{
 		Provider: providerWithModel(provider, cfg.Walkthrough.Model),
 		State:    req.State,
-		Budget: walkthrough.Budget{
+		Budget: walks.Budget{
 			PerFileBytes: cfg.Walkthrough.PerFileBudgetBytes,
 			TotalBytes:   cfg.Walkthrough.PatchBudgetBytes,
 		},
@@ -118,7 +118,7 @@ func (m modelOverrideProvider) Generate(ctx context.Context, req ai.GenerateRequ
 	return m.Provider.Generate(ctx, req)
 }
 
-func toStorageGroups(groups []walkthrough.Group) []storage.WalkthroughGroup {
+func toStorageGroups(groups []walks.Group) []storage.WalkthroughGroup {
 	out := make([]storage.WalkthroughGroup, 0, len(groups))
 
 	for _, group := range groups {

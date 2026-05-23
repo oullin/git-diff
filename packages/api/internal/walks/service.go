@@ -1,4 +1,4 @@
-package walkthrough
+package walks
 
 import (
 	"context"

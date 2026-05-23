@@ -16,7 +16,7 @@ import (
 	"github.com/gocanto/git-diff/internal/app/setting"
 	"github.com/gocanto/git-diff/internal/service"
 	"github.com/gocanto/git-diff/internal/storage"
-	"github.com/gocanto/git-diff/internal/userconfig"
+	"github.com/gocanto/git-diff/internal/usercfg"
 )
 
 // Serve is the CLI entry point for the "serve-http" subcommand.
@@ -51,7 +51,7 @@ func Serve(args []string, cfg ServeConfig) int {
 		return 1
 	}
 
-	userCfg, err := userconfig.NewService(cfg.Home)
+	userCfg, err := usercfg.NewService(cfg.Home)
 
 	if err != nil {
 		fmt.Fprintf(cfg.Stderr, "user config: %v\n", err)

@@ -1,4 +1,4 @@
-package userconfig
+package usercfg
 
 import (
 	"sync/atomic"

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/userconfig"
+	"github.com/gocanto/git-diff/internal/usercfg"
 )
 
 func (s Server) userConfigGet(w http.ResponseWriter, _ *http.Request) {
@@ -59,7 +59,7 @@ func (s Server) userConfigStream(w http.ResponseWriter, r *http.Request) {
 
 // marshalConfig emits the snake_case shape that mirrors the YAML schema —
 // json marshalling the struct directly would leak the exported Go names.
-func marshalConfig(cfg userconfig.Config) map[string]any {
+func marshalConfig(cfg usercfg.Config) map[string]any {
 	return map[string]any{
 		"theme":                  cfg.Theme,
 		"show_whitespace":        cfg.ShowWhitespace,

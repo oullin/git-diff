@@ -1,5 +1,5 @@
-// Package walkthrough orchestrates LLM-generated review walkthroughs.
-package walkthrough
+// Package walks orchestrates LLM-generated review walkthroughs.
+package walks
 
 // Action labels what the user should do with a file: review, scan, or skim.
 type Action string
