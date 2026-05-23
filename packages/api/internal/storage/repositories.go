@@ -19,14 +19,6 @@ type Repository struct {
 	LastOpenedAt string `json:"lastOpenedAt,omitempty"`
 }
 
-type RepositoryCollaborator struct {
-	UserID      int64  `json:"userId"`
-	OSUsername  string `json:"osUsername"`
-	DisplayName string `json:"displayName"`
-	Role        string `json:"role"`
-	GrantedAt   string `json:"grantedAt"`
-}
-
 type RepoRepo struct {
 	db      *sql.DB
 	queries *db.Queries

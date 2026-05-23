@@ -28,10 +28,12 @@ type Store struct {
 	Users           *UserRepo
 	Sessions        *SessionRepo
 	Reviews         *ReviewRepo
+	ReviewEvents    *ReviewEventRepo
 	Comments        *CommentRepo
 	PendingComments *PendingCommentRepo
 	Branches        *BranchRepo
 	Repos           *RepoRepo
+	Collaborators   *CollaboratorRepo
 	Preferences     *PreferenceRepo
 	Walkthroughs    *WalkthroughRepo
 }
@@ -58,7 +60,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 
 	clk := &clock{now: time.Now}
 	queries := db.New(conn)
-	reviews := newReviewRepo(conn, queries, clk)
+	reviewEvents := newReviewEventRepo(conn, queries, clk)
 
 	store := &Store{
 		db:              conn,
@@ -66,11 +68,13 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		clk:             clk,
 		Users:           newUserRepo(conn, queries, clk),
 		Sessions:        newSessionRepo(conn, queries, clk),
-		Reviews:         reviews,
-		Comments:        newCommentRepo(conn, queries, clk, reviews),
+		Reviews:         newReviewRepo(conn, queries, clk, reviewEvents),
+		ReviewEvents:    reviewEvents,
+		Comments:        newCommentRepo(conn, queries, clk, reviewEvents),
 		PendingComments: newPendingCommentRepo(conn, queries, clk),
 		Branches:        newBranchRepo(conn, queries, clk),
 		Repos:           newRepoRepo(conn, queries, clk),
+		Collaborators:   newCollaboratorRepo(conn, queries, clk),
 		Preferences:     newPreferenceRepo(conn, queries, clk),
 		Walkthroughs:    newWalkthroughRepo(conn, queries, clk),
 	}

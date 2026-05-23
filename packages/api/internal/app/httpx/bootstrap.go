@@ -84,12 +84,13 @@ func Serve(args []string, cfg ServeConfig) int {
 			SessionTTL:        sessionTTL,
 			MinPasswordLength: minPasswordLength,
 		}),
-		reviews:      service.NewReviewService(store.Reviews, store.Comments),
-		pending:      service.NewPendingCommentService(store.PendingComments),
-		repos:        service.NewRepositoryService(store.Repos),
-		preferences:  service.NewPreferenceService(store.Preferences),
-		branches:     service.NewBranchService(store.Branches),
-		walkthroughs: service.NewWalkthroughService(store.Walkthroughs, providers, userCfg.Reader),
+		reviews:       service.NewReviewService(store.Reviews, store.ReviewEvents, store.Comments),
+		pending:       service.NewPendingCommentService(store.PendingComments),
+		repos:         service.NewRepositoryService(store.Repos),
+		collaborators: service.NewCollaboratorService(store.Collaborators),
+		preferences:   service.NewPreferenceService(store.Preferences),
+		branches:      service.NewBranchService(store.Branches),
+		walkthroughs:  service.NewWalkthroughService(store.Walkthroughs, providers, userCfg.Reader),
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{

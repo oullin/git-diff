@@ -36,16 +36,14 @@ type ReviewComment struct {
 	DeletedAt       string `json:"deletedAt,omitempty"`
 }
 
-// CommentRepo writes timeline events through ReviewEventWriter so it can
-// stay decoupled from the concrete ReviewRepo.
 type CommentRepo struct {
 	db      *sql.DB
 	queries *db.Queries
 	clk     *clock
-	events  ReviewEventWriter
+	events  *ReviewEventRepo
 }
 
-func newCommentRepo(conn *sql.DB, queries *db.Queries, clk *clock, events ReviewEventWriter) *CommentRepo {
+func newCommentRepo(conn *sql.DB, queries *db.Queries, clk *clock, events *ReviewEventRepo) *CommentRepo {
 	return &CommentRepo{db: conn, queries: queries, clk: clk, events: events}
 }
 
@@ -70,7 +68,7 @@ func (r *CommentRepo) CreateReviewComment(ctx context.Context, reviewID string, 
 		return ReviewComment{}, err
 	}
 
-	_, _ = r.events.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_added", FilePath: input.FilePath, Message: fmt.Sprintf("Commented on line %d", input.LineNumber)})
+	_, _ = r.events.Add(ctx, reviewID, ReviewEventInput{Type: "comment_added", FilePath: input.FilePath, Message: fmt.Sprintf("Commented on line %d", input.LineNumber)})
 
 	return ReviewComment{
 		ID: commentID, ReviewID: reviewID, FilePath: input.FilePath, DiffSection: input.DiffSection,
@@ -98,7 +96,7 @@ func (r *CommentRepo) UpdateReviewComment(ctx context.Context, reviewID string, 
 		return ReviewComment{}, err
 	}
 
-	_, _ = r.events.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_edited", FilePath: comment.FilePath, Message: fmt.Sprintf("Edited comment on line %d", comment.LineNumber)})
+	_, _ = r.events.Add(ctx, reviewID, ReviewEventInput{Type: "comment_edited", FilePath: comment.FilePath, Message: fmt.Sprintf("Edited comment on line %d", comment.LineNumber)})
 
 	return comment, nil
 }
@@ -117,7 +115,7 @@ func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID string, 
 	}
 
 	if comment.ID != "" {
-		_, _ = r.events.AddReviewEvent(ctx, reviewID, ReviewEventInput{Type: "comment_deleted", FilePath: comment.FilePath, Message: fmt.Sprintf("Deleted comment on line %d", comment.LineNumber)})
+		_, _ = r.events.Add(ctx, reviewID, ReviewEventInput{Type: "comment_deleted", FilePath: comment.FilePath, Message: fmt.Sprintf("Deleted comment on line %d", comment.LineNumber)})
 	}
 
 	return nil

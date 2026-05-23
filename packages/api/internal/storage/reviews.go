@@ -41,43 +41,21 @@ type ReviewSession struct {
 	ContextSHA   string `json:"contextSha,omitempty"`
 }
 
-type ReviewEventInput struct {
-	Type     string `json:"type"`
-	FilePath string `json:"filePath"`
-	Message  string `json:"message"`
-	Metadata string `json:"metadata"`
-}
-
-type ReviewEvent struct {
-	ID        int64  `json:"id"`
-	ReviewID  string `json:"reviewId"`
-	Type      string `json:"type"`
-	FilePath  string `json:"filePath,omitempty"`
-	Message   string `json:"message,omitempty"`
-	Metadata  string `json:"metadata"`
-	CreatedAt string `json:"createdAt"`
-}
-
 type ReviewDetail struct {
 	Review   ReviewSession   `json:"review"`
 	Events   []ReviewEvent   `json:"events"`
 	Comments []ReviewComment `json:"comments"`
 }
 
-// ReviewEventWriter lets other repos log timeline events without depending
-// on the concrete ReviewRepo.
-type ReviewEventWriter interface {
-	AddReviewEvent(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error)
-}
-
 type ReviewRepo struct {
 	db      *sql.DB
 	queries *db.Queries
 	clk     *clock
+	events  *ReviewEventRepo
 }
 
-func newReviewRepo(conn *sql.DB, queries *db.Queries, clk *clock) *ReviewRepo {
-	return &ReviewRepo{db: conn, queries: queries, clk: clk}
+func newReviewRepo(conn *sql.DB, queries *db.Queries, clk *clock, events *ReviewEventRepo) *ReviewRepo {
+	return &ReviewRepo{db: conn, queries: queries, clk: clk, events: events}
 }
 
 func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review ReviewSessionStart) (ReviewSession, error) {
@@ -109,7 +87,7 @@ func (r *ReviewRepo) CreateReview(ctx context.Context, userID int64, review Revi
 		return ReviewSession{}, err
 	}
 
-	if _, err := r.AddReviewEvent(ctx, review.ID, ReviewEventInput{
+	if _, err := r.events.Add(ctx, review.ID, ReviewEventInput{
 		Type:    "review_started",
 		Message: title,
 	}); err != nil {
@@ -194,7 +172,7 @@ func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id
 		return ReviewDetail{}, err
 	}
 
-	events, err := r.ListReviewEvents(ctx, id)
+	events, err := r.events.List(ctx, id)
 
 	if err != nil {
 		return ReviewDetail{}, err
@@ -207,61 +185,6 @@ func (r *ReviewRepo) ReviewDetail(ctx context.Context, comments *CommentRepo, id
 	}
 
 	return ReviewDetail{Review: review, Events: events, Comments: commentList}, nil
-}
-
-func (r *ReviewRepo) AddReviewEvent(ctx context.Context, reviewID string, input ReviewEventInput) (ReviewEvent, error) {
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
-	metadata := input.Metadata
-
-	if metadata == "" {
-		metadata = "{}"
-	}
-
-	result, err := r.db.ExecContext(ctx, `
-		INSERT INTO review_events (review_id, event_type, file_path, message, metadata, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, reviewID, input.Type, input.FilePath, input.Message, metadata, now)
-
-	if err != nil {
-		return ReviewEvent{}, err
-	}
-
-	id, err := result.LastInsertId()
-
-	if err != nil {
-		return ReviewEvent{}, err
-	}
-
-	return ReviewEvent{ID: id, ReviewID: reviewID, Type: input.Type, FilePath: input.FilePath, Message: input.Message, Metadata: metadata, CreatedAt: now}, nil
-}
-
-func (r *ReviewRepo) ListReviewEvents(ctx context.Context, reviewID string) ([]ReviewEvent, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, review_id, event_type, file_path, message, metadata, created_at
-		FROM review_events
-		WHERE review_id = ?
-		ORDER BY created_at ASC, id ASC
-	`, reviewID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	events := []ReviewEvent{}
-
-	for rows.Next() {
-		var event ReviewEvent
-
-		if err := rows.Scan(&event.ID, &event.ReviewID, &event.Type, &event.FilePath, &event.Message, &event.Metadata, &event.CreatedAt); err != nil {
-			return nil, err
-		}
-
-		events = append(events, event)
-	}
-
-	return events, rows.Err()
 }
 
 func scanReview(row scanner) (ReviewSession, error) {

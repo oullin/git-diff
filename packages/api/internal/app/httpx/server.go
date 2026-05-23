@@ -23,13 +23,14 @@ type Server struct {
 	UserConfig       usercfg.Reader
 	UserConfigEvents *usercfg.Broker
 
-	auth         *service.AuthService
-	reviews      *service.ReviewService
-	pending      *service.PendingCommentService
-	repos        *service.RepositoryService
-	preferences  *service.PreferenceService
-	branches     *service.BranchService
-	walkthroughs *service.WalkthroughService
+	auth          *service.AuthService
+	reviews       *service.ReviewService
+	pending       *service.PendingCommentService
+	repos         *service.RepositoryService
+	collaborators *service.CollaboratorService
+	preferences   *service.PreferenceService
+	branches      *service.BranchService
+	walkthroughs  *service.WalkthroughService
 }
 
 func (s Server) healthz(w http.ResponseWriter, _ *http.Request) {

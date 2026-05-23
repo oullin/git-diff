@@ -6,11 +6,31 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/gocanto/git-diff/internal/storage/db"
 )
+
+type RepositoryCollaborator struct {
+	UserID      int64  `json:"userId"`
+	OSUsername  string `json:"osUsername"`
+	DisplayName string `json:"displayName"`
+	Role        string `json:"role"`
+	GrantedAt   string `json:"grantedAt"`
+}
+
+type CollaboratorRepo struct {
+	db      *sql.DB
+	queries *db.Queries
+	clk     *clock
+}
 
 var ErrRepositoryNotFound = errors.New("repository not found")
 
-func (r *RepoRepo) ListRepositoryCollaborators(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
+func newCollaboratorRepo(conn *sql.DB, queries *db.Queries, clk *clock) *CollaboratorRepo {
+	return &CollaboratorRepo{db: conn, queries: queries, clk: clk}
+}
+
+func (r *CollaboratorRepo) List(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
 	if err := r.assertRepositoryOwner(ctx, ownerID, path); err != nil {
 		return nil, err
 	}
@@ -44,7 +64,7 @@ func (r *RepoRepo) ListRepositoryCollaborators(ctx context.Context, ownerID int6
 	return collaborators, rows.Err()
 }
 
-func (r *RepoRepo) GrantRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64, role string) (RepositoryCollaborator, error) {
+func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string, userID int64, role string) (RepositoryCollaborator, error) {
 	if userID == 0 {
 		return RepositoryCollaborator{}, errors.New("user id is required")
 	}
@@ -89,7 +109,7 @@ func (r *RepoRepo) GrantRepositoryAccess(ctx context.Context, ownerID int64, pat
 	return collaborator, nil
 }
 
-func (r *RepoRepo) RevokeRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64) error {
+func (r *CollaboratorRepo) Revoke(ctx context.Context, ownerID int64, path string, userID int64) error {
 	if userID == 0 {
 		return errors.New("user id is required")
 	}
@@ -105,7 +125,7 @@ func (r *RepoRepo) RevokeRepositoryAccess(ctx context.Context, ownerID int64, pa
 	return err
 }
 
-func (r *RepoRepo) assertRepositoryOwner(ctx context.Context, ownerID int64, path string) error {
+func (r *CollaboratorRepo) assertRepositoryOwner(ctx context.Context, ownerID int64, path string) error {
 	if ownerID == 0 {
 		return errors.New("user id is required")
 	}

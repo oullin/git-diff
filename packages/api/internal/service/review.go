@@ -12,11 +12,12 @@ import (
 
 type ReviewService struct {
 	reviews  *storage.ReviewRepo
+	events   *storage.ReviewEventRepo
 	comments *storage.CommentRepo
 }
 
-func NewReviewService(reviews *storage.ReviewRepo, comments *storage.CommentRepo) *ReviewService {
-	return &ReviewService{reviews: reviews, comments: comments}
+func NewReviewService(reviews *storage.ReviewRepo, events *storage.ReviewEventRepo, comments *storage.CommentRepo) *ReviewService {
+	return &ReviewService{reviews: reviews, events: events, comments: comments}
 }
 
 var ErrAuthenticationRequired = errors.New("authentication required")
@@ -63,7 +64,7 @@ func (s *ReviewService) AddEvent(
 	reviewID string,
 	input storage.ReviewEventInput,
 ) (storage.ReviewEvent, error) {
-	return s.reviews.AddReviewEvent(ctx, reviewID, input)
+	return s.events.Add(ctx, reviewID, input)
 }
 
 // CreateComment auto-generates the comment id and records a
