@@ -12,7 +12,7 @@ GO_FMT_EXEC := $(GO_FMT_COMPOSE) exec -T $(GO_FMT_SERVICE) $(GO_FMT_BIN)
 OXFMT := pnpm exec oxfmt
 OXLINT := pnpm exec oxlint
 
-.PHONY: dev format format-start format-stop format-login
+.PHONY: dev format format-start format-stop
 
 dev:
 	@echo "Dev server will be available at: $(PORTLESS_DEFAULT_DEV_SERVER_URL)"
@@ -31,6 +31,3 @@ format-start:
 
 format-stop:
 	@$(GO_FMT_COMPOSE) stop $(GO_FMT_SERVICE)
-
-format-login:
-	@gh auth token | docker login ghcr.io -u $$(gh api user -q .login) --password-stdin
