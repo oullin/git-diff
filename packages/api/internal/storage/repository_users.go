@@ -8,6 +8,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type RepositoryCollaborator struct {
@@ -18,15 +20,12 @@ type RepositoryCollaborator struct {
 	GrantedAt   string `json:"grantedAt"`
 }
 
-type CollaboratorRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type CollaboratorRepo struct{}
 
 var ErrRepositoryNotFound = errors.New("repository not found")
 
-func newCollaboratorRepo(db *gorm.DB, clk *clock) *CollaboratorRepo {
-	return &CollaboratorRepo{db: db, clk: clk}
+func newCollaboratorRepo() *CollaboratorRepo {
+	return &CollaboratorRepo{}
 }
 
 func (r *CollaboratorRepo) List(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
@@ -38,7 +37,7 @@ func (r *CollaboratorRepo) List(ctx context.Context, ownerID int64, path string)
 
 	var rows []RepositoryCollaborator
 
-	err = r.db.WithContext(ctx).Raw(`
+	err = db.Conn().WithContext(ctx).Raw(`
 		SELECT ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at
 		FROM repository_users ru
 		JOIN users u ON u.id = ru.user_id
@@ -76,7 +75,7 @@ func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string
 		return RepositoryCollaborator{}, errors.New("owner cannot also be a collaborator")
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 	row := RepositoryUserRow{
 		RepositoryID: repoID,
 		UserID:       userID,
@@ -86,7 +85,7 @@ func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string
 		UpdatedAt:    now,
 	}
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "repository_id"}, {Name: "user_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"role", "granted_at", "updated_at"}),
@@ -97,7 +96,7 @@ func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string
 
 	var collaborator RepositoryCollaborator
 
-	err = r.db.WithContext(ctx).Raw(`
+	err = db.Conn().WithContext(ctx).Raw(`
 		SELECT ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at
 		FROM repository_users ru
 		JOIN users u ON u.id = ru.user_id
@@ -122,7 +121,7 @@ func (r *CollaboratorRepo) Revoke(ctx context.Context, ownerID int64, path strin
 		return err
 	}
 
-	return r.db.WithContext(ctx).
+	return db.Conn().WithContext(ctx).
 		Where("repository_id = ? AND user_id = ?", repoID, userID).
 		Delete(&RepositoryUserRow{}).Error
 }
@@ -144,7 +143,7 @@ func (r *CollaboratorRepo) assertRepositoryOwner(ctx context.Context, ownerID in
 		OwnerID int64
 	}
 
-	err := r.db.WithContext(ctx).
+	err := db.Conn().WithContext(ctx).
 		Model(&RepositoryRow{}).
 		Select("id", "owner_id").
 		Where("path = ?", path).

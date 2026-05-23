@@ -86,9 +86,9 @@ func Open(ctx context.Context, path string) (*Store, error) {
 		ReviewEvents:    reviewEvents,
 		Comments:        newCommentRepo(gdb, clk, reviewEvents),
 		PendingComments: newPendingCommentRepo(gdb, clk),
-		Branches:        newRepositoryBranchRepo(gdb, clk),
-		Repos:           newRepoRepo(gdb, clk),
-		Collaborators:   newCollaboratorRepo(gdb, clk),
+		Branches:        newRepositoryBranchRepo(),
+		Repos:           newRepoRepo(),
+		Collaborators:   newCollaboratorRepo(),
 		Preferences:     newPreferenceRepo(),
 		Walkthroughs:    newWalkthroughRepo(),
 	}

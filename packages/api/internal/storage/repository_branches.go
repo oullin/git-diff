@@ -7,6 +7,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type Branch struct {
@@ -17,13 +19,10 @@ type Branch struct {
 	LastSeenAt string `json:"lastSeenAt"`
 }
 
-type RepositoryBranchRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type RepositoryBranchRepo struct{}
 
-func newRepositoryBranchRepo(db *gorm.DB, clk *clock) *RepositoryBranchRepo {
-	return &RepositoryBranchRepo{db: db, clk: clk}
+func newRepositoryBranchRepo() *RepositoryBranchRepo {
+	return &RepositoryBranchRepo{}
 }
 
 // SyncBranches reconciles the repository_branches table for a repo to exactly
@@ -34,7 +33,7 @@ func (r *RepositoryBranchRepo) SyncBranches(ctx context.Context, repositoryID in
 		return errors.New("repository id is required")
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
 	rows := make([]RepositoryBranchRow, 0, len(names))
 
@@ -52,7 +51,7 @@ func (r *RepositoryBranchRepo) SyncBranches(ctx context.Context, repositoryID in
 		})
 	}
 
-	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return db.Conn().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if len(rows) > 0 {
 			if err := tx.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "repository_id"}, {Name: "name"}},
@@ -74,7 +73,7 @@ func (r *RepositoryBranchRepo) ListBranches(ctx context.Context, repositoryID in
 
 	var rows []RepositoryBranchRow
 
-	if err := r.db.WithContext(ctx).
+	if err := db.Conn().WithContext(ctx).
 		Where("repository_id = ?", repositoryID).
 		Order("name ASC").
 		Find(&rows).Error; err != nil {
@@ -113,9 +112,9 @@ func (r *RepositoryBranchRepo) LockBranch(ctx context.Context, repositoryID int6
 		return errors.New("user id is required")
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
-	result := r.db.WithContext(ctx).
+	result := db.Conn().WithContext(ctx).
 		Model(&RepositoryBranchRow{}).
 		Where("repository_id = ? AND name = ?", repositoryID, name).
 		Updates(map[string]any{
@@ -141,9 +140,9 @@ func (r *RepositoryBranchRepo) UnlockBranch(ctx context.Context, repositoryID in
 		return errors.New("repository id and branch name are required")
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
-	result := r.db.WithContext(ctx).
+	result := db.Conn().WithContext(ctx).
 		Model(&RepositoryBranchRow{}).
 		Where("repository_id = ? AND name = ?", repositoryID, name).
 		Updates(map[string]any{
@@ -167,7 +166,7 @@ func (r *RepositoryBranchRepo) UnlockBranch(ctx context.Context, repositoryID in
 func (r *RepositoryBranchRepo) IsBranchLocked(ctx context.Context, repositoryID int64, name string) (bool, error) {
 	var locked int
 
-	err := r.db.WithContext(ctx).
+	err := db.Conn().WithContext(ctx).
 		Model(&RepositoryBranchRow{}).
 		Select("locked").
 		Where("repository_id = ? AND name = ?", repositoryID, name).
@@ -185,7 +184,7 @@ func (r *RepositoryBranchRepo) IsBranchLocked(ctx context.Context, repositoryID 
 }
 
 func (r *RepositoryBranchRepo) DeleteBranchRow(ctx context.Context, repositoryID int64, name string) error {
-	return r.db.WithContext(ctx).
+	return db.Conn().WithContext(ctx).
 		Where("repository_id = ? AND name = ?", repositoryID, name).
 		Delete(&RepositoryBranchRow{}).Error
 }

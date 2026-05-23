@@ -8,6 +8,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/gocanto/git-diff/internal/db"
 )
 
 type Repository struct {
@@ -22,10 +24,7 @@ type Repository struct {
 	UpdatedAt    string `json:"updatedAt"`
 }
 
-type RepoRepo struct {
-	db  *gorm.DB
-	clk *clock
-}
+type RepoRepo struct{}
 
 // repoListRow holds the columns returned by the owner-or-collaborator LEFT
 // JOIN below; the join is written as one query to keep listing O(1) statements.
@@ -49,8 +48,8 @@ const (
 
 var ErrRepositoryNotOwned = errors.New("repository not found or not owned by user")
 
-func newRepoRepo(db *gorm.DB, clk *clock) *RepoRepo {
-	return &RepoRepo{db: db, clk: clk}
+func newRepoRepo() *RepoRepo {
+	return &RepoRepo{}
 }
 
 func (r *RepoRepo) ListRepositoriesForUser(ctx context.Context, userID int64) ([]Repository, error) {
@@ -60,7 +59,7 @@ func (r *RepoRepo) ListRepositoriesForUser(ctx context.Context, userID int64) ([
 
 	var rows []repoListRow
 
-	err := r.db.WithContext(ctx).Raw(`
+	err := db.Conn().WithContext(ctx).Raw(`
 		SELECT r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at, r.created_at, r.updated_at,
 			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
@@ -93,7 +92,7 @@ func (r *RepoRepo) GetRepository(ctx context.Context, userID int64, path string)
 
 	var row repoListRow
 
-	err := r.db.WithContext(ctx).Raw(`
+	err := db.Conn().WithContext(ctx).Raw(`
 		SELECT r.id, r.path, r.name, r.owner_id, r.added_at, r.last_opened_at, r.created_at, r.updated_at,
 			CASE WHEN r.owner_id = ? THEN 'owner' ELSE ru.role END AS role
 		FROM repositories r
@@ -122,7 +121,7 @@ func (r *RepoRepo) GetByPath(ctx context.Context, path string) (Repository, erro
 
 	var row RepositoryRow
 
-	if err := r.db.WithContext(ctx).Where("path = ?", path).Take(&row).Error; err != nil {
+	if err := db.Conn().WithContext(ctx).Where("path = ?", path).Take(&row).Error; err != nil {
 		return Repository{}, err
 	}
 
@@ -156,7 +155,7 @@ func (r *RepoRepo) UpsertRepository(ctx context.Context, ownerID int64, path str
 		name = filepath.Base(path)
 	}
 
-	now := r.clk.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 	row := RepositoryRow{
 		Path:         path,
 		Name:         name,
@@ -167,7 +166,7 @@ func (r *RepoRepo) UpsertRepository(ctx context.Context, ownerID int64, path str
 		UpdatedAt:    now,
 	}
 
-	err := r.db.WithContext(ctx).
+	err := db.Conn().WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "path"}},
 			DoUpdates: clause.AssignmentColumns([]string{"name", "last_opened_at", "updated_at"}),
@@ -190,7 +189,7 @@ func (r *RepoRepo) RemoveRepository(ctx context.Context, userID int64, path stri
 		return errors.New("repository path is required")
 	}
 
-	result := r.db.WithContext(ctx).
+	result := db.Conn().WithContext(ctx).
 		Where("path = ? AND owner_id = ?", path, userID).
 		Delete(&RepositoryRow{})
 
