@@ -10,15 +10,17 @@
  * See docs/distribution.md for the rollout plan.
  */
 
-const { resolve } = require("node:path");
+import { resolve } from "node:path";
 
-module.exports = {
+const here = import.meta.dirname;
+
+export default {
     packagerConfig: {
         name: "Git Diff Review",
         appBundleId: "io.gocanto.git-diff",
         asar: true,
-        icon: resolve(__dirname, "build/icon"),
-        extraResource: [resolve(__dirname, "../api/dist/api")],
+        icon: resolve(here, "build/icon"),
+        extraResource: [resolve(here, "../api/dist/api")],
         osxSign: process.env.APPLE_SIGNING_IDENTITY
             ? { identity: process.env.APPLE_SIGNING_IDENTITY }
             : undefined,
