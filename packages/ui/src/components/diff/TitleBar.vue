@@ -12,7 +12,6 @@ import {
 import DiffLogo from "@diff/DiffLogo.vue";
 import { Skeleton } from "@ui/skeleton";
 import type { Repository, RepositoryState } from "@git-diff/contracts";
-import { useSystemStatsPolling } from "@composables/useSystemStatsPolling";
 
 const props = defineProps<{
     state: RepositoryState | null;
@@ -45,8 +44,6 @@ const workspaceLabel = computed(() => {
 
     return parts[parts.length - 1] ?? root;
 });
-
-const { stats } = useSystemStatsPolling();
 </script>
 
 <template>
@@ -57,7 +54,7 @@ const { stats } = useSystemStatsPolling();
             gap: '12px',
             padding: '0 14px',
             borderBottom: '1px solid var(--gd-border)',
-            background: 'linear-gradient(180deg, var(--gd-panel) 0%, var(--gd-bg) 100%)',
+            background: 'var(--gd-bg)',
             flexShrink: 0,
         }"
     >
@@ -181,62 +178,5 @@ const { stats } = useSystemStatsPolling();
         </DropdownMenu>
 
         <div class="flex-1" />
-
-        <div
-            v-if="stats"
-            class="flex items-center"
-            :style="{
-                gap: '10px',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
-                color: 'var(--gd-text-2)',
-                whiteSpace: 'nowrap',
-            }"
-            data-no-drag
-        >
-            <span>
-                <span :style="{ color: 'var(--gd-text-muted)' }">CPU</span>
-                {{ stats.cpuPercent.toFixed(0) }}%
-            </span>
-            <span :style="{ color: 'var(--gd-text-muted)' }">·</span>
-            <span>
-                <span :style="{ color: 'var(--gd-text-muted)' }">MEM</span>
-                {{ stats.memoryUsedGB.toFixed(1) }} / {{ stats.memoryTotalGB.toFixed(1) }} GB
-            </span>
-            <span :style="{ color: 'var(--gd-text-muted)' }">·</span>
-            <span>
-                <span :style="{ color: 'var(--gd-text-muted)' }">LOAD</span>
-                {{ stats.loadAvg1.toFixed(2) }}
-            </span>
-        </div>
-        <div
-            v-else
-            class="flex items-center"
-            :style="{
-                gap: '10px',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
-                color: 'var(--gd-text-muted)',
-                whiteSpace: 'nowrap',
-            }"
-            data-no-drag
-            aria-busy="true"
-            aria-label="Loading system stats"
-        >
-            <span class="flex items-center" :style="{ gap: '6px' }">
-                <span>CPU</span>
-                <Skeleton :style="{ width: '28px', height: '10px' }" />
-            </span>
-            <span>·</span>
-            <span class="flex items-center" :style="{ gap: '6px' }">
-                <span>MEM</span>
-                <Skeleton :style="{ width: '78px', height: '10px' }" />
-            </span>
-            <span>·</span>
-            <span class="flex items-center" :style="{ gap: '6px' }">
-                <span>LOAD</span>
-                <Skeleton :style="{ width: '32px', height: '10px' }" />
-            </span>
-        </div>
     </div>
 </template>

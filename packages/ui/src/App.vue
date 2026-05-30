@@ -914,7 +914,6 @@ void ACCENTS;
                         @select="selectFile"
                         @toggle-viewed="toggleViewed"
                         @start-review="startReview"
-                        @open-review-panel="reviewPanelOpen = true"
                     />
 
                     <section class="flex flex-col flex-1 min-w-0 relative">

@@ -8,22 +8,23 @@ export interface Accent {
     soft: string;
 }
 
-// Pierre is monochrome — there is no colored accent system. Every key resolves
-// to the same neutral preset so existing user preferences ("copper", "indigo", …)
-// keep working without a contracts-package migration. Re-introduce variants here
-// if a future theme reinstates colored accents.
-const PIERRE_NEUTRAL: Omit<Accent, "key" | "name"> = {
-    hex: "oklch(20.5% 0 0)",
-    strong: "oklch(14.5% 0 0)",
-    soft: "oklch(97% 0 0)",
+// GitHub Primer has a single colored accent (blue). Every key resolves to the same
+// preset so existing user preferences ("copper", "indigo", …) keep working without a
+// contracts-package migration. The preset points at the per-theme `--primer-accent`
+// token (defined in style.css) so the inline override applyAccent() writes resolves to
+// Primer light blue (#0969da) or Primer dark blue (#2f81f7) automatically.
+const PRIMER_BLUE: Omit<Accent, "key" | "name"> = {
+    hex: "var(--primer-accent)",
+    strong: "var(--primer-accent-strong)",
+    soft: "var(--primer-accent-soft)",
 };
 
 export const ACCENTS: Record<UIAccent, Accent> = {
-    copper: { key: "copper", name: "Pierre", ...PIERRE_NEUTRAL },
-    indigo: { key: "indigo", name: "Pierre", ...PIERRE_NEUTRAL },
-    emerald: { key: "emerald", name: "Pierre", ...PIERRE_NEUTRAL },
-    amber: { key: "amber", name: "Pierre", ...PIERRE_NEUTRAL },
-    rose: { key: "rose", name: "Pierre", ...PIERRE_NEUTRAL },
+    copper: { key: "copper", name: "GitHub", ...PRIMER_BLUE },
+    indigo: { key: "indigo", name: "GitHub", ...PRIMER_BLUE },
+    emerald: { key: "emerald", name: "GitHub", ...PRIMER_BLUE },
+    amber: { key: "amber", name: "GitHub", ...PRIMER_BLUE },
+    rose: { key: "rose", name: "GitHub", ...PRIMER_BLUE },
 };
 
 export function applyAccent(accent: Accent): void {

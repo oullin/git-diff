@@ -26,7 +26,6 @@ const emit = defineEmits<{
     select: [path: string];
     "toggle-viewed": [file: ChangedFile];
     "start-review": [];
-    "open-review-panel": [intent: "comment" | "request"];
 }>();
 
 const { totalCount, viewedCount, filteredFiles, filteredAllPaths, progressPct } = useFileListFilter(
@@ -190,9 +189,6 @@ function clearSearch() {
             </div>
         </div>
 
-        <SidebarActions
-            @start-review="emit('start-review')"
-            @open-review-panel="(intent) => emit('open-review-panel', intent)"
-        />
+        <SidebarActions @start-review="emit('start-review')" />
     </div>
 </template>
