@@ -23,8 +23,8 @@ const emit = defineEmits<{
             :style="{
                 height: '36px',
                 borderRadius: '8px',
-                border: '1px solid transparent',
-                background: 'var(--gd-accent-strong)',
+                border: '1px solid rgba(31, 35, 40, 0.15)',
+                background: 'var(--success)',
                 color: '#fff',
                 fontSize: '13.5px',
                 fontWeight: 600,
