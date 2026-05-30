@@ -53,7 +53,7 @@ import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
 import { useReviewMarkdownCopy } from "@composables/useReviewMarkdownCopy";
 import { useRepoSelectors } from "@composables/useRepoSelectors";
-import { useCommandRegistry } from "@composables/useCommandRegistry";
+import { useAppCommands } from "@composables/useAppCommands";
 import CommandPalette from "@entry/components/CommandPalette.vue";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth.store";
@@ -199,47 +199,14 @@ const { selectAdjacent, jumpToHunk } = useDiffNavigation({
     onSelect: (path) => selectFile(path),
 });
 
-{
-    const palette = useCommandRegistry();
-
-    palette.register({
-        id: "diff.toggle-whitespace",
-        title: "Toggle whitespace-only changes",
-        section: "Diff",
-        keymapId: "toggle_whitespace",
-        run: () =>
-            savePreferences({ [PREF_KEYS.diffHideWhitespace]: hideWhitespace.value ? "0" : "1" }),
-    });
-
-    palette.register({
-        id: "review.copy-markdown",
-        title: "Copy active review as Markdown",
-        section: "Review",
-        run: () => copyReviewAsMarkdown(),
-    });
-
-    palette.register({
-        id: "walkthrough.generate",
-        title: "Generate AI walkthrough",
-        section: "Review",
-        run: async () => {
-            await generateWalkthrough();
-        },
-    });
-
-    palette.register({
-        id: "file.copy-path",
-        title: "Copy current file path",
-        section: "File",
-        run: () => {
-            const file = selectedFile.value;
-
-            if (file) {
-                copyPath(file.path);
-            }
-        },
-    });
-}
+useAppCommands({
+    hideWhitespace: () => hideWhitespace.value,
+    selectedFile,
+    savePreferences,
+    copyReviewAsMarkdown: () => copyReviewAsMarkdown(),
+    generateWalkthrough: () => generateWalkthrough(),
+    copyPath,
+});
 
 const shortcutsEnabled = computed(() => authMode.value === "ready");
 let unsubscribeShortcuts: (() => void) | null = null;
