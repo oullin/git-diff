@@ -8,11 +8,15 @@ const squareKinds = computed<("g" | "r" | "n")[]>(() => {
     const total = props.add + props.del;
     let g = total === 0 ? 0 : Math.round((props.add / total) * 5);
 
-    if (props.add > 0 && g === 0) {g = 1;}
+    if (props.add > 0 && g === 0) {
+        g = 1;
+    }
 
     let r = total === 0 ? 0 : Math.min(5 - g, Math.round((props.del / total) * 5));
 
-    if (props.del > 0 && r === 0 && g < 5) {r = 1;}
+    if (props.del > 0 && r === 0 && g < 5) {
+        r = 1;
+    }
 
     const n = Math.max(0, 5 - g - r);
 
