@@ -342,8 +342,9 @@
     --codex-accent-active: #1f6feb;
     --codex-border-strong: oklch(100% 0 0 / 0.18);
 
-    --primary-foreground: oklch(20.5% 0 0);
-    --success-foreground: oklch(14.5% 0 0);
+    /* Primer dark: blue/green emphasis backgrounds carry white text */
+    --primary-foreground: #ffffff;
+    --success-foreground: #ffffff;
     --button-secondary-hover: oklch(100% 0 0 / 0.06);
     --button-secondary-active: oklch(100% 0 0 / 0.1);
     --button-destructive-hover: #ff8580;

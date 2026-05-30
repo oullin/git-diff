@@ -913,7 +913,7 @@ void ACCENTS;
                         @update:search-query="(value) => (searchQuery = value)"
                         @select="selectFile"
                         @toggle-viewed="toggleViewed"
-                        @start-review="startReview"
+                        @start-review="reviewPanelOpen = true"
                     />
 
                     <section class="flex flex-col flex-1 min-w-0 relative">
