@@ -10,30 +10,30 @@ const meta = computed(() => {
         case "untracked":
             return {
                 label: "A",
-                bg: "rgb(74 222 128 / 0.14)",
-                fg: "var(--gd-added)",
+                bg: "var(--success-subtle)",
+                fg: "var(--success-fg)",
                 title: "Added",
             };
         case "deleted":
             return {
                 label: "D",
-                bg: "rgb(248 113 113 / 0.14)",
-                fg: "var(--gd-removed)",
+                bg: "var(--danger-subtle)",
+                fg: "var(--danger-fg)",
                 title: "Deleted",
             };
         case "renamed":
             return {
                 label: "R",
-                bg: "rgb(129 140 248 / 0.14)",
-                fg: "var(--gd-accent)",
+                bg: "var(--done-subtle)",
+                fg: "var(--done-fg)",
                 title: "Renamed",
             };
         case "modified":
         default:
             return {
                 label: "M",
-                bg: "rgb(251 191 36 / 0.14)",
-                fg: "var(--gd-warn)",
+                bg: "var(--attention-subtle)",
+                fg: "var(--attention-fg)",
                 title: "Modified",
             };
     }

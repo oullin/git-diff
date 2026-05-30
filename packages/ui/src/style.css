@@ -222,6 +222,18 @@
     --gd-del-bg: var(--diff-removed-bg);
     --gd-del-border: var(--diff-removed-border);
 
+    /* GitHub Primer status fills — exact design tokens (light).
+       Drive the A/M/D/R change badges and label chips. */
+    --success-fg: #1a7f37;
+    --success-emphasis: #1f883d;
+    --success-subtle: #dafbe1;
+    --attention-fg: #9a6700;
+    --attention-subtle: #fff8c5;
+    --danger-fg: #cf222e;
+    --danger-subtle: #ffebe9;
+    --done-fg: #8250df;
+    --done-subtle: #fbefff;
+
     --skill: var(--codex-skill);
     --skill-bg: rgb(143 93 24 / 0.14);
     --skill-border: rgb(143 93 24 / 0.4);
@@ -366,6 +378,17 @@
     --gd-add-border: var(--diff-added-border);
     --gd-del-bg: var(--diff-removed-bg);
     --gd-del-border: var(--diff-removed-border);
+
+    /* GitHub Primer status fills — dark pair (translucent so badges read on #0d1117) */
+    --success-fg: #3fb950;
+    --success-emphasis: #238636;
+    --success-subtle: rgb(46 160 67 / 0.15);
+    --attention-fg: #d29922;
+    --attention-subtle: rgb(187 128 9 / 0.15);
+    --danger-fg: #f85149;
+    --danger-subtle: rgb(248 81 73 / 0.15);
+    --done-fg: #a371f7;
+    --done-subtle: rgb(163 113 247 / 0.15);
 
     --status-attention-bg: oklch(82.8% 0.189 84.429 / 0.16);
     --status-attention-fg: var(--attention-orange);

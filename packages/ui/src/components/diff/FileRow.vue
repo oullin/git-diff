@@ -30,14 +30,10 @@ const dir = computed(() => parts.value.slice(0, -1).join("/"));
             padding: '8px 8px 8px 10px',
             margin: '1px 4px',
             borderRadius: '7px',
-            background: selected
-                ? 'linear-gradient(180deg, rgb(132 204 22 / 0.06), rgb(132 204 22 / 0.02)), var(--gd-panel-3, var(--gd-hover))'
-                : 'transparent',
+            background: selected ? 'var(--gd-accent-soft)' : 'transparent',
             border: '1px solid',
-            borderColor: selected ? 'transparent' : 'transparent',
-            boxShadow: selected
-                ? '0 0 0 1px rgb(132 204 22 / 0.22) inset, 0 1px 0 var(--gd-edge-hi-2) inset, 0 4px 12px -8px rgb(132 204 22 / 0.25)'
-                : 'none',
+            borderColor: 'transparent',
+            boxShadow: 'none',
         }"
         @click="emit('select')"
     >
@@ -45,13 +41,12 @@ const dir = computed(() => parts.value.slice(0, -1).join("/"));
             v-if="selected"
             :style="{
                 position: 'absolute',
-                left: '-1px',
+                left: '0',
                 top: '6px',
                 bottom: '6px',
-                width: '2px',
-                background: 'var(--gd-added)',
-                borderRadius: '2px',
-                boxShadow: '0 0 8px rgb(132 204 22 / 0.6)',
+                width: '3px',
+                background: 'var(--gd-accent)',
+                borderRadius: '3px',
             }"
         />
         <StatusBadge :status="file.status" />
@@ -109,9 +104,9 @@ const dir = computed(() => parts.value.slice(0, -1).join("/"));
                 width: '16px',
                 height: '16px',
                 borderRadius: '4px',
-                border: viewed ? 'none' : '1px solid var(--gd-border-strong)',
-                background: viewed ? 'var(--gd-accent)' : 'transparent',
-                color: '#0a0a0c',
+                border: viewed ? 'none' : '1px solid var(--gd-border)',
+                background: viewed ? 'var(--success-emphasis)' : 'transparent',
+                color: '#ffffff',
                 padding: 0,
                 display: 'inline-flex',
                 alignItems: 'center',

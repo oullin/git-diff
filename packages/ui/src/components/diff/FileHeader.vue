@@ -88,11 +88,11 @@ const canPreview = computed(
                 fontWeight: 600,
                 letterSpacing: '0.4px',
                 textTransform: 'uppercase',
-                color: 'var(--gd-warn)',
+                color: 'var(--attention-fg)',
                 padding: '2px 6px',
-                background: 'rgb(251 191 36 / 0.10)',
-                border: '1px solid rgb(251 191 36 / 0.22)',
-                borderRadius: '4px',
+                background: 'var(--attention-subtle)',
+                border: '1px solid transparent',
+                borderRadius: '999px',
             }"
             >Unstaged</span
         >
@@ -151,10 +151,9 @@ const canPreview = computed(
                 height: '28px',
                 padding: '0 10px',
                 borderRadius: '7px',
-                background: viewed ? 'var(--gd-accent-soft)' : 'var(--gd-panel-2)',
-                border: '1px solid',
-                borderColor: viewed ? 'var(--gd-accent-strong)' : 'var(--gd-border)',
-                color: viewed ? 'var(--gd-accent)' : 'var(--gd-text-2)',
+                background: 'var(--gd-panel-2)',
+                border: '1px solid var(--gd-border)',
+                color: viewed ? 'var(--gd-text-3)' : 'var(--gd-text-2)',
                 fontSize: '13px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -166,12 +165,12 @@ const canPreview = computed(
                     width: '14px',
                     height: '14px',
                     borderRadius: '3px',
-                    background: viewed ? 'var(--gd-accent)' : 'transparent',
-                    border: viewed ? 'none' : '1.5px solid var(--gd-border-strong)',
+                    background: viewed ? 'var(--success-emphasis)' : 'transparent',
+                    border: viewed ? 'none' : '1.5px solid var(--gd-border)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#0a0a0c',
+                    color: '#ffffff',
                 }"
             >
                 <Check v-if="viewed" :size="10" :stroke-width="3.5" />
