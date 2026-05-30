@@ -28,6 +28,7 @@ import SplitHandle from "@diff/SplitHandle.vue";
 import DiffGutter from "@diff/DiffGutter.vue";
 import DiffCodeCell from "@diff/DiffCodeCell.vue";
 import DiffHunkHeader from "@diff/DiffHunkHeader.vue";
+import DiffSplitRow from "@diff/DiffSplitRow.vue";
 import type {
     ChangedFile,
     DiffHunkStyle,
@@ -306,147 +307,20 @@ const { renderPair } = useSplitCellRender({
                                 </template>
                             </template>
                             <template v-else>
-                                <div
-                                    class="gd-row relative"
-                                    :style="{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'var(--gd-split-cols, 1fr 1fr)',
-                                    }"
-                                >
-                                    <div
-                                        class="flex"
-                                        :style="{
-                                            background: bgFor(renderPair(row).left.kind),
-                                            minHeight: `${lineH}px`,
-                                            minWidth: 0,
-                                            overflow: 'hidden',
-                                        }"
-                                    >
-                                        <div
-                                            :style="{
-                                                width: '56px',
-                                                flexShrink: 0,
-                                                textAlign: 'right',
-                                                padding: '0 10px 0 4px',
-                                                background: numBgFor(renderPair(row).left.kind),
-                                                color: 'var(--gd-text-muted)',
-                                                fontSize: '12px',
-                                                fontVariantNumeric: 'tabular-nums',
-                                                userSelect: 'none',
-                                                position: 'relative',
-                                            }"
-                                        >
-                                            <div
-                                                v-if="renderPair(row).left.kind === 'rem'"
-                                                :style="{
-                                                    position: 'absolute',
-                                                    left: 0,
-                                                    top: 0,
-                                                    bottom: 0,
-                                                    width: '2px',
-                                                    background: barFor('rem'),
-                                                }"
-                                            />
-                                            {{ renderPair(row).left.num }}
-                                        </div>
-                                        <div
-                                            :style="{
-                                                flex: 1,
-                                                minWidth: 0,
-                                                padding: '0 12px',
-                                                whiteSpace: 'pre',
-                                                color: 'var(--gd-text)',
-                                            }"
-                                        >
-                                            <span
-                                                :style="{
-                                                    display: 'inline-block',
-                                                    width: '12px',
-                                                    color: 'var(--gd-text-muted)',
-                                                }"
-                                                >{{ sign(renderPair(row).left.kind) }}</span
-                                            ><code
-                                                data-diff-line-text
-                                                v-html="renderPair(row).left.html"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="flex"
-                                        :style="{
-                                            background: bgFor(renderPair(row).right.kind),
-                                            borderLeft: '1px solid var(--gd-border-soft)',
-                                            minHeight: `${lineH}px`,
-                                            minWidth: 0,
-                                            overflow: 'hidden',
-                                        }"
-                                    >
-                                        <div
-                                            :style="{
-                                                width: '56px',
-                                                flexShrink: 0,
-                                                textAlign: 'right',
-                                                padding: '0 10px 0 4px',
-                                                background: numBgFor(renderPair(row).right.kind),
-                                                color: 'var(--gd-text-muted)',
-                                                fontSize: '12px',
-                                                fontVariantNumeric: 'tabular-nums',
-                                                userSelect: 'none',
-                                                position: 'relative',
-                                            }"
-                                        >
-                                            <div
-                                                v-if="renderPair(row).right.kind === 'add'"
-                                                :style="{
-                                                    position: 'absolute',
-                                                    left: 0,
-                                                    top: 0,
-                                                    bottom: 0,
-                                                    width: '2px',
-                                                    background: barFor('add'),
-                                                }"
-                                            />
-                                            {{ renderPair(row).right.num }}
-                                        </div>
-                                        <div
-                                            :style="{
-                                                flex: 1,
-                                                minWidth: 0,
-                                                padding: '0 12px',
-                                                whiteSpace: 'pre',
-                                                color: 'var(--gd-text)',
-                                            }"
-                                        >
-                                            <span
-                                                :style="{
-                                                    display: 'inline-block',
-                                                    width: '12px',
-                                                    color: 'var(--gd-text-muted)',
-                                                }"
-                                                >{{ sign(renderPair(row).right.kind) }}</span
-                                            ><code
-                                                data-diff-line-text
-                                                v-html="renderPair(row).right.html"
-                                            />
-                                        </div>
-                                    </div>
-                                    <button
-                                        v-if="row.left || row.right"
-                                        type="button"
-                                        class="gd-add-comment"
-                                        title="Add comment (shift-click to extend selection)"
-                                        @click="
-                                            (e) =>
-                                                handleAddCommentClick(
-                                                    e,
-                                                    section,
-                                                    (row.right ?? row.left) as PatchLine,
-                                                )
-                                        "
-                                    >
-                                        <Plus :size="12" :stroke-width="2.5" />
-                                    </button>
-                                </div>
+                                <DiffSplitRow
+                                    :render="renderPair(row)"
+                                    :line-height="lineH"
+                                    :diff-style="diffStyle"
+                                    :can-comment="!!(row.left || row.right)"
+                                    @add-comment="
+                                        (e) =>
+                                            handleAddCommentClick(
+                                                e,
+                                                section,
+                                                (row.right ?? row.left) as PatchLine,
+                                            )
+                                    "
+                                />
                                 <template
                                     v-for="line in [row.left, row.right].filter(
                                         Boolean,
