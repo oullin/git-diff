@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, toRef } from "vue";
 import { ChevronDown, ChevronUp, Loader2, Plus } from "lucide-vue-next";
-import { highlighterRev, highlightLine, languageFor } from "@lib/highlight";
-import { diffBgs, type DiffStyleColors } from "@lib/accent";
+import { languageFor } from "@lib/highlight";
 import {
     applyExpansions,
-    getHunkInfos,
     parsePatch,
     splitPatchLines,
     type HunkInfo,
     type PatchLine,
     type SplitRow,
 } from "@lib/patch";
-import { computeWordHi, type Range } from "@lib/wordHi";
 import { useContextExpansion } from "@composables/useContextExpansion";
+import { useDiffHighlighting } from "@composables/useDiffHighlighting";
+import { useDiffStyles } from "@composables/useDiffStyles";
+import { useHunkInfo } from "@composables/useHunkInfo";
 import {
     useLineSelection,
     type LineAnchor,
     type LineSelectionRange,
     type LineSide,
 } from "@composables/useLineSelection";
-import CommentThread from "./CommentThread.vue";
-import SplitHandle from "./SplitHandle.vue";
+import CommentThread from "@diff/CommentThread.vue";
+import SplitHandle from "@diff/SplitHandle.vue";
 import type {
     ChangedFile,
     DiffHunkStyle,
@@ -150,8 +150,11 @@ function setSectionRef(id: string) {
 }
 
 const lineH = computed(() => (props.density === "compact" ? 22 : 24));
-const colors = computed<DiffStyleColors>(() => diffBgs(props.diffStyle));
 const lang = computed(() => languageFor(props.file.path));
+
+const { colors, bgFor, numBgFor, barFor, sign } = useDiffStyles(toRef(props, "diffStyle"));
+const { highlightHtml, withRanges, computeWordHi } = useDiffHighlighting(lang);
+const { hunksFor, findHunk, nextHunkOldStart } = useHunkInfo(toRef(props, "hideWhitespace"));
 
 function patchLines(section: DiffSection): PatchLine[] {
     const base = parsePatch(section, props.hideWhitespace);
@@ -161,39 +164,6 @@ function patchLines(section: DiffSection): PatchLine[] {
 
 function splitRows(section: DiffSection): SplitRow[] {
     return splitPatchLines(patchLines(section));
-}
-
-const hunkInfoCache = new Map<string, HunkInfo[]>();
-
-function hunksFor(section: DiffSection): HunkInfo[] {
-    // parsePatch is deterministic given (section, hideWhitespace); cache per
-    // section id + whitespace toggle to avoid rewalking the patch each render.
-    const cacheKey = `${section.id}:${props.hideWhitespace ? "h" : "v"}`;
-    const cached = hunkInfoCache.get(cacheKey);
-
-    if (cached) {
-        return cached;
-    }
-
-    const infos = getHunkInfos(parsePatch(section, props.hideWhitespace));
-
-    hunkInfoCache.set(cacheKey, infos);
-    return infos;
-}
-
-function findHunk(section: DiffSection, metaId: string): HunkInfo | null {
-    return hunksFor(section).find((h) => h.metaId === metaId) ?? null;
-}
-
-function nextHunkOldStart(section: DiffSection, hunk: HunkInfo): number | null {
-    const infos = hunksFor(section);
-    const index = infos.findIndex((h) => h.metaId === hunk.metaId);
-
-    if (index < 0 || index === infos.length - 1) {
-        return null;
-    }
-
-    return infos[index + 1]!.oldStart;
 }
 
 function expansionRequest(section: DiffSection) {
@@ -291,54 +261,6 @@ function commentsForLine(section: DiffSection, line: PatchLine | undefined): Rev
     });
 }
 
-function highlightHtml(text: string): string {
-    // Read the rev so Vue re-runs this when a language finishes loading.
-    void highlighterRev.value;
-
-    return highlightLine(text || " ", lang.value);
-}
-
-function withRanges(text: string, ranges: Range[], cls: "wh-add" | "wh-rem"): string {
-    if (!ranges.length) {
-        return escapeHtml(text);
-    }
-
-    const out: string[] = [];
-    let cursor = 0;
-
-    for (const [start, end] of ranges) {
-        if (start > cursor) {
-            out.push(escapeHtml(text.slice(cursor, start)));
-        }
-
-        out.push(`<span class="${cls}">${escapeHtml(text.slice(start, end))}</span>`);
-        cursor = end;
-    }
-
-    if (cursor < text.length) {
-        out.push(escapeHtml(text.slice(cursor)));
-    }
-
-    return out.join("");
-}
-
-function escapeHtml(value: string): string {
-    return value.replace(/[&<>"']/g, (ch) => {
-        switch (ch) {
-            case "&":
-                return "&amp;";
-            case "<":
-                return "&lt;";
-            case ">":
-                return "&gt;";
-            case '"':
-                return "&quot;";
-            default:
-                return "&#39;";
-        }
-    });
-}
-
 interface CellRender {
     kind: "ctx" | "add" | "rem" | "empty";
     num: number | "";
@@ -371,54 +293,6 @@ function renderPair(row: Extract<SplitRow, { kind: "pair" }>): {
         left: { kind: leftKind, num: left?.oldLine ?? "", side: "left", html: leftHtml },
         right: { kind: rightKind, num: right?.newLine ?? "", side: "right", html: rightHtml },
     };
-}
-
-function bgFor(kind: CellRender["kind"]): string {
-    if (kind === "add") {
-        return colors.value.addBg;
-    }
-
-    if (kind === "rem") {
-        return colors.value.remBg;
-    }
-
-    return "transparent";
-}
-
-function numBgFor(kind: CellRender["kind"]): string {
-    if (kind === "add") {
-        return colors.value.addNum;
-    }
-
-    if (kind === "rem") {
-        return colors.value.remNum;
-    }
-
-    return "transparent";
-}
-
-function barFor(kind: CellRender["kind"]): string {
-    if (kind === "add") {
-        return colors.value.addBar;
-    }
-
-    if (kind === "rem") {
-        return colors.value.remBar;
-    }
-
-    return "transparent";
-}
-
-function sign(kind: CellRender["kind"]): string {
-    if (kind === "add") {
-        return "+";
-    }
-
-    if (kind === "rem") {
-        return "−";
-    }
-
-    return " ";
 }
 
 function hunkHeaderText(text: string): { range: string; trailer: string } {

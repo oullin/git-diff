@@ -1,11 +1,11 @@
-import { ipcMain } from "electron";
 import { client } from "#electron/bridge.js";
+import type { IpcRouter } from "#electron/ipc/router.js";
 import type { IpcDeps } from "#electron/ipc/types.js";
 
-export function register(deps: IpcDeps): void {
-    ipcMain.handle("system:stats", async () => (await client()).getSystemStats());
+export function register(router: IpcRouter, deps: IpcDeps): void {
+    router.on("system:stats", async () => (await client()).system.stats());
 
-    ipcMain.handle("system:openDevTools", () => {
+    router.on("system:openDevTools", () => {
         const mainWindow = deps.getMainWindow();
 
         if (!mainWindow) {

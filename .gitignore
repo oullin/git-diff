@@ -5,6 +5,9 @@ node_modules/
 .idea/
 .playwright-mcp/
 
+# Go test coverage profile.
+coverage.out
+
 # Private migration artifacts should stay outside git.
 *.tar.gz
 *.tar.gz.age

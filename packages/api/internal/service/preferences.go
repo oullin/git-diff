@@ -3,37 +3,33 @@ package service
 import (
 	"context"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
-// PreferenceService is a thin owner for the per-user UI preference map.
-// The storage layer already handles the optimistic merge + delete-on-empty
-// behaviour; the service exists so handlers can drop the store-handle
-// boilerplate.
 type PreferenceService struct {
-	store *storage.Store
+	preferences *storage.PreferenceRepo
 }
 
-func NewPreferenceService(store *storage.Store) *PreferenceService {
-	return &PreferenceService{store: store}
+func NewPreferenceService(preferences *storage.PreferenceRepo) *PreferenceService {
+	return &PreferenceService{preferences: preferences}
 }
 
-func (s *PreferenceService) Get(ctx context.Context, userID int64) (storage.UIPreferences, error) {
+func (s *PreferenceService) Get(ctx context.Context, userID int64) (storage.UserPreferences, error) {
 	if userID == 0 {
-		return storage.UIPreferences{}, ErrAuthenticationRequired
+		return storage.UserPreferences{}, ErrAuthenticationRequired
 	}
 
-	return s.store.GetUIPreferences(ctx, userID)
+	return s.preferences.GetUserPreferences(ctx, userID)
 }
 
 func (s *PreferenceService) Save(
 	ctx context.Context,
 	userID int64,
 	patch map[string]string,
-) (storage.UIPreferences, error) {
+) (storage.UserPreferences, error) {
 	if userID == 0 {
-		return storage.UIPreferences{}, ErrAuthenticationRequired
+		return storage.UserPreferences{}, ErrAuthenticationRequired
 	}
 
-	return s.store.SaveUIPreferences(ctx, userID, patch)
+	return s.preferences.SaveUserPreferences(ctx, userID, patch)
 }

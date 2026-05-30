@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 type authUserResponse struct {
@@ -53,7 +53,7 @@ func userToResponse(user storage.User) authUserResponse {
 }
 
 func (s Server) requireAuthSetup(w http.ResponseWriter) bool {
-	if s.Auth == nil || s.AuthService == nil {
+	if s.Session == nil || s.auth == nil {
 		writeError(w, http.StatusInternalServerError, errors.New("auth not initialized"))
 
 		return false
@@ -67,7 +67,7 @@ func (s Server) authState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.AuthService.State(r.Context(), s.Auth.OSUsername())
+	user, err := s.auth.State(r.Context(), s.Session.OSUsername())
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, fmt.Errorf("read user: %w", err))
@@ -78,7 +78,7 @@ func (s Server) authState(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, authStateResponse{
 		OSUsername:      user.OSUsername,
 		NeedsSetup:      !user.HasPassword,
-		IsAuthenticated: s.Auth.CurrentUserID() == user.ID,
+		IsAuthenticated: s.Session.CurrentUserID() == user.ID,
 	})
 }
 
@@ -95,7 +95,7 @@ func (s Server) authSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, session, err := s.AuthService.Setup(r.Context(), s.Auth.OSUsername(), req.Password)
+	user, session, err := s.auth.Setup(r.Context(), s.Session.OSUsername(), req.Password)
 
 	switch {
 	case errors.Is(err, service.ErrPasswordTooShort):
@@ -112,7 +112,7 @@ func (s Server) authSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Auth.Set(user.ID, session.RawToken)
+	s.Session.Set(user.ID, session.RawToken)
 
 	writeJSON(w, http.StatusOK, authLoginResponse{
 		Token: session.RawToken,
@@ -133,7 +133,7 @@ func (s Server) authLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, session, err := s.AuthService.Login(r.Context(), s.Auth.OSUsername(), req.Password, req.Remember)
+	user, session, err := s.auth.Login(r.Context(), s.Session.OSUsername(), req.Password, req.Remember)
 
 	switch {
 	case errors.Is(err, service.ErrPasswordNotSet):
@@ -154,9 +154,9 @@ func (s Server) authLogin(w http.ResponseWriter, r *http.Request) {
 
 	if session != nil {
 		resp.Token = session.RawToken
-		s.Auth.Set(user.ID, session.RawToken)
+		s.Session.Set(user.ID, session.RawToken)
 	} else {
-		s.Auth.Set(user.ID, "")
+		s.Session.Set(user.ID, "")
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -175,7 +175,7 @@ func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.AuthService.Resume(r.Context(), req.Token)
+	user, err := s.auth.Resume(r.Context(), req.Token)
 
 	switch {
 	case errors.Is(err, storage.ErrSessionNotFound):
@@ -188,7 +188,7 @@ func (s Server) authResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Auth.Set(user.ID, req.Token)
+	s.Session.Set(user.ID, req.Token)
 
 	writeJSON(w, http.StatusOK, map[string]any{"user": userToResponse(user)})
 }
@@ -198,8 +198,8 @@ func (s Server) authLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = s.AuthService.Logout(r.Context(), s.Auth.CurrentToken())
-	s.Auth.Clear()
+	_ = s.auth.Logout(r.Context(), s.Session.CurrentToken())
+	s.Session.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -217,7 +217,7 @@ func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.AuthService.Wipe(r.Context(), s.Auth.OSUsername(), req.OSUsername)
+	err := s.auth.Wipe(r.Context(), s.Session.OSUsername(), req.OSUsername)
 
 	switch {
 	case errors.Is(err, service.ErrCannotWipeOtherUser):
@@ -230,7 +230,7 @@ func (s Server) authWipe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.Auth.Clear()
+	s.Session.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
 }

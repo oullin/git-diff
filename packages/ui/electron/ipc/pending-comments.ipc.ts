@@ -1,32 +1,32 @@
-import { ipcMain } from "electron";
 import { client } from "#electron/bridge.js";
+import type { IpcRouter } from "#electron/ipc/router.js";
 
-export function register(): void {
-    ipcMain.handle(
+export function register(router: IpcRouter): void {
+    router.on(
         "pending-comments:list",
         async (_event, request: { path?: string; kind?: "working" | "commit"; sha?: string }) =>
-            (await client()).listPendingComments(request),
+            (await client()).pendingComments.list(request),
     );
 
-    ipcMain.handle(
+    router.on(
         "pending-comments:create",
         async (
             _event,
-            request: Parameters<Awaited<ReturnType<typeof client>>["createPendingComment"]>[0],
-        ) => (await client()).createPendingComment(request),
+            request: Parameters<Awaited<ReturnType<typeof client>>["pendingComments"]["create"]>[0],
+        ) => (await client()).pendingComments.create(request),
     );
 
-    ipcMain.handle(
+    router.on(
         "pending-comments:update",
-        async (_event, request: { id: string; bodyHtml: string }) =>
-            (await client()).updatePendingComment(request),
+        async (_event, request: { id: number; bodyHtml: string }) =>
+            (await client()).pendingComments.update(request),
     );
 
-    ipcMain.handle("pending-comments:delete", async (_event, id: string) =>
-        (await client()).deletePendingComment({ id }),
+    router.on("pending-comments:delete", async (_event, id: number) =>
+        (await client()).pendingComments.delete({ id }),
     );
 
-    ipcMain.handle("pending-comments:promote", async (_event, reviewId: string) =>
-        (await client()).promotePendingComments({ reviewId }),
+    router.on("pending-comments:promote", async (_event, reviewId: number) =>
+        (await client()).pendingComments.promote({ reviewId }),
     );
 }

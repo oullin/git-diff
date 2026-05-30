@@ -4,12 +4,19 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"github.com/oullin/git-diff/internal/db"
 )
 
-type UIPreferences struct {
+type UserPreferences struct {
 	Values    map[string]string `json:"values"`
 	UpdatedAt string            `json:"updatedAt,omitempty"`
 }
+
+type PreferenceRepo struct{}
 
 const DefaultTheme = "light"
 const DefaultDiffViewMode = "split"
@@ -26,56 +33,45 @@ const (
 	PrefKeyAnthropicModel     = "llm.anthropicModel"
 )
 
-func (s *Store) GetUIPreferences(ctx context.Context, userID int64) (UIPreferences, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT key, value, updated_at
-		FROM ui_preferences
-		WHERE user_id = ?
-	`, userID)
-
-	if err != nil {
-		return UIPreferences{}, err
-	}
-
-	defer rows.Close()
-
-	prefs := UIPreferences{Values: map[string]string{}}
-
-	for rows.Next() {
-		var (
-			key       string
-			value     string
-			updatedAt string
-		)
-
-		if err := rows.Scan(&key, &value, &updatedAt); err != nil {
-			return UIPreferences{}, err
-		}
-
-		prefs.Values[key] = value
-
-		if updatedAt > prefs.UpdatedAt {
-			prefs.UpdatedAt = updatedAt
-		}
-	}
-
-	return prefs, rows.Err()
+func newPreferenceRepo() *PreferenceRepo {
+	return &PreferenceRepo{}
 }
 
-func (s *Store) SaveUIPreferences(ctx context.Context, userID int64, patch map[string]string) (UIPreferences, error) {
+func (r *PreferenceRepo) GetUserPreferences(ctx context.Context, userID int64) (UserPreferences, error) {
+	var rows []UserPreferenceRow
+
+	if err := db.Conn().WithContext(ctx).Where("user_id = ?", userID).Find(&rows).Error; err != nil {
+		return UserPreferences{}, err
+	}
+
+	prefs := UserPreferences{Values: map[string]string{}}
+
+	for _, row := range rows {
+		prefs.Values[row.Key] = row.Value
+
+		if row.UpdatedAt > prefs.UpdatedAt {
+			prefs.UpdatedAt = row.UpdatedAt
+		}
+	}
+
+	return prefs, nil
+}
+
+// SaveUserPreferences applies a patch in one transaction with at most two
+// statements: a single batched upsert for set values and a single bulk delete
+// for cleared values. Avoids the per-key INSERT/DELETE loop the original
+// implementation issued.
+func (r *PreferenceRepo) SaveUserPreferences(ctx context.Context, userID int64, patch map[string]string) (UserPreferences, error) {
 	if len(patch) == 0 {
-		return s.GetUIPreferences(ctx, userID)
+		return r.GetUserPreferences(ctx, userID)
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
 
-	if err != nil {
-		return UIPreferences{}, err
-	}
-
-	defer tx.Rollback()
-
-	updatedAt := s.now().UTC().Format(time.RFC3339Nano)
+	var (
+		upserts []UserPreferenceRow
+		deletes []string
+	)
 
 	for key, value := range patch {
 		key = strings.TrimSpace(key)
@@ -85,29 +81,42 @@ func (s *Store) SaveUIPreferences(ctx context.Context, userID int64, patch map[s
 		}
 
 		if value == "" {
-			if _, err := tx.ExecContext(ctx, `
-				DELETE FROM ui_preferences WHERE user_id = ? AND key = ?
-			`, userID, key); err != nil {
-				return UIPreferences{}, err
-			}
+			deletes = append(deletes, key)
 
 			continue
 		}
 
-		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO ui_preferences (user_id, key, value, updated_at)
-			VALUES (?, ?, ?, ?)
-			ON CONFLICT(user_id, key) DO UPDATE SET
-				value = excluded.value,
-				updated_at = excluded.updated_at
-		`, userID, key, value, updatedAt); err != nil {
-			return UIPreferences{}, err
+		upserts = append(upserts, UserPreferenceRow{
+			UserID:    userID,
+			Key:       key,
+			Value:     value,
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+	}
+
+	err := db.Conn().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if len(upserts) > 0 {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "user_id"}, {Name: "key"}},
+				DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"}),
+			}).Create(&upserts).Error; err != nil {
+				return err
+			}
 		}
+
+		if len(deletes) > 0 {
+			if err := tx.Where("user_id = ? AND key IN ?", userID, deletes).Delete(&UserPreferenceRow{}).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return UserPreferences{}, err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return UIPreferences{}, err
-	}
-
-	return s.GetUIPreferences(ctx, userID)
+	return r.GetUserPreferences(ctx, userID)
 }

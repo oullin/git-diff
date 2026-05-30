@@ -32,17 +32,20 @@ function firstWritableDir(): string | null {
             mkdirSync(dir, { recursive: true });
             // Sentinel write/delete to verify writability without requiring sudo.
             const probe = join(dir, `.git-diff-write-check-${process.pid}`);
+
             writeFileSync(probe, "ok");
             try {
                 require("node:fs").unlinkSync(probe);
             } catch {
                 // ignore
             }
+
             return dir;
         } catch {
             // Not writable without sudo — keep looking.
         }
     }
+
     return null;
 }
 
@@ -51,8 +54,10 @@ export async function installTerminalHelper(): Promise<void> {
 
     if (!dir) {
         const fallback = join(homedir(), ".local", "bin");
+
         mkdirSync(fallback, { recursive: true });
         const target = join(fallback, "git-diff");
+
         writeFileSync(target, LAUNCHER_SCRIPT, { mode: 0o755 });
         chmodSync(target, 0o755);
         await dialog.showMessageBox({
@@ -60,6 +65,7 @@ export async function installTerminalHelper(): Promise<void> {
             message: "Terminal Helper installed",
             detail: `Installed git-diff at ${target}.\n\nNo writable directory was found on $PATH. Add ${fallback} to your shell rc (e.g. .zshrc):\n\nexport PATH="${fallback}:$PATH"`,
         });
+
         return;
     }
 
@@ -74,6 +80,7 @@ export async function installTerminalHelper(): Promise<void> {
             message: "Could not install Terminal Helper",
             detail: `Failed to write ${target}: ${(error as Error).message}`,
         });
+
         return;
     }
 
@@ -87,10 +94,12 @@ export async function installTerminalHelper(): Promise<void> {
 export function terminalHelperPath(): string | null {
     for (const dir of CANDIDATE_DIRS) {
         const candidate = join(dir, "git-diff");
+
         if (existsSync(candidate)) {
             return candidate;
         }
     }
+
     return null;
 }
 

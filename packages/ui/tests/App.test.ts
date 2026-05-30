@@ -7,6 +7,7 @@ describe("App", () => {
     it("renders local repository changes and review controls", async () => {
         installBrowserFallback();
         const wrapper = mount(App);
+
         await flushPromises();
         await flushPromises();
 

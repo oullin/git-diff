@@ -6,7 +6,7 @@
     "author": "Gus Canto",
     "repository": {
         "type": "git",
-        "url": "https://github.com/gocanto/git-diff.git",
+        "url": "https://github.com/oullin/git-diff.git",
         "directory": "packages/ui"
     },
     "type": "module",
@@ -93,7 +93,7 @@
         "npmRebuild": false,
         "publish": {
             "provider": "github",
-            "owner": "gocanto",
+            "owner": "oullin",
             "repo": "git-diff"
         },
         "directories": {

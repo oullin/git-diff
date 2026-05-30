@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/review"
 )
 
 func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
@@ -15,7 +15,7 @@ func (s Server) repositoryBranches(w http.ResponseWriter, r *http.Request) {
 		path = s.Repo
 	}
 
-	result, err := s.BranchService.List(r.Context(), path)
+	result, err := s.branches.List(r.Context(), path)
 
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err)

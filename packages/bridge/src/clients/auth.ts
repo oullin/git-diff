@@ -1,44 +1,47 @@
-import type { AuthLoginResponse, AuthStateResponse, AuthUser } from "@git-diff/contracts";
-import { requestJson } from "#bridge/http.js";
+import type {
+    AuthLoginRequest,
+    AuthLoginResponse,
+    AuthResumeRequest,
+    AuthResumeResponse,
+    AuthSetupRequest,
+    AuthStateResponse,
+    AuthWipeRequest,
+} from "@git-diff/contracts";
+import type { HttpTransport } from "#bridge/http.js";
 
-export function getAuthState(socketPath: string): Promise<AuthStateResponse> {
-    return requestJson<AuthStateResponse>(socketPath, "GET", "/v1/auth/state");
-}
+export class AuthClient {
+    constructor(private readonly transport: HttpTransport) {}
 
-export function authSetup(
-    socketPath: string,
-    request: { password: string },
-): Promise<AuthLoginResponse> {
-    return requestJson<AuthLoginResponse>(socketPath, "POST", "/v1/auth/setup", {
-        password: request.password,
-    });
-}
+    getState(): Promise<AuthStateResponse> {
+        return this.transport.request<AuthStateResponse>("GET", "/v1/auth/state");
+    }
 
-export function authLogin(
-    socketPath: string,
-    request: { password: string; remember: boolean },
-): Promise<AuthLoginResponse> {
-    return requestJson<AuthLoginResponse>(socketPath, "POST", "/v1/auth/login", {
-        password: request.password,
-        remember: request.remember,
-    });
-}
+    setup(request: AuthSetupRequest): Promise<AuthLoginResponse> {
+        return this.transport.request<AuthLoginResponse>("POST", "/v1/auth/setup", {
+            password: request.password,
+        });
+    }
 
-export function authResume(
-    socketPath: string,
-    request: { token: string },
-): Promise<{ user: AuthUser }> {
-    return requestJson<{ user: AuthUser }>(socketPath, "POST", "/v1/auth/resume", {
-        token: request.token,
-    });
-}
+    login(request: AuthLoginRequest): Promise<AuthLoginResponse> {
+        return this.transport.request<AuthLoginResponse>("POST", "/v1/auth/login", {
+            password: request.password,
+            remember: request.remember,
+        });
+    }
 
-export function authLogout(socketPath: string): Promise<void> {
-    return requestJson<void>(socketPath, "POST", "/v1/auth/logout");
-}
+    resume(request: AuthResumeRequest): Promise<AuthResumeResponse> {
+        return this.transport.request<AuthResumeResponse>("POST", "/v1/auth/resume", {
+            token: request.token,
+        });
+    }
 
-export function authWipe(socketPath: string, request: { osUsername?: string }): Promise<void> {
-    return requestJson<void>(socketPath, "POST", "/v1/auth/wipe", {
-        osUsername: request.osUsername ?? "",
-    });
+    logout(): Promise<void> {
+        return this.transport.request<void>("POST", "/v1/auth/logout");
+    }
+
+    wipe(request: AuthWipeRequest): Promise<void> {
+        return this.transport.request<void>("POST", "/v1/auth/wipe", {
+            osUsername: request.osUsername ?? "",
+        });
+    }
 }

@@ -1,54 +1,49 @@
-import { requestJson } from "#bridge/http.js";
-export function createReview(socketPath, request) {
-    return requestJson(socketPath, "POST", "/v1/reviews", request);
-}
-export function listReviews(socketPath, request = {}) {
-    const query = typeof request.limit === "number" ? `?limit=${request.limit}` : "";
-    return requestJson(socketPath, "GET", `/v1/reviews${query}`);
-}
-export function reviewDetail(socketPath, request) {
-    return requestJson(socketPath, "GET", `/v1/reviews/${encodeURIComponent(request.id)}`);
-}
-export function addReviewEvent(socketPath, request) {
-    return requestJson(
-        socketPath,
-        "POST",
-        `/v1/reviews/${encodeURIComponent(request.reviewId)}/events`,
-        {
+export class ReviewClient {
+    transport;
+    constructor(transport) {
+        this.transport = transport;
+    }
+    create(request) {
+        return this.transport.request("POST", "/v1/reviews", request);
+    }
+    list(request = {}) {
+        const query = typeof request.limit === "number" ? `?limit=${request.limit}` : "";
+        return this.transport.request("GET", `/v1/reviews${query}`);
+    }
+    detail(request) {
+        return this.transport.request("GET", `/v1/reviews/${request.id}`);
+    }
+    addEvent(request) {
+        return this.transport.request("POST", `/v1/reviews/${request.reviewId}/events`, {
             type: request.type,
             filePath: request.filePath,
             message: request.message,
             metadata: request.metadata,
-        },
-    );
-}
-export function createReviewComment(socketPath, request) {
-    return requestJson(
-        socketPath,
-        "POST",
-        `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments`,
-        {
+        });
+    }
+    createComment(request) {
+        return this.transport.request("POST", `/v1/reviews/${request.reviewId}/comments`, {
             filePath: request.filePath,
             diffSection: request.diffSection,
             side: request.side,
             lineNumber: request.lineNumber,
+            startLineNumber: request.startLineNumber,
+            startSide: request.startSide,
             authorLabel: request.authorLabel,
             bodyHtml: request.bodyHtml,
-        },
-    );
-}
-export function updateReviewComment(socketPath, request) {
-    return requestJson(
-        socketPath,
-        "PATCH",
-        `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
-        { bodyHtml: request.bodyHtml },
-    );
-}
-export function deleteReviewComment(socketPath, request) {
-    return requestJson(
-        socketPath,
-        "DELETE",
-        `/v1/reviews/${encodeURIComponent(request.reviewId)}/comments/${encodeURIComponent(request.commentId)}`,
-    );
+        });
+    }
+    updateComment(request) {
+        return this.transport.request(
+            "PATCH",
+            `/v1/reviews/${request.reviewId}/comments/${request.commentId}`,
+            { bodyHtml: request.bodyHtml },
+        );
+    }
+    deleteComment(request) {
+        return this.transport.request(
+            "DELETE",
+            `/v1/reviews/${request.reviewId}/comments/${request.commentId}`,
+        );
+    }
 }

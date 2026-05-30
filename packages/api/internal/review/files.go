@@ -12,14 +12,16 @@ import (
 	"unicode/utf8"
 )
 
+// ErrBlobNotFound is returned by ReadRepositoryBlob when the requested file
+// is missing from the working tree or absent at the given ref.
+var ErrBlobNotFound = errors.New("blob not found")
+
+// ErrBlobTooLarge is returned by ReadRepositoryBlob when the requested file
+// exceeds maxFileReadBytes; callers should map this to HTTP 413.
+var ErrBlobTooLarge = errors.New("blob too large")
+
 func ResolveRoot(ctx context.Context, launchPath string) (string, error) {
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
-
-	if err != nil {
-		return "", fmt.Errorf("resolve git root: %w", err)
-	}
-
-	return strings.TrimSpace(root), nil
+	return RootFor(ctx, launchPath)
 }
 
 func ListRepositoryFiles(ctx context.Context, root string) ([]string, error) {
@@ -65,13 +67,13 @@ func ReadRepositoryFile(ctx context.Context, launchPath, relPath string) (Reposi
 		return RepositoryFile{}, errors.New("path is required")
 	}
 
-	rootRaw, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	rootRaw, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryFile{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryFile{}, err
 	}
 
-	root, err := filepath.EvalSymlinks(strings.TrimSpace(rootRaw))
+	root, err := filepath.EvalSymlinks(rootRaw)
 
 	if err != nil {
 		return RepositoryFile{}, fmt.Errorf("resolve git root: %w", err)
@@ -144,10 +146,9 @@ func ReadRepositoryFile(ctx context.Context, launchPath, relPath string) (Reposi
 	}, nil
 }
 
-// ReadRepositoryFileRange returns the lines of relPath in the half-open range
-// [startLine, endLine]. When ref is empty the working tree is read; otherwise
-// the file is materialised via `git show ref:path`. Both line numbers are
-// 1-indexed. The response is capped at maxFileRangeLines.
+// ReadRepositoryFileRange returns lines [startLine, endLine] (1-indexed).
+// An empty ref reads the working tree; otherwise `git show ref:path`.
+// Capped at maxFileRangeLines.
 func ReadRepositoryFileRange(
 	ctx context.Context,
 	launchPath, relPath, ref string,
@@ -169,13 +170,13 @@ func ReadRepositoryFileRange(
 		endLine = startLine + maxFileRangeLines - 1
 	}
 
-	rootRaw, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	rootRaw, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryFileRange{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryFileRange{}, err
 	}
 
-	root, err := filepath.EvalSymlinks(strings.TrimSpace(rootRaw))
+	root, err := filepath.EvalSymlinks(rootRaw)
 
 	if err != nil {
 		return RepositoryFileRange{}, fmt.Errorf("resolve git root: %w", err)
@@ -234,8 +235,8 @@ func ReadRepositoryFileRange(
 
 	allLines := strings.Split(string(content), "\n")
 
-	// A trailing newline produces a final empty element; ignore it so totalLines
-	// matches what users would see in an editor.
+	// A trailing newline produces a final empty element; drop it so
+	// totalLines matches what users see in an editor.
 	totalLines := len(allLines)
 
 	if totalLines > 0 && allLines[totalLines-1] == "" {
@@ -269,4 +270,88 @@ func ReadRepositoryFileRange(
 		Lines:     lines,
 		EOF:       endLine >= totalLines,
 	}, nil
+}
+
+// ReadRepositoryBlob returns the raw bytes of a file at the given git ref —
+// the working tree when ref is empty, the index when ref is ":0", otherwise
+// `git show ref:path`. Enforces the same path-traversal guards and 2 MB cap
+// as ReadRepositoryFile. Missing blobs yield ErrBlobNotFound; oversize blobs
+// yield ErrBlobTooLarge.
+func ReadRepositoryBlob(ctx context.Context, launchPath, relPath, ref string) ([]byte, error) {
+	if relPath == "" {
+		return nil, errors.New("path is required")
+	}
+
+	rootRaw, err := RootFor(ctx, launchPath)
+
+	if err != nil {
+		return nil, err
+	}
+
+	root, err := filepath.EvalSymlinks(rootRaw)
+
+	if err != nil {
+		return nil, fmt.Errorf("resolve git root: %w", err)
+	}
+
+	clean := filepath.Clean(filepath.FromSlash(relPath))
+
+	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("invalid path: %s", relPath)
+	}
+
+	if ref == "" {
+		fullPath := filepath.Join(root, clean)
+		resolved, err := filepath.EvalSymlinks(fullPath)
+
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrBlobNotFound
+			}
+
+			return nil, fmt.Errorf("read file: %w", err)
+		}
+
+		rel, err := filepath.Rel(root, resolved)
+
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return nil, fmt.Errorf("path escapes repository root: %s", relPath)
+		}
+
+		info, err := os.Stat(resolved)
+
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return nil, ErrBlobNotFound
+			}
+
+			return nil, fmt.Errorf("stat file: %w", err)
+		}
+
+		if info.IsDir() {
+			return nil, fmt.Errorf("path is a directory: %s", relPath)
+		}
+
+		if info.Size() > maxFileReadBytes {
+			return nil, ErrBlobTooLarge
+		}
+
+		return os.ReadFile(resolved)
+	}
+
+	raw, err := gitBytes(ctx, root, "show", ref+":"+filepath.ToSlash(clean))
+
+	if err != nil {
+		// git show returns nonzero when the blob does not exist at this ref;
+		// treat every git-show failure here as a missing blob to keep the
+		// surface small. Real errors (corrupt repo, bad ref) are vanishingly
+		// rare in the read path and would also produce a not-found UX.
+		return nil, ErrBlobNotFound
+	}
+
+	if int64(len(raw)) > maxFileReadBytes {
+		return nil, ErrBlobTooLarge
+	}
+
+	return raw, nil
 }

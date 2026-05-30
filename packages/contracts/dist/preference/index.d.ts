@@ -2,11 +2,10 @@ export type DiffViewMode = "split" | "unified";
 export type DiffHunkStyle = "soft" | "punchy" | "bar";
 export type DiffDensity = "comfortable" | "compact";
 export type UIAccent = "copper" | "indigo" | "emerald" | "amber" | "rose";
-export interface UIPreferences {
+export interface UserPreferences {
     values: Record<string, string>;
     updatedAt?: string;
 }
-export type UIPreferencesResponse = UIPreferences;
 export declare const PREF_KEYS: {
     readonly theme: "theme";
     readonly diffViewMode: "diff.viewMode";

@@ -8,17 +8,47 @@ import type {
     ReviewComment,
     ReviewDetail,
     ReviewSession,
-    UIPreferences,
+    UserPreferences,
+    UserConfig,
 } from "@git-diff/contracts";
 import { PREF_KEYS } from "@git-diff/contracts";
 import type { DiffAppApi } from "@/types/diff-app";
 
-export function installBrowserFallback() {
-    if (window.diffApp) {
-        return;
-    }
+// In-memory DiffAppApi for browser/test contexts with no Electron IPC.
+// Each instance owns its own state — no leakage across calls. Use
+// createMockDiffApp() for a fresh sandbox.
+function fallbackUserConfig(): UserConfig {
+    return {
+        theme: "system",
+        show_whitespace: false,
+        copy_comments_on_close: false,
+        last_repository_path: "",
+        walkthrough: {
+            provider: "anthropic",
+            model: "claude-sonnet-4-5",
+            patch_budget_bytes: 160 * 1024,
+            per_file_budget_bytes: 4 * 1024,
+        },
+        keymap: {
+            command_bar: "cmd+shift+p",
+            file_filter: "cmd+f",
+            diff_search: "/",
+            submit_comment: "cmd+enter",
+            discard_comment: "escape",
+            toggle_sidebar: "cmd+\\",
+            next_file: "j",
+            prev_file: "k",
+            next_hunk: "n",
+            prev_hunk: "p",
+            toggle_viewed: "v",
+            toggle_whitespace: "w",
+        },
+        path: "",
+    };
+}
 
-    let preferences: UIPreferences = {
+export function createMockDiffApp(): DiffAppApi {
+    let preferences: UserPreferences = {
         values: {
             [PREF_KEYS.theme]: "system",
             [PREF_KEYS.diffViewMode]: "split",
@@ -27,14 +57,18 @@ export function installBrowserFallback() {
     };
     const fallbackUser: AuthUser = { id: 1, osUsername: "local", displayName: "local" };
     let reviews: ReviewDetail[] = [];
+    let nextRepoID = 2;
     let repositories: Repository[] = [
         {
+            id: 1,
             path: "/Users/local/project",
             name: "project",
             ownerId: fallbackUser.id,
             role: "owner",
             addedAt: new Date().toISOString(),
             lastOpenedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         },
     ];
     const state: RepositoryState = {
@@ -95,7 +129,21 @@ export function installBrowserFallback() {
             repoRoot: state.root,
             contextKind: "working",
             fingerprint: "demo",
+            providerId: "anthropic",
             modelId: "demo",
+            groups: [
+                {
+                    id: "files",
+                    title: "Files",
+                    rationale: "",
+                    files: state.files.map((file) => ({
+                        path: file.path,
+                        note: "demo note",
+                        action: "review" as const,
+                        impact: "contained" as const,
+                    })),
+                },
+            ],
             order: state.files.map((file) => file.path),
             notes: Object.fromEntries(state.files.map((file) => [file.path, "demo note"])),
             summary: "Demo walkthrough — Anthropic API not reachable in browser fallback.",
@@ -106,7 +154,7 @@ export function installBrowserFallback() {
         readPullRequest: async () => state,
         listPendingComments: async () => ({ comments: [] }),
         createPendingComment: async (request) => ({
-            id: `pending-${Date.now()}`,
+            id: Date.now(),
             userId: fallbackUser.id,
             repoRoot: request.repoRoot,
             contextKind: request.contextKind,
@@ -150,6 +198,10 @@ export function installBrowserFallback() {
             lines: [],
             eof: true,
         }),
+        readRepositoryFileBytes: async () => ({
+            data: new Uint8Array(),
+            mime: "application/octet-stream",
+        }),
         listBranches: async () => ({ branches: [state.branch] }),
         checkoutBranch: async () => state,
         createBranch: async (_path: string, name: string) => ({ ...state, branch: name }),
@@ -165,6 +217,8 @@ export function installBrowserFallback() {
 
             if (existing) {
                 existing.lastOpenedAt = now;
+                existing.updatedAt = now;
+
                 if (name) {
                     existing.name = name;
                 }
@@ -173,12 +227,15 @@ export function installBrowserFallback() {
             }
 
             const repo: Repository = {
+                id: nextRepoID++,
                 path,
                 name: name || path.split("/").filter(Boolean).pop() || path,
                 ownerId: fallbackUser.id,
                 role: "owner",
                 addedAt: now,
                 lastOpenedAt: now,
+                createdAt: now,
+                updatedAt: now,
             };
 
             repositories = [repo, ...repositories];
@@ -198,8 +255,9 @@ export function installBrowserFallback() {
         }),
         removeCollaborator: async () => {},
         createReview: async (request) => {
+            const now = new Date().toISOString();
             const review: ReviewSession = {
-                id: `review-${Date.now()}`,
+                id: Date.now(),
                 repoRoot: request.repoRoot ?? state.root,
                 userId: fallbackUser.id,
                 branch: request.branch ?? state.branch,
@@ -210,9 +268,11 @@ export function installBrowserFallback() {
                 filesChanged: request.filesChanged ?? state.files.length,
                 additions: request.additions ?? state.additions,
                 deletions: request.deletions ?? state.deletions,
-                startedAt: new Date().toISOString(),
+                startedAt: now,
                 contextKind: request.contextKind ?? "working",
                 contextSha: request.contextSha,
+                createdAt: now,
+                updatedAt: now,
             };
 
             reviews = [{ review, events: [], comments: [] }, ...reviews];
@@ -231,18 +291,24 @@ export function installBrowserFallback() {
 
             throw new Error("Review not found");
         },
-        addReviewEvent: async (request) => ({
-            id: Date.now(),
-            reviewId: request.reviewId,
-            type: request.type,
-            filePath: request.filePath,
-            message: request.message,
-            metadata: request.metadata ?? "{}",
-            createdAt: new Date().toISOString(),
-        }),
+        addReviewEvent: async (request) => {
+            const now = new Date().toISOString();
+
+            return {
+                id: Date.now(),
+                reviewId: request.reviewId,
+                type: request.type,
+                filePath: request.filePath,
+                message: request.message,
+                metadata: request.metadata ?? "{}",
+                createdAt: now,
+                updatedAt: now,
+            };
+        },
         createReviewComment: async (request) => {
+            const now = new Date().toISOString();
             const comment: ReviewComment = {
-                id: `comment-${Date.now()}`,
+                id: Date.now(),
                 reviewId: request.reviewId,
                 filePath: request.filePath,
                 diffSection: request.diffSection,
@@ -250,8 +316,8 @@ export function installBrowserFallback() {
                 lineNumber: request.lineNumber,
                 authorLabel: request.authorLabel,
                 bodyHtml: request.bodyHtml,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                createdAt: now,
+                updatedAt: now,
             };
             const detail = reviews.find((item) => item.review.id === request.reviewId);
 
@@ -283,6 +349,10 @@ export function installBrowserFallback() {
             }
         },
         getUIPreferences: async () => preferences,
+        getUserConfig: async () => fallbackUserConfig(),
+        openUserConfigFile: async () => {
+            // No-op in browser fallback: there is no shell to invoke.
+        },
         saveUIPreferences: async (patch) => {
             const values = { ...preferences.values };
 
@@ -324,5 +394,15 @@ export function installBrowserFallback() {
         }),
     };
 
-    window.diffApp = api;
+    return api;
+}
+
+// Keeps storybook / browser dev server runnable without spawning the Go
+// backend; no-op when a real bridge is already on window.diffApp.
+export function installBrowserFallback(): void {
+    if (window.diffApp) {
+        return;
+    }
+
+    window.diffApp = createMockDiffApp();
 }

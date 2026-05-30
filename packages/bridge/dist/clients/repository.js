@@ -1,37 +1,70 @@
-import { requestJson } from "#bridge/http.js";
-export function repositoryState(socketPath, request) {
-    const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
-    return requestJson(socketPath, "GET", `/v1/repository/state${query}`);
-}
-export function openRepository(socketPath, request) {
-    return requestJson(socketPath, "POST", "/v1/repository/open", {
-        path: request.path,
-    });
-}
-export function refreshRepository(socketPath, request) {
-    return requestJson(socketPath, "POST", "/v1/repository/refresh", {
-        path: request.path,
-    });
-}
-export function readCommit(socketPath, request) {
-    const parts = [`sha=${encodeURIComponent(request.sha)}`];
-    if (request.path) {
-        parts.push(`path=${encodeURIComponent(request.path)}`);
+export class RepositoryClient {
+    transport;
+    constructor(transport) {
+        this.transport = transport;
     }
-    return requestJson(socketPath, "GET", `/v1/repository/commit?${parts.join("&")}`);
-}
-export function listCommits(socketPath, request) {
-    const parts = [];
-    if (request.path) {
-        parts.push(`path=${encodeURIComponent(request.path)}`);
+    state(request) {
+        const query = request.path ? `?path=${encodeURIComponent(request.path)}` : "";
+        return this.transport.request("GET", `/v1/repository/state${query}`);
     }
-    if (request.limit) {
-        parts.push(`limit=${request.limit}`);
+    open(request) {
+        return this.transport.request("POST", "/v1/repository/open", {
+            path: request.path,
+        });
     }
-    const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
-    return requestJson(socketPath, "GET", `/v1/repository/log${query}`);
-}
-export function readRepositoryFile(socketPath, request) {
-    const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
-    return requestJson(socketPath, "GET", `/v1/repository/file${query}`);
+    refresh(request) {
+        return this.transport.request("POST", "/v1/repository/refresh", {
+            path: request.path,
+        });
+    }
+    readCommit(request) {
+        const parts = [`sha=${encodeURIComponent(request.sha)}`];
+        if (request.path) {
+            parts.push(`path=${encodeURIComponent(request.path)}`);
+        }
+        return this.transport.request("GET", `/v1/repository/commit?${parts.join("&")}`);
+    }
+    listCommits(request) {
+        const parts = [];
+        if (request.path) {
+            parts.push(`path=${encodeURIComponent(request.path)}`);
+        }
+        if (request.limit) {
+            parts.push(`limit=${request.limit}`);
+        }
+        const query = parts.length === 0 ? "" : `?${parts.join("&")}`;
+        return this.transport.request("GET", `/v1/repository/log${query}`);
+    }
+    readFile(request) {
+        const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
+        return this.transport.request("GET", `/v1/repository/file${query}`);
+    }
+    /**
+     * Fetch the raw bytes of a file at a given ref. Empty ref reads the
+     * working tree, ":0" reads the index, otherwise treated as a git ref.
+     * Returns the bytes plus the Content-Type so the renderer can build
+     * an object URL for inline image display.
+     */
+    readFileBytes(request) {
+        const parts = [`path=${encodeURIComponent(request.path)}`];
+        if (request.root) {
+            parts.push(`root=${encodeURIComponent(request.root)}`);
+        }
+        if (request.ref !== undefined) {
+            parts.push(`ref=${encodeURIComponent(request.ref)}`);
+        }
+        return this.transport.requestBytes(`/v1/repository/file/raw?${parts.join("&")}`);
+    }
+    readFileRange(request) {
+        const parts = [
+            `root=${encodeURIComponent(request.root)}`,
+            `path=${encodeURIComponent(request.path)}`,
+            `startLine=${request.startLine}`,
+            `endLine=${request.endLine}`,
+        ];
+        if (request.ref) {
+            parts.push(`ref=${encodeURIComponent(request.ref)}`);
+        }
+        return this.transport.request("GET", `/v1/repository/file-range?${parts.join("&")}`);
+    }
 }

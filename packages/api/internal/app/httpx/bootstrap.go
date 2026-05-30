@@ -12,15 +12,14 @@ import (
 	"os/user"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/app/setting"
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/ai"
+	"github.com/oullin/git-diff/internal/app/setting"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/usercfg"
 )
 
-// Serve is the CLI entry point for the "serve-http" subcommand. It does the
-// boring orchestration plumbing (parse flags, validate settings, open the
-// store, bind the unix socket, seed the OS user) and then hands off to
-// RunServer with a Server that the route table can consume.
+// Serve is the CLI entry point for the "serve-http" subcommand.
 func Serve(args []string, cfg ServeConfig) int {
 	settings, socketPath, exit := parseServeFlags(args, cfg)
 
@@ -46,40 +45,57 @@ func Serve(args []string, cfg ServeConfig) int {
 
 	osUsername := resolveOSUsername()
 
-	if _, err := store.EnsureUser(context.Background(), osUsername); err != nil {
+	if _, err := store.Users.EnsureUser(context.Background(), osUsername); err != nil {
 		fmt.Fprintf(cfg.Stderr, "seed os user %q: %v\n", osUsername, err)
 
 		return 1
 	}
 
-	authSvc := service.NewAuthService(store, service.AuthConfig{
-		BcryptCost:        bcryptCost,
-		SessionTTL:        sessionTTL,
-		MinPasswordLength: minPasswordLength,
-	})
-	reviewSvc := service.NewReviewService(store)
-	pendingCommentSvc := service.NewPendingCommentService(store)
-	repositorySvc := service.NewRepositoryService(store)
-	preferenceSvc := service.NewPreferenceService(store)
-	branchSvc := service.NewBranchService(store)
-	walkthroughSvc := service.NewWalkthroughService(store)
+	userCfg, err := usercfg.NewService(cfg.Home)
+
+	if err != nil {
+		fmt.Fprintf(cfg.Stderr, "user config: %v\n", err)
+
+		return 1
+	}
+
+	watchCtx, cancelWatch := context.WithCancel(context.Background())
+
+	defer cancelWatch()
+
+	go func() {
+		_ = userCfg.Run(watchCtx)
+	}()
+
+	providers := ai.NewRegistry()
+	providers.Register(ai.NewAnthropicProvider(userCfg.Reader))
+	providers.Register(ai.NewCodexProvider(userCfg.Reader))
 
 	appServer := Server{
-		Home:                  cfg.Home,
-		Repo:                  settings.RepoRoot,
-		Settings:              settings,
-		Auth:                  NewAuthState(osUsername),
-		AuthService:           authSvc,
-		ReviewService:         reviewSvc,
-		PendingCommentService: pendingCommentSvc,
-		RepositoryService:     repositorySvc,
-		PreferenceService:     preferenceSvc,
-		BranchService:         branchSvc,
-		WalkthroughService:    walkthroughSvc,
+		Home:             cfg.Home,
+		Repo:             settings.RepoRoot,
+		Settings:         settings,
+		Session:          NewAuthState(osUsername),
+		UserConfig:       userCfg.Reader,
+		UserConfigEvents: userCfg.Broker,
+		UserConfigPath:   userCfg.Path,
+
+		auth: service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
+			BcryptCost:        bcryptCost,
+			SessionTTL:        sessionTTL,
+			MinPasswordLength: minPasswordLength,
+		}),
+		reviews:       service.NewReviewService(store.Reviews, store.ReviewEvents, store.Comments),
+		pending:       service.NewPendingCommentService(store.PendingComments),
+		repos:         service.NewRepositoryService(store.Repos),
+		collaborators: service.NewCollaboratorService(store.Collaborators),
+		preferences:   service.NewPreferenceService(store.Preferences),
+		branches:      service.NewBranchService(store.Branches, store.Repos),
+		walkthroughs:  service.NewWalkthroughService(store.Walkthroughs, providers, userCfg.Reader),
 	}
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{
-		Mux:           appServer.requireAuth(appServer.BuildMux()),
+		Mux:           withRequestCaches(appServer.requireAuth(appServer.BuildMux())),
 		SafeQueryKeys: []string{"limit"},
 	})}
 

@@ -1,13 +1,14 @@
-import type { UIPreferencesResponse } from "@git-diff/contracts";
-import { requestJson } from "#bridge/http.js";
+import type { UserPreferences } from "@git-diff/contracts";
+import type { HttpTransport } from "#bridge/http.js";
 
-export function getUIPreferences(socketPath: string): Promise<UIPreferencesResponse> {
-    return requestJson<UIPreferencesResponse>(socketPath, "GET", "/v1/preferences");
-}
+export class PreferenceClient {
+    constructor(private readonly transport: HttpTransport) {}
 
-export function saveUIPreferences(
-    socketPath: string,
-    values: Record<string, string>,
-): Promise<UIPreferencesResponse> {
-    return requestJson<UIPreferencesResponse>(socketPath, "POST", "/v1/preferences", { values });
+    get(): Promise<UserPreferences> {
+        return this.transport.request<UserPreferences>("GET", "/v1/preferences");
+    }
+
+    save(values: Record<string, string>): Promise<UserPreferences> {
+        return this.transport.request<UserPreferences>("POST", "/v1/preferences", { values });
+    }
 }

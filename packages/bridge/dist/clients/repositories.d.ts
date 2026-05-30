@@ -1,49 +1,23 @@
 import type { FileSearchResult, Repository, RepositoryCollaborator } from "@git-diff/contracts";
-export declare function listRepositories(socketPath: string): Promise<{
-    repositories: Repository[];
-}>;
-export declare function searchRepositoryFiles(
-    socketPath: string,
-    request: {
-        query: string;
-        limit?: number;
-    },
-): Promise<{
-    results: FileSearchResult[];
-}>;
-export declare function upsertRepository(
-    socketPath: string,
-    request: {
-        path: string;
-        name?: string;
-    },
-): Promise<Repository>;
-export declare function removeRepository(
-    socketPath: string,
-    request: {
-        path: string;
-    },
-): Promise<void>;
-export declare function listCollaborators(
-    socketPath: string,
-    request: {
-        path: string;
-    },
-): Promise<{
-    collaborators: RepositoryCollaborator[];
-}>;
-export declare function addCollaborator(
-    socketPath: string,
-    request: {
+import type { HttpTransport } from "#bridge/http.js";
+export declare class RepositoriesClient {
+    private readonly transport;
+    constructor(transport: HttpTransport);
+    list(): Promise<{
+        repositories: Repository[];
+    }>;
+    searchFiles(request: { query: string; limit?: number }): Promise<{
+        results: FileSearchResult[];
+    }>;
+    upsert(request: { path: string; name?: string }): Promise<Repository>;
+    remove(request: { path: string }): Promise<void>;
+    listCollaborators(request: { path: string }): Promise<{
+        collaborators: RepositoryCollaborator[];
+    }>;
+    addCollaborator(request: {
         path: string;
         userId: number;
         role: "write" | "read";
-    },
-): Promise<RepositoryCollaborator>;
-export declare function removeCollaborator(
-    socketPath: string,
-    request: {
-        path: string;
-        userId: number;
-    },
-): Promise<void>;
+    }): Promise<RepositoryCollaborator>;
+    removeCollaborator(request: { path: string; userId: number }): Promise<void>;
+}

@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { FolderOpen, GitPullRequest, Plus } from "lucide-vue-next";
 
-// RepoEmptyStates renders the three mutually-exclusive "no diff to show
-// yet" panels: the hero (no repo selected), the loading placeholder, and
-// the error card. The kind prop is App.vue's `mode` derived earlier in
-// the chain so this component can render at most one of the three.
 defineProps<{
     kind: "hero" | "loading" | "error";
     lastRepoRoot: string;

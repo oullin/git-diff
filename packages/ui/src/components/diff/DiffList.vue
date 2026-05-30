@@ -1,24 +1,17 @@
 <script setup lang="ts">
+import { isImagePath } from "@git-diff/contracts";
 import type { ChangedFile, DiffSection, RepositoryFile, ReviewComment } from "@git-diff/contracts";
 import type { PatchLine } from "@lib/patch";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import FileContentViewer from "@entry/components/FileContentViewer.vue";
+import ImageDiff from "@entry/components/diff/ImageDiff.vue";
 import MarkdownPreview from "@entry/components/diff/MarkdownPreview.vue";
 import type { LineSelectionRange } from "@composables/useLineSelection";
 import type { DiffViewMode } from "@git-diff/contracts";
 import type { Tweaks } from "@composables/useTweaks";
 
-// DiffList renders the right-hand column of the diff view: either a
-// FileContentViewer fallback (when the selected path isn't part of the
-// diff), an empty-state message (when the repo has no changes), or a
-// scrolling list of FileHeader + DiffBody cards for each changed file.
-//
-// The component is intentionally thin -- nothing it owns survives a
-// route change. State (selection, collapse map, split ratios, viewed
-// flags, comments) is read from props; mutating actions are emitted up
-// so App.vue keeps a single source of truth.
 defineProps<{
     files: ChangedFile[];
     selectedPath: string;
@@ -62,6 +55,7 @@ const emit = defineEmits<{
         v-if="selectedPath && !selectedIsChanged"
         :file="selectedRepoFile"
         :path="selectedPath"
+        :repo-root="repoRoot"
         :loading="selectedFileLoading"
         :error="selectedFileError"
     />
@@ -95,6 +89,12 @@ const emit = defineEmits<{
             />
             <MarkdownPreview
                 v-if="!collapsed[file.path] && previewing[file.path]"
+                :file="file"
+                :repo-root="repoRoot"
+                :commit-ref="commitRef"
+            />
+            <ImageDiff
+                v-else-if="!collapsed[file.path] && isImagePath(file.path)"
                 :file="file"
                 :repo-root="repoRoot"
                 :commit-ref="commitRef"

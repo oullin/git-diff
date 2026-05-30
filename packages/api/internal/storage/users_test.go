@@ -3,35 +3,21 @@ package storage
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
 )
-
-func newTestStore(t *testing.T) *Store {
-	t.Helper()
-	store, err := Open(context.Background(), filepath.Join(t.TempDir(), "test.sqlite3"))
-
-	if err != nil {
-		t.Fatalf("open store: %v", err)
-	}
-
-	t.Cleanup(func() { _ = store.Close() })
-
-	return store
-}
 
 func TestEnsureUserIsIdempotent(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	first, err := store.EnsureUser(ctx, "alice")
+	first, err := store.Users.EnsureUser(ctx, "alice")
 
 	if err != nil {
 		t.Fatalf("first ensure: %v", err)
 	}
 
-	second, err := store.EnsureUser(ctx, "alice")
+	second, err := store.Users.EnsureUser(ctx, "alice")
 
 	if err != nil {
 		t.Fatalf("second ensure: %v", err)
@@ -46,24 +32,24 @@ func TestEnsureUserIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestSaveUIPreferencesUpsertsAndDeletesOnEmpty(t *testing.T) {
+func TestSaveUserPreferencesUpsertsAndDeletesOnEmpty(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	user, err := store.EnsureUser(ctx, "bob")
+	user, err := store.Users.EnsureUser(ctx, "bob")
 
 	if err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 
-	if _, err := store.SaveUIPreferences(ctx, user.ID, map[string]string{
+	if _, err := store.Preferences.SaveUserPreferences(ctx, user.ID, map[string]string{
 		PrefKeyTheme:          "dark",
 		PrefKeyPanelLeftWidth: "30",
 	}); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 
-	prefs, err := store.GetUIPreferences(ctx, user.ID)
+	prefs, err := store.Preferences.GetUserPreferences(ctx, user.ID)
 
 	if err != nil {
 		t.Fatalf("get: %v", err)
@@ -73,13 +59,13 @@ func TestSaveUIPreferencesUpsertsAndDeletesOnEmpty(t *testing.T) {
 		t.Fatalf("unexpected values after upsert: %#v", prefs.Values)
 	}
 
-	if _, err := store.SaveUIPreferences(ctx, user.ID, map[string]string{
+	if _, err := store.Preferences.SaveUserPreferences(ctx, user.ID, map[string]string{
 		PrefKeyTheme: "",
 	}); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 
-	prefs, err = store.GetUIPreferences(ctx, user.ID)
+	prefs, err = store.Preferences.GetUserPreferences(ctx, user.ID)
 
 	if err != nil {
 		t.Fatalf("get after delete: %v", err)
@@ -98,13 +84,13 @@ func TestSessionCreateResumeExpireAndDelete(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	user, err := store.EnsureUser(ctx, "carol")
+	user, err := store.Users.EnsureUser(ctx, "carol")
 
 	if err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 
-	session, err := store.CreateSession(ctx, user.ID, time.Hour)
+	session, err := store.Sessions.CreateSession(ctx, user.ID, time.Hour)
 
 	if err != nil {
 		t.Fatalf("create session: %v", err)
@@ -114,7 +100,7 @@ func TestSessionCreateResumeExpireAndDelete(t *testing.T) {
 		t.Fatalf("expected raw token")
 	}
 
-	resumed, err := store.ResumeSession(ctx, session.RawToken)
+	resumed, err := store.Sessions.ResumeSession(ctx, store.Users, session.RawToken)
 
 	if err != nil {
 		t.Fatalf("resume: %v", err)
@@ -124,25 +110,25 @@ func TestSessionCreateResumeExpireAndDelete(t *testing.T) {
 		t.Fatalf("resumed user mismatch: %d vs %d", resumed.ID, user.ID)
 	}
 
-	store.now = func() time.Time { return time.Now().Add(2 * time.Hour) }
+	store.SetNow(func() time.Time { return time.Now().Add(2 * time.Hour) })
 
-	if _, err := store.ResumeSession(ctx, session.RawToken); !errors.Is(err, ErrSessionNotFound) {
+	if _, err := store.Sessions.ResumeSession(ctx, store.Users, session.RawToken); !errors.Is(err, ErrSessionNotFound) {
 		t.Fatalf("expected expired session to be rejected, got %v", err)
 	}
 
-	store.now = time.Now
+	store.SetNow(time.Now)
 
-	fresh, err := store.CreateSession(ctx, user.ID, time.Hour)
+	fresh, err := store.Sessions.CreateSession(ctx, user.ID, time.Hour)
 
 	if err != nil {
 		t.Fatalf("create fresh session: %v", err)
 	}
 
-	if err := store.DeleteSession(ctx, fresh.RawToken); err != nil {
+	if err := store.Sessions.DeleteSession(ctx, fresh.RawToken); err != nil {
 		t.Fatalf("delete session: %v", err)
 	}
 
-	if _, err := store.ResumeSession(ctx, fresh.RawToken); !errors.Is(err, ErrSessionNotFound) {
+	if _, err := store.Sessions.ResumeSession(ctx, store.Users, fresh.RawToken); !errors.Is(err, ErrSessionNotFound) {
 		t.Fatalf("expected deleted session to be rejected, got %v", err)
 	}
 }
@@ -151,33 +137,33 @@ func TestWipeUserCascadesPreferencesAndSessions(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	user, err := store.EnsureUser(ctx, "dave")
+	user, err := store.Users.EnsureUser(ctx, "dave")
 
 	if err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 
-	if _, err := store.SaveUIPreferences(ctx, user.ID, map[string]string{
+	if _, err := store.Preferences.SaveUserPreferences(ctx, user.ID, map[string]string{
 		PrefKeyTheme: "dark",
 	}); err != nil {
 		t.Fatalf("save prefs: %v", err)
 	}
 
-	session, err := store.CreateSession(ctx, user.ID, time.Hour)
+	session, err := store.Sessions.CreateSession(ctx, user.ID, time.Hour)
 
 	if err != nil {
 		t.Fatalf("create session: %v", err)
 	}
 
-	if err := store.WipeUser(ctx, user.ID); err != nil {
+	if err := store.Users.WipeUser(ctx, user.ID); err != nil {
 		t.Fatalf("wipe user: %v", err)
 	}
 
-	if _, err := store.ResumeSession(ctx, session.RawToken); !errors.Is(err, ErrSessionNotFound) {
+	if _, err := store.Sessions.ResumeSession(ctx, store.Users, session.RawToken); !errors.Is(err, ErrSessionNotFound) {
 		t.Fatalf("expected cascading session delete, got %v", err)
 	}
 
-	prefs, err := store.GetUIPreferences(ctx, user.ID)
+	prefs, err := store.Preferences.GetUserPreferences(ctx, user.ID)
 
 	if err != nil {
 		t.Fatalf("get prefs after wipe: %v", err)
@@ -192,17 +178,17 @@ func TestSetPasswordHashMarksUserAsHavingPassword(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)
 
-	user, err := store.EnsureUser(ctx, "eve")
+	user, err := store.Users.EnsureUser(ctx, "eve")
 
 	if err != nil {
 		t.Fatalf("ensure: %v", err)
 	}
 
-	if err := store.SetPasswordHash(ctx, user.ID, "$2a$12$exampleexampleexampleexampleexampleexampleexampleexample"); err != nil {
+	if err := store.Users.SetPasswordHash(ctx, user.ID, "$2a$12$exampleexampleexampleexampleexampleexampleexampleexample"); err != nil {
 		t.Fatalf("set password: %v", err)
 	}
 
-	updated, err := store.GetUserByID(ctx, user.ID)
+	updated, err := store.Users.GetUserByID(ctx, user.ID)
 
 	if err != nil {
 		t.Fatalf("get user: %v", err)

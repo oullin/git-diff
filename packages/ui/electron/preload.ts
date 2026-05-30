@@ -4,7 +4,9 @@ contextBridge.exposeInMainWorld("diffApp", {
     takeLaunchIntent: () => ipcRenderer.invoke("launch-intent:take"),
     onLaunchIntent: (handler: (intent: unknown) => void) => {
         const listener = (_event: Electron.IpcRendererEvent, intent: unknown) => handler(intent);
+
         ipcRenderer.on("launch-intent:updated", listener);
+
         return () => ipcRenderer.removeListener("launch-intent:updated", listener);
     },
     openNewWindow: (repoPath?: string) => ipcRenderer.invoke("window:new", repoPath),
@@ -39,10 +41,10 @@ contextBridge.exposeInMainWorld("diffApp", {
         authorLabel: string;
         bodyHtml: string;
     }) => ipcRenderer.invoke("pending-comments:create", request),
-    updatePendingComment: (request: { id: string; bodyHtml: string }) =>
+    updatePendingComment: (request: { id: number; bodyHtml: string }) =>
         ipcRenderer.invoke("pending-comments:update", request),
-    deletePendingComment: (id: string) => ipcRenderer.invoke("pending-comments:delete", id),
-    promotePendingComments: (reviewId: string) =>
+    deletePendingComment: (id: number) => ipcRenderer.invoke("pending-comments:delete", id),
+    promotePendingComments: (reviewId: number) =>
         ipcRenderer.invoke("pending-comments:promote", reviewId),
     readRepositoryFile: (root: string, path: string) =>
         ipcRenderer.invoke("repository:file:read", root, path),
@@ -53,6 +55,8 @@ contextBridge.exposeInMainWorld("diffApp", {
         startLine: number;
         endLine: number;
     }) => ipcRenderer.invoke("repository:file:range", request),
+    readRepositoryFileBytes: (request: { root?: string; path: string; ref?: string }) =>
+        ipcRenderer.invoke("repository:file:bytes", request),
     listBranches: (path?: string) => ipcRenderer.invoke("repository:branches", path),
     checkoutBranch: (path: string, branch: string) =>
         ipcRenderer.invoke("repository:checkout", path, branch),
@@ -81,7 +85,7 @@ contextBridge.exposeInMainWorld("diffApp", {
     createReview: (request: Record<string, unknown>) =>
         ipcRenderer.invoke("reviews:create", request),
     listReviews: (limit?: number) => ipcRenderer.invoke("reviews:list", limit),
-    reviewDetail: (id: string) => ipcRenderer.invoke("reviews:detail", id),
+    reviewDetail: (id: number) => ipcRenderer.invoke("reviews:detail", id),
     addReviewEvent: (request: Record<string, unknown>) =>
         ipcRenderer.invoke("reviews:event", request),
     createReviewComment: (request: Record<string, unknown>) =>
@@ -93,6 +97,8 @@ contextBridge.exposeInMainWorld("diffApp", {
     getUIPreferences: () => ipcRenderer.invoke("ui-prefs:get"),
     saveUIPreferences: (patch: Record<string, string>) =>
         ipcRenderer.invoke("ui-prefs:save", patch),
+    getUserConfig: () => ipcRenderer.invoke("user-config:get"),
+    openUserConfigFile: () => ipcRenderer.invoke("user-config:open"),
     getAuthState: () => ipcRenderer.invoke("auth:state"),
     authBootstrap: () => ipcRenderer.invoke("auth:bootstrap"),
     authSetup: (password: string) => ipcRenderer.invoke("auth:setup", { password }),

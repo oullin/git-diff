@@ -8,13 +8,12 @@ import (
 )
 
 func ListBranches(ctx context.Context, launchPath string) ([]string, error) {
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return nil, fmt.Errorf("resolve git root: %w", err)
+		return nil, err
 	}
 
-	root = strings.TrimSpace(root)
 	raw, err := gitOutput(ctx, root, "for-each-ref", "--format=%(refname:short)", "refs/heads")
 
 	if err != nil {
@@ -40,13 +39,11 @@ func CheckoutBranch(ctx context.Context, launchPath string, branch string) error
 		return err
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return fmt.Errorf("resolve git root: %w", err)
+		return err
 	}
-
-	root = strings.TrimSpace(root)
 
 	statusRaw, err := gitBytes(ctx, root, "status", "--porcelain=v1", "-z")
 
@@ -70,13 +67,11 @@ func CreateBranch(ctx context.Context, launchPath string, name string) error {
 		return err
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return fmt.Errorf("resolve git root: %w", err)
+		return err
 	}
-
-	root = strings.TrimSpace(root)
 
 	if _, err := gitOutput(ctx, root, "check-ref-format", "--branch", name); err != nil {
 		return fmt.Errorf("invalid branch name: %w", err)
@@ -94,13 +89,11 @@ func DeleteBranch(ctx context.Context, launchPath string, name string) error {
 		return err
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return fmt.Errorf("resolve git root: %w", err)
+		return err
 	}
-
-	root = strings.TrimSpace(root)
 
 	current, err := gitOutput(ctx, root, "branch", "--show-current")
 

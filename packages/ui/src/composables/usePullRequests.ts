@@ -1,9 +1,6 @@
 import { ref, type Ref } from "vue";
 import type { PullRequestSummary, RepositoryState } from "@git-diff/contracts";
 
-// usePullRequests owns the PR picker state: list, loading flag, active PR
-// pointer, last error message, plus a list-fetching action. The "open PR"
-// path mutates RepositoryState and stays in App.vue.
 export interface UsePullRequests {
     items: Ref<PullRequestSummary[]>;
     loading: Ref<boolean>;

@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
 
-import { highlightLine, languageFor } from "../src/lib/highlight";
-import { MAX_LINE_TOKENIZE_LENGTH } from "../src/lib/highlightPool";
+import { highlightLine, languageFor } from "@lib/highlight";
+import { MAX_LINE_TOKENIZE_LENGTH } from "@lib/highlightPool";
 
 describe("languageFor", () => {
     test("maps file extensions to Shiki languages", () => {

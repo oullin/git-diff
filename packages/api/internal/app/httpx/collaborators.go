@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func writeCollaboratorError(w http.ResponseWriter, err error) {
@@ -34,9 +34,9 @@ func (s Server) listCollaborators(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collaborators, err := s.RepositoryService.ListCollaborators(
+	collaborators, err := s.collaborators.List(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		path,
 	)
 
@@ -62,9 +62,9 @@ func (s Server) addCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collaborator, err := s.RepositoryService.GrantCollaborator(
+	collaborator, err := s.collaborators.Grant(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		body.Path,
 		body.UserID,
 		body.Role,
@@ -97,9 +97,9 @@ func (s Server) removeCollaborator(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.RepositoryService.RevokeCollaborator(
+	if err := s.collaborators.Revoke(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		path,
 		targetID,
 	); err != nil {

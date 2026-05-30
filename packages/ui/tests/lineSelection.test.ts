@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, test } from "vitest";
 
-import { commentRangeLabel, useLineSelection } from "../src/composables/useLineSelection";
+import { commentRangeLabel, useLineSelection } from "@composables/useLineSelection";
 
 afterEach(() => {
     useLineSelection().clear();

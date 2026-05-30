@@ -2,49 +2,61 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"github.com/oullin/git-diff/internal/db"
 )
+
+type RepositoryCollaborator struct {
+	UserID      int64  `json:"userId"`
+	OSUsername  string `json:"osUsername"`
+	DisplayName string `json:"displayName"`
+	Role        string `json:"role"`
+	GrantedAt   string `json:"grantedAt"`
+}
+
+type CollaboratorRepo struct{}
 
 var ErrRepositoryNotFound = errors.New("repository not found")
 
-func (s *Store) ListRepositoryCollaborators(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
-	if err := s.assertRepositoryOwner(ctx, ownerID, path); err != nil {
-		return nil, err
-	}
+func newCollaboratorRepo() *CollaboratorRepo {
+	return &CollaboratorRepo{}
+}
 
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT ru.user_id, u.os_username, u.display_name, ru.role, ru.granted_at
-		FROM repository_users ru
-		JOIN users u ON u.id = ru.user_id
-		WHERE ru.repo_path = ?
-		ORDER BY u.os_username ASC
-	`, path)
+func (r *CollaboratorRepo) List(ctx context.Context, ownerID int64, path string) ([]RepositoryCollaborator, error) {
+	repoID, err := r.assertRepositoryOwner(ctx, ownerID, path)
 
 	if err != nil {
 		return nil, err
 	}
 
-	defer rows.Close()
+	var rows []RepositoryCollaborator
 
-	collaborators := []RepositoryCollaborator{}
+	err = db.Conn().WithContext(ctx).
+		Table("repository_users AS ru").
+		Select("ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at").
+		Joins("JOIN users u ON u.id = ru.user_id").
+		Where("ru.repository_id = ?", repoID).
+		Order("u.os_username ASC").
+		Scan(&rows).Error
 
-	for rows.Next() {
-		var collaborator RepositoryCollaborator
-
-		if err := rows.Scan(&collaborator.UserID, &collaborator.OSUsername, &collaborator.DisplayName, &collaborator.Role, &collaborator.GrantedAt); err != nil {
-			return nil, err
-		}
-
-		collaborators = append(collaborators, collaborator)
+	if err != nil {
+		return nil, err
 	}
 
-	return collaborators, rows.Err()
+	if rows == nil {
+		rows = []RepositoryCollaborator{}
+	}
+
+	return rows, nil
 }
 
-func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64, role string) (RepositoryCollaborator, error) {
+func (r *CollaboratorRepo) Grant(ctx context.Context, ownerID int64, path string, userID int64, role string) (RepositoryCollaborator, error) {
 	if userID == 0 {
 		return RepositoryCollaborator{}, errors.New("user id is required")
 	}
@@ -53,7 +65,9 @@ func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path s
 		return RepositoryCollaborator{}, fmt.Errorf("invalid role %q", role)
 	}
 
-	if err := s.assertRepositoryOwner(ctx, ownerID, path); err != nil {
+	repoID, err := r.assertRepositoryOwner(ctx, ownerID, path)
+
+	if err != nil {
 		return RepositoryCollaborator{}, err
 	}
 
@@ -61,73 +75,91 @@ func (s *Store) GrantRepositoryAccess(ctx context.Context, ownerID int64, path s
 		return RepositoryCollaborator{}, errors.New("owner cannot also be a collaborator")
 	}
 
-	now := s.now().UTC().Format(time.RFC3339Nano)
+	now := db.Now().UTC().Format(time.RFC3339Nano)
+	row := RepositoryUserRow{
+		RepositoryID: repoID,
+		UserID:       userID,
+		Role:         role,
+		GrantedAt:    now,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
 
-	if _, err := s.db.ExecContext(ctx, `
-		INSERT INTO repository_users (repo_path, user_id, role, granted_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(repo_path, user_id) DO UPDATE SET
-			role = excluded.role,
-			granted_at = excluded.granted_at
-	`, path, userID, role, now); err != nil {
+	if err := db.Conn().WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "repository_id"}, {Name: "user_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"role", "granted_at", "updated_at"}),
+		}).
+		Create(&row).Error; err != nil {
 		return RepositoryCollaborator{}, err
 	}
 
-	row := s.db.QueryRowContext(ctx, `
-		SELECT ru.user_id, u.os_username, u.display_name, ru.role, ru.granted_at
-		FROM repository_users ru
-		JOIN users u ON u.id = ru.user_id
-		WHERE ru.repo_path = ? AND ru.user_id = ?
-	`, path, userID)
-
 	var collaborator RepositoryCollaborator
 
-	if err := row.Scan(&collaborator.UserID, &collaborator.OSUsername, &collaborator.DisplayName, &collaborator.Role, &collaborator.GrantedAt); err != nil {
+	err = db.Conn().WithContext(ctx).
+		Table("repository_users AS ru").
+		Select("ru.user_id AS user_id, u.os_username AS os_username, u.display_name AS display_name, ru.role AS role, ru.granted_at AS granted_at").
+		Joins("JOIN users u ON u.id = ru.user_id").
+		Where("ru.repository_id = ? AND ru.user_id = ?", repoID, userID).
+		Scan(&collaborator).Error
+
+	if err != nil {
 		return RepositoryCollaborator{}, err
 	}
 
 	return collaborator, nil
 }
 
-func (s *Store) RevokeRepositoryAccess(ctx context.Context, ownerID int64, path string, userID int64) error {
+func (r *CollaboratorRepo) Revoke(ctx context.Context, ownerID int64, path string, userID int64) error {
 	if userID == 0 {
 		return errors.New("user id is required")
 	}
 
-	if err := s.assertRepositoryOwner(ctx, ownerID, path); err != nil {
-		return err
-	}
-
-	_, err := s.db.ExecContext(ctx, `
-		DELETE FROM repository_users WHERE repo_path = ? AND user_id = ?
-	`, path, userID)
-
-	return err
-}
-
-func (s *Store) assertRepositoryOwner(ctx context.Context, ownerID int64, path string) error {
-	if ownerID == 0 {
-		return errors.New("user id is required")
-	}
-
-	if path == "" {
-		return errors.New("repository path is required")
-	}
-
-	var actualOwner int64
-	err := s.db.QueryRowContext(ctx, `SELECT owner_id FROM repositories WHERE path = ?`, path).Scan(&actualOwner)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrRepositoryNotFound
-	}
+	repoID, err := r.assertRepositoryOwner(ctx, ownerID, path)
 
 	if err != nil {
 		return err
 	}
 
-	if actualOwner != ownerID {
-		return ErrRepositoryNotOwned
+	return db.Conn().WithContext(ctx).
+		Where("repository_id = ? AND user_id = ?", repoID, userID).
+		Delete(&RepositoryUserRow{}).Error
+}
+
+// assertRepositoryOwner returns the numeric repository_id once it has confirmed
+// ownerID owns the row at path. Returns ErrRepositoryNotFound when no row
+// exists and ErrRepositoryNotOwned when the row belongs to someone else.
+func (r *CollaboratorRepo) assertRepositoryOwner(ctx context.Context, ownerID int64, path string) (int64, error) {
+	if ownerID == 0 {
+		return 0, errors.New("user id is required")
 	}
 
-	return nil
+	if path == "" {
+		return 0, errors.New("repository path is required")
+	}
+
+	var row struct {
+		ID      int64
+		OwnerID int64
+	}
+
+	err := db.Conn().WithContext(ctx).
+		Model(&RepositoryRow{}).
+		Select("id", "owner_id").
+		Where("path = ?", path).
+		Take(&row).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, ErrRepositoryNotFound
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	if row.OwnerID != ownerID {
+		return 0, ErrRepositoryNotOwned
+	}
+
+	return row.ID, nil
 }

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/git-diff/tools/internal/runner"
+	"github.com/oullin/git-diff/tools/internal/runner"
 )
 
 type Tool struct {

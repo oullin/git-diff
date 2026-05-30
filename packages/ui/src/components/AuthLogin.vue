@@ -3,6 +3,8 @@ import { ref } from "vue";
 import { ArrowRight, Eye, EyeOff, Lock, RotateCcw } from "lucide-vue-next";
 import type { AuthLoginResponse } from "@git-diff/contracts";
 import DiffLogo from "@components/diff/DiffLogo.vue";
+import { useAuthForm } from "@composables/useAuthForm";
+import { services } from "@lib/services";
 import { Input } from "@ui/input";
 import { Label } from "@ui/label";
 
@@ -17,29 +19,20 @@ const emit = defineEmits<{
 
 const password = ref("");
 const remember = ref(true);
-const submitting = ref(false);
-const error = ref("");
 const showPassword = ref(false);
+const { submitting, error, submit: runSubmit, fail } = useAuthForm();
 
 async function submit() {
-    error.value = "";
-
     if (!password.value) {
-        error.value = "Enter your password.";
+        fail("Enter your password.");
 
         return;
     }
 
-    submitting.value = true;
+    const response = await runSubmit(() => services().auth.login(password.value, remember.value));
 
-    try {
-        const response = await window.diffApp.authLogin(password.value, remember.value);
-
+    if (response) {
         emit("logged-in", response);
-    } catch (cause) {
-        error.value = cause instanceof Error ? cause.message : String(cause);
-    } finally {
-        submitting.value = false;
     }
 }
 
@@ -52,15 +45,14 @@ async function forgotPassword() {
         return;
     }
 
-    submitting.value = true;
+    const wiped = await runSubmit(async () => {
+        await services().auth.wipe(props.osUsername);
 
-    try {
-        await window.diffApp.authWipe(props.osUsername);
+        return true;
+    });
+
+    if (wiped) {
         emit("wiped");
-    } catch (cause) {
-        error.value = cause instanceof Error ? cause.message : String(cause);
-    } finally {
-        submitting.value = false;
     }
 }
 </script>

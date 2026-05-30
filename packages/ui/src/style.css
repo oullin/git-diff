@@ -1,8 +1,4 @@
 @import "tailwindcss";
-@import "@primer/primitives/dist/css/functional/size/border.css";
-@import "@primer/primitives/dist/css/base/typography/typography.css";
-@import "@primer/primitives/dist/css/functional/typography/typography.css";
-@import "@primer/primitives/dist/css/functional/themes/dark.css";
 
 @custom-variant dark (&:where(.dark, .dark *, .theme-system[data-prefers-dark], .theme-system[data-prefers-dark] *));
 
@@ -88,67 +84,50 @@
 
 :root {
     color-scheme: light dark;
-    --radius: 13px;
+    --radius: 10px;
     --app-header-height: 44px;
     --panel-header-h: 7rem;
     --app-panel-padding: 16px;
     --app-list-row-padding: 12px;
     --app-list-gap: 8px;
 
+    /* Pierre stack: Geist for UI chrome, Berkeley Mono / JetBrains Mono for code.
+       Falls back gracefully — drop woff2 files into ./fonts/geist/ or ./fonts/berkeley/
+       and add matching @font-face blocks above to upgrade rendering. */
     --font-ui:
-        Inter,
-        var(
-            --fontStack-sansSerif,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            "Noto Sans",
-            Helvetica,
-            Arial,
-            sans-serif,
-            "Apple Color Emoji",
-            "Segoe UI Emoji"
-        );
+        "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica,
+        Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
     --font-code:
-        "Fira Code",
-        var(
-            --fontStack-monospace,
-            ui-monospace,
-            SFMono-Regular,
-            "SF Mono",
-            Menlo,
-            Consolas,
-            "Liberation Mono",
-            monospace
-        );
+        "Berkeley Mono", "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, "SF Mono",
+        Menlo, Consolas, "Liberation Mono", monospace;
 
-    /* codiff-style aliases — let raw CSS reference these names without going through @theme */
+    /* aliases — let raw CSS reference these names without going through @theme */
     --font-sans: var(--font-ui);
     --font-mono: var(--font-code);
 
-    /* diff surface typography — codiff-aligned */
+    /* diff surface typography — Pierre uses 14px/20px */
     --diffs-font-family: var(--font-code);
     --diffs-header-font-family: var(--font-ui);
-    --diffs-font-size: 13px;
+    --diffs-font-size: 14px;
     --diffs-line-height: 20px;
 
-    /* source palette — light mode */
-    --app-bg: #f8f8f6;
+    /* source palette — light mode (Pierre neutral) */
+    --app-bg: #ffffff;
     --code-bg: #ffffff;
-    --file-bg: rgb(255 255 255 / 0.78);
-    --file-border: rgb(17 17 17 / 0.09);
-    --soft-muted: rgb(17 17 17 / 0.48);
-    --sidebar-bg: rgb(255 255 255 / 0.58);
-    --sidebar-border-soft: rgb(17 17 17 / 0.1);
-    --sidebar-text: rgb(17 17 17 / 0.76);
-    --text: #111111;
-    --viewed: rgb(31 122 68);
-    --accent-blue: rgb(61 135 245);
-    --accent-blue-soft: rgb(61 135 245 / 0.12);
-    --accent-blue-ring: rgb(61 135 245 / 0.32);
-    --accent-blue-edge: rgb(61 135 245 / 0.42);
-    --danger-red: rgb(184 49 47);
-    --attention-orange: rgb(143 93 24);
+    --file-bg: #ffffff;
+    --file-border: oklch(92.2% 0 0);
+    --soft-muted: oklch(55.6% 0 0);
+    --sidebar-bg: #f7f7f7;
+    --sidebar-border-soft: oklch(92.2% 0 0);
+    --sidebar-text: oklch(20.5% 0 0);
+    --text: oklch(14.5% 0 0);
+    --viewed: #00a347;
+    --accent-blue: oklch(20.5% 0 0);
+    --accent-blue-soft: oklch(97% 0 0);
+    --accent-blue-ring: oklch(55.6% 0 0 / 0.32);
+    --accent-blue-edge: oklch(92.2% 0 0);
+    --danger-red: #ff2e3f;
+    --attention-orange: oklch(75% 0.183 55.934);
 
     /* codex-* tokens (kept; remapped to the source palette so legacy refs keep resolving) */
     --codex-accent: var(--accent-blue);
@@ -221,14 +200,21 @@
     --button-secondary-active: rgb(127 127 127 / 0.16);
     --button-destructive-hover: rgb(168 42 40);
 
-    --diff-added: var(--viewed);
-    --diff-added-bg: rgb(31 122 68 / 0.14);
-    --diff-added-bg-strong: rgb(31 122 68 / 0.22);
-    --diff-added-border: rgb(31 122 68 / 0.42);
-    --diff-removed: var(--danger-red);
-    --diff-removed-bg: rgb(184 49 47 / 0.12);
-    --diff-removed-bg-strong: rgb(184 49 47 / 0.22);
-    --diff-removed-border: rgb(184 49 47 / 0.42);
+    /* Pierre diff fills — light pair (#d6f5e0 / #00c758, #ffdbd6 / #ff2e3f) */
+    --diff-added: #00a347;
+    --diff-added-bg: #d6f5e0;
+    --diff-added-bg-strong: #b8edca;
+    --diff-added-border: #00c758;
+    --diff-removed: #ff2e3f;
+    --diff-removed-bg: #ffdbd6;
+    --diff-removed-bg-strong: #ffc4bc;
+    --diff-removed-border: #ff2e3f;
+
+    /* Pierre 4px hunk-edge stripe (matches diffshub-border-deleted ::before) */
+    --gd-add-bg: var(--diff-added-bg);
+    --gd-add-border: var(--diff-added-border);
+    --gd-del-bg: var(--diff-removed-bg);
+    --gd-del-border: var(--diff-removed-border);
 
     --skill: var(--codex-skill);
     --skill-bg: rgb(143 93 24 / 0.14);
@@ -256,34 +242,34 @@
     --status-done-fg: var(--codex-skill);
     --status-done-border: var(--skill-border);
 
-    /* Design-bundle tokens (light variant — parallel to dark below) */
-    --gd-bg-canvas: var(--app-bg);
+    /* Design-bundle tokens (Pierre — light, monochrome-neutral) */
+    --gd-bg-canvas: #ffffff;
     --gd-bg: #ffffff;
     --gd-panel: #fafafa;
     --gd-panel-2: #f4f4f3;
     --gd-panel-3: #ececea;
-    --gd-hover: rgb(17 17 17 / 0.05);
-    --gd-border: rgb(17 17 17 / 0.1);
-    --gd-border-strong: rgb(17 17 17 / 0.18);
-    --gd-border-soft: rgb(17 17 17 / 0.05);
-    --gd-text: #111111;
-    --gd-text-2: rgb(17 17 17 / 0.72);
-    --gd-text-3: rgb(17 17 17 / 0.52);
-    --gd-text-muted: rgb(17 17 17 / 0.34);
-    --gd-added: rgb(31 122 68);
-    --gd-removed: rgb(184 49 47);
-    --gd-warn: rgb(143 93 24);
-    --gd-shadow-lg: 0 24px 64px -12px rgb(0 0 0 / 0.18), 0 0 0 1px rgb(17 17 17 / 0.04);
+    --gd-hover: oklch(96% 0 0);
+    --gd-border: oklch(92.2% 0 0);
+    --gd-border-strong: oklch(87% 0 0);
+    --gd-border-soft: oklch(96% 0 0);
+    --gd-text: oklch(14.5% 0 0);
+    --gd-text-2: oklch(37.1% 0 0);
+    --gd-text-3: oklch(55.6% 0 0);
+    --gd-text-muted: oklch(70.8% 0 0);
+    --gd-added: #00a347;
+    --gd-removed: #ff2e3f;
+    --gd-warn: oklch(75% 0.183 55.934);
+    --gd-shadow-lg: 0 24px 64px -12px oklch(0% 0 0 / 0.08), 0 0 0 1px oklch(0% 0 0 / 0.04);
 
-    /* Accent — overridden at runtime via lib/accent.ts when the user picks a swatch.
-     Defaults match `indigo`. */
-    --gd-accent: #6366f1;
-    --gd-accent-strong: #4f46e5;
-    --gd-accent-soft: rgb(99 102 241 / 0.12);
+    /* Pierre is monochrome — accent points at the neutral primary.
+       lib/accent.ts collapses to a single Pierre preset. */
+    --gd-accent: oklch(20.5% 0 0);
+    --gd-accent-strong: oklch(14.5% 0 0);
+    --gd-accent-soft: oklch(97% 0 0);
 
-    /* Word-level diff highlights — overridden at runtime by App.vue per --gd-diff-style. */
-    --gd-word-add-bg: rgb(31 122 68 / 0.22);
-    --gd-word-rem-bg: rgb(184 49 47 / 0.22);
+    /* Word-level diff highlights — Pierre saturation */
+    --gd-word-add-bg: #b8edca;
+    --gd-word-rem-bg: #ffc4bc;
 
     /* window chrome — softened */
     --window-radius: 17px;
@@ -295,126 +281,136 @@
     --traffic-yellow: #febc2e;
     --traffic-green: #28c840;
 
-    /* Design-bundle tokens (light variant — parallel to the dark block below) */
-    --gd-bg-rail: #f4f4f3;
+    /* Pierre rail / gutter / inputs (sidebar lighter than canvas in light mode) */
+    --gd-bg-rail: #f7f7f7;
     --gd-bg-input: #ffffff;
     --gd-bg-code: #ffffff;
     --gd-bg-gutter: #fafafa;
+    --gd-sidebar-bg: #f7f7f7;
 
-    --gd-edge-hi: rgb(17 17 17 / 0.04);
-    --gd-edge-hi-2: rgb(17 17 17 / 0.025);
-    --gd-edge-lo: rgb(0 0 0 / 0.08);
+    --gd-edge-hi: oklch(0% 0 0 / 0.03);
+    --gd-edge-hi-2: oklch(0% 0 0 / 0.02);
+    --gd-edge-lo: oklch(0% 0 0 / 0.06);
 
-    --gd-shadow-card: 0 0 0 1px rgb(17 17 17 / 0.06) inset, 0 8px 24px -16px rgb(0 0 0 / 0.18);
-    --gd-shadow-panel: 0 0 0 1px rgb(17 17 17 / 0.06) inset, 0 12px 32px -16px rgb(0 0 0 / 0.18);
+    --gd-shadow-card: 0 0 0 1px oklch(0% 0 0 / 0.04) inset, 0 8px 24px -16px oklch(0% 0 0 / 0.1);
+    --gd-shadow-panel: 0 0 0 1px oklch(0% 0 0 / 0.04) inset, 0 12px 32px -16px oklch(0% 0 0 / 0.1);
 
-    --gd-bloom:
-        radial-gradient(1200px 600px at 70% -10%, rgb(99 102 241 / 0.04), transparent 60%),
-        radial-gradient(900px 500px at 10% -20%, rgb(99 102 241 / 0.025), transparent 60%);
+    /* Pierre keeps the canvas flat — no colored bloom */
+    --gd-bloom: none;
 
-    /* Diff bar + gutter line tints (light variant of the dark pastel pair) */
-    --gd-green-bar: rgb(31 122 68 / 0.45);
-    --gd-red-bar: rgb(184 49 47 / 0.45);
-    --gd-green-line: rgb(31 122 68 / 0.1);
-    --gd-red-line: rgb(184 49 47 / 0.1);
+    /* Diff bar + gutter tints — Pierre's saturated pair */
+    --gd-green-bar: #00c758;
+    --gd-red-bar: #ff2e3f;
+    --gd-green-line: oklch(80% 0.16 152 / 0.18);
+    --gd-red-line: oklch(70% 0.21 22 / 0.18);
 }
 
 :root.dark,
 :root.theme-system[data-prefers-dark] {
-    /* Material Theme — Darker variant (Mattia Astorino).
-       Surfaces #212121 main / #1a1a1a rails / #2a2a2a hairline.
-       Foreground #EEFFFF · pastel syntax · signature accent #FF9800. */
-    --app-bg: #212121;
-    --code-bg: #212121;
-    --file-bg: rgb(33 33 33 / 0.92);
-    --file-border: rgb(255 255 255 / 0.06);
-    --soft-muted: rgb(176 190 197 / 0.7);
-    --sidebar-bg: #1a1a1a;
-    --sidebar-border-soft: rgb(255 255 255 / 0.05);
-    --sidebar-text: rgb(238 255 255 / 0.78);
-    --text: #eeffff;
-    --viewed: #c3e88d;
-    --accent-blue: #82aaff;
-    --accent-blue-soft: rgb(130 170 255 / 0.18);
-    --accent-blue-ring: rgb(130 170 255 / 0.36);
-    --accent-blue-edge: rgb(130 170 255 / 0.46);
-    --danger-red: #ff5370;
-    --attention-orange: #ffcb6b;
+    /* Pierre — Dark variant.
+       Canvas oklch(14.5% 0 0) (~#242424); sidebar #101010 (darker than canvas — signature).
+       Foreground oklch(98.5% 0 0). Monochrome accent, hot-pink delete (#ff6762),
+       saturated green add (#39d97e). */
+    --app-bg: oklch(14.5% 0 0);
+    --code-bg: oklch(14.5% 0 0);
+    --file-bg: oklch(20.5% 0 0);
+    --file-border: oklch(100% 0 0 / 0.1);
+    --soft-muted: oklch(70.8% 0 0);
+    --sidebar-bg: #101010;
+    --sidebar-border-soft: oklch(100% 0 0 / 0.08);
+    --sidebar-text: oklch(98.5% 0 0 / 0.78);
+    --text: oklch(98.5% 0 0);
+    --viewed: #39d97e;
+    --accent-blue: oklch(92.2% 0 0);
+    --accent-blue-soft: oklch(26.9% 0 0);
+    --accent-blue-ring: oklch(70.8% 0 0 / 0.3);
+    --accent-blue-edge: oklch(100% 0 0 / 0.18);
+    --danger-red: #ff6762;
+    --attention-orange: oklch(82.8% 0.189 84.429);
 
-    --codex-accent-hover: rgb(149 184 255);
-    --codex-accent-active: rgb(110 152 240);
-    --codex-border-strong: rgb(255 255 255 / 0.12);
+    --codex-accent-hover: oklch(95% 0 0);
+    --codex-accent-active: oklch(85% 0 0);
+    --codex-border-strong: oklch(100% 0 0 / 0.18);
 
-    --primary-foreground: #1a1a1a;
-    --success-foreground: #1a1a1a;
-    --button-secondary-hover: rgb(255 255 255 / 0.06);
-    --button-secondary-active: rgb(255 255 255 / 0.1);
-    --button-destructive-hover: rgb(255 110 130);
+    --primary-foreground: oklch(20.5% 0 0);
+    --success-foreground: oklch(14.5% 0 0);
+    --button-secondary-hover: oklch(100% 0 0 / 0.06);
+    --button-secondary-active: oklch(100% 0 0 / 0.1);
+    --button-destructive-hover: #ff8580;
 
-    --shadow-overlay-value: 0 18px 58px -34px rgb(0 0 0 / 0.55);
-    --window-shadow: 0 18px 58px -34px rgb(0 0 0 / 0.55);
+    --shadow-overlay-value: 0 18px 58px -34px oklch(0% 0 0 / 0.55);
+    --window-shadow: 0 18px 58px -34px oklch(0% 0 0 / 0.55);
 
-    --diff-added-bg: rgb(195 232 141 / 0.12);
-    --diff-added-bg-strong: rgb(195 232 141 / 0.2);
-    --diff-added-border: rgb(195 232 141 / 0.46);
-    --diff-removed-bg: rgb(255 83 112 / 0.12);
-    --diff-removed-bg-strong: rgb(255 83 112 / 0.22);
-    --diff-removed-border: rgb(255 83 112 / 0.46);
+    /* Pierre diff fills — dark pair (#0e2818 / #39d97e, #3e1715 / #ff6762) */
+    --diff-added: #39d97e;
+    --diff-added-bg: #0e2818;
+    --diff-added-bg-strong: #143a23;
+    --diff-added-border: #39d97e;
+    --diff-removed: #ff6762;
+    --diff-removed-bg: #3e1715;
+    --diff-removed-bg-strong: #5a1d1d;
+    --diff-removed-border: #ff6762;
 
-    --status-attention-bg: rgb(255 203 107 / 0.14);
+    --gd-add-bg: var(--diff-added-bg);
+    --gd-add-border: var(--diff-added-border);
+    --gd-del-bg: var(--diff-removed-bg);
+    --gd-del-border: var(--diff-removed-border);
+
+    --status-attention-bg: oklch(82.8% 0.189 84.429 / 0.16);
     --status-attention-fg: var(--attention-orange);
-    --status-attention-border: rgb(255 203 107 / 0.4);
+    --status-attention-border: oklch(82.8% 0.189 84.429 / 0.4);
 
-    --codex-skill: #c792ea;
+    --codex-skill: oklch(75% 0.12 290);
     --skill: var(--codex-skill);
-    --skill-bg: rgb(199 146 234 / 0.16);
-    --skill-border: rgb(199 146 234 / 0.4);
+    --skill-bg: oklch(75% 0.12 290 / 0.16);
+    --skill-border: oklch(75% 0.12 290 / 0.4);
 
-    /* Design-bundle tokens (Material Darker — flat, pastel, signature orange) */
-    --gd-bg-canvas: #1a1a1a;
-    --gd-bg: #212121;
-    --gd-bg-rail: #1a1a1a;
-    --gd-bg-input: #1a1a1a;
-    --gd-bg-code: #212121;
-    --gd-bg-gutter: #1a1a1a;
-    --gd-panel: #212121;
-    --gd-panel-2: #2a2a2a;
-    --gd-panel-3: #1f1f1f;
-    --gd-hover: #353535;
-    --gd-border: #2a2a2a;
-    --gd-border-strong: #353535;
-    --gd-border-soft: #232323;
-    --gd-text: #eeffff;
-    --gd-text-2: #b0bec5;
-    --gd-text-3: #607d8b;
-    --gd-text-muted: #545454;
-    --gd-added: #c3e88d;
-    --gd-removed: #ff5370;
-    --gd-warn: #ffcb6b;
-    --gd-shadow-lg: 0 24px 64px -12px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.03);
+    /* Design-bundle tokens — Pierre dark, monochrome */
+    --gd-bg-canvas: oklch(14.5% 0 0);
+    --gd-bg: oklch(14.5% 0 0);
+    --gd-bg-rail: #101010;
+    --gd-bg-input: oklch(20.5% 0 0);
+    --gd-bg-code: oklch(14.5% 0 0);
+    --gd-bg-gutter: #101010;
+    --gd-sidebar-bg: #101010;
+    --gd-panel: oklch(20.5% 0 0);
+    --gd-panel-2: oklch(26.9% 0 0);
+    --gd-panel-3: oklch(18% 0 0);
+    --gd-hover: oklch(100% 0 0 / 0.06);
+    --gd-border: oklch(100% 0 0 / 0.1);
+    --gd-border-strong: oklch(100% 0 0 / 0.18);
+    --gd-border-soft: oklch(100% 0 0 / 0.06);
+    --gd-text: oklch(98.5% 0 0);
+    --gd-text-2: oklch(85% 0 0);
+    --gd-text-3: oklch(70.8% 0 0);
+    --gd-text-muted: oklch(55.6% 0 0);
+    --gd-added: #39d97e;
+    --gd-removed: #ff6762;
+    --gd-warn: oklch(82.8% 0.189 84.429);
+    --gd-shadow-lg: 0 24px 64px -12px oklch(0% 0 0 / 0.6), 0 0 0 1px oklch(100% 0 0 / 0.04);
 
-    /* Material Darker is intentionally flat — minimal edge lighting, gentle bloom. */
-    --gd-edge-hi: rgb(255 255 255 / 0.03);
-    --gd-edge-hi-2: rgb(255 255 255 / 0.018);
-    --gd-edge-lo: rgb(0 0 0 / 0.55);
-    --gd-shadow-card: 0 0 0 1px #2a2a2a inset, 0 8px 24px -16px rgb(0 0 0 / 0.55);
-    --gd-shadow-panel: 0 0 0 1px #2a2a2a inset, 0 12px 32px -16px rgb(0 0 0 / 0.55);
-    --gd-bloom:
-        radial-gradient(1200px 600px at 70% -10%, rgb(255 152 0 / 0.06), transparent 60%),
-        radial-gradient(900px 500px at 10% -20%, rgb(199 146 234 / 0.03), transparent 60%);
+    /* Pierre dark stays flat — no colored bloom */
+    --gd-edge-hi: oklch(100% 0 0 / 0.04);
+    --gd-edge-hi-2: oklch(100% 0 0 / 0.02);
+    --gd-edge-lo: oklch(0% 0 0 / 0.55);
+    --gd-shadow-card: 0 0 0 1px oklch(100% 0 0 / 0.06) inset, 0 8px 24px -16px oklch(0% 0 0 / 0.55);
+    --gd-shadow-panel:
+        0 0 0 1px oklch(100% 0 0 / 0.06) inset, 0 12px 32px -16px oklch(0% 0 0 / 0.55);
+    --gd-bloom: none;
 
-    /* Diff bar + gutter line tints (Material pastel green/red) */
-    --gd-green-bar: rgb(195 232 141 / 0.55);
-    --gd-red-bar: rgb(255 83 112 / 0.55);
-    --gd-green-line: rgb(195 232 141 / 0.13);
-    --gd-red-line: rgb(255 83 112 / 0.13);
+    /* Diff bar + gutter line tints — Pierre dark pair */
+    --gd-green-bar: #39d97e;
+    --gd-red-bar: #ff6762;
+    --gd-green-line: oklch(75% 0.18 152 / 0.18);
+    --gd-red-line: oklch(72% 0.18 22 / 0.18);
 
-    --gd-accent: #ff9800;
-    --gd-accent-strong: #e07f00;
-    --gd-accent-soft: rgb(255 152 0 / 0.14);
+    /* Monochrome accent — primary swaps to near-white on dark */
+    --gd-accent: oklch(92.2% 0 0);
+    --gd-accent-strong: oklch(98.5% 0 0);
+    --gd-accent-soft: oklch(26.9% 0 0);
 
-    --gd-word-add-bg: rgb(195 232 141 / 0.22);
-    --gd-word-rem-bg: rgb(255 83 112 / 0.22);
+    --gd-word-add-bg: oklch(75% 0.18 152 / 0.28);
+    --gd-word-rem-bg: oklch(72% 0.18 22 / 0.28);
 }
 
 /* Carbon-tinted scrollbars across the app — tokens swap per theme */

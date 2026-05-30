@@ -1,7 +1,5 @@
-export type GitFileStatus = "added" | "deleted" | "modified" | "renamed" | "untracked";
-export type DiffSectionKind = "staged" | "unstaged" | "untracked" | "commit";
-export type RepositoryMode = "working" | "commit";
-export type RepositoryRole = "owner" | "write" | "read";
+export type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole, } from "../common/index.js";
+import type { DiffSectionKind, GitFileStatus, RepositoryMode, RepositoryRole } from "../common/index.js";
 export interface DiffSection {
     id: string;
     kind: DiffSectionKind;
@@ -46,12 +44,15 @@ export interface RepositoryFileRange {
     eof: boolean;
 }
 export interface Repository {
+    id: number;
     path: string;
     name: string;
     ownerId: number;
     role: RepositoryRole;
     addedAt: string;
     lastOpenedAt?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 export interface FileSearchResult {
     repoPath: string;
@@ -66,4 +67,12 @@ export interface RepositoryCollaborator {
     role: "write" | "read";
     grantedAt: string;
 }
+/**
+ * Lowercase file extensions (with leading dot) the renderer can display
+ * via the inline image-diff component. The backend serves the raw bytes
+ * regardless of extension — this list is purely a UI routing decision.
+ */
+export declare const IMAGE_EXTENSIONS: ReadonlyArray<string>;
+/** True when path's extension is in IMAGE_EXTENSIONS (case-insensitive). */
+export declare function isImagePath(path: string): boolean;
 //# sourceMappingURL=index.d.ts.map

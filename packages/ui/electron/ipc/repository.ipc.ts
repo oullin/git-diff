@@ -1,34 +1,35 @@
-import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from "electron";
+import { BrowserWindow, dialog, type OpenDialogOptions } from "electron";
 import { client } from "#electron/bridge.js";
 import { createWindow, takeIntentForWindow } from "#electron/windows.js";
+import type { IpcRouter } from "#electron/ipc/router.js";
 import type { IpcDeps } from "#electron/ipc/types.js";
 
-export function register(deps: IpcDeps): void {
-    ipcMain.handle("repository:state", async (_event, path?: string) =>
-        (await client()).repositoryState({ path }),
+export function register(router: IpcRouter, deps: IpcDeps): void {
+    router.on("repository:state", async (_event, path?: string) =>
+        (await client()).repository.state({ path }),
     );
 
-    ipcMain.handle("repository:open", async (_event, path: string) =>
-        (await client()).openRepository({ path }),
+    router.on("repository:open", async (_event, path: string) =>
+        (await client()).repository.open({ path }),
     );
 
-    ipcMain.handle("repository:refresh", async (_event, path: string) =>
-        (await client()).refreshRepository({ path }),
+    router.on("repository:refresh", async (_event, path: string) =>
+        (await client()).repository.refresh({ path }),
     );
 
-    ipcMain.handle("repository:commit", async (_event, sha: string, path?: string) =>
-        (await client()).readCommit({ path, sha }),
+    router.on("repository:commit", async (_event, sha: string, path?: string) =>
+        (await client()).repository.readCommit({ path, sha }),
     );
 
-    ipcMain.handle("repository:log", async (_event, path?: string, limit?: number) =>
-        (await client()).listCommits({ path, limit }),
+    router.on("repository:log", async (_event, path?: string, limit?: number) =>
+        (await client()).repository.listCommits({ path, limit }),
     );
 
-    ipcMain.handle("repository:file:read", async (_event, root: string, path: string) =>
-        (await client()).readRepositoryFile({ root, path }),
+    router.on("repository:file:read", async (_event, root: string, path: string) =>
+        (await client()).repository.readFile({ root, path }),
     );
 
-    ipcMain.handle(
+    router.on(
         "repository:file:range",
         async (
             _event,
@@ -39,10 +40,16 @@ export function register(deps: IpcDeps): void {
                 startLine: number;
                 endLine: number;
             },
-        ) => (await client()).readRepositoryFileRange(request),
+        ) => (await client()).repository.readFileRange(request),
     );
 
-    ipcMain.handle("repository:choose", async (_event, defaultPath?: string) => {
+    router.on(
+        "repository:file:bytes",
+        async (_event, request: { root?: string; path: string; ref?: string }) =>
+            (await client()).repository.readFileBytes(request),
+    );
+
+    router.on("repository:choose", async (_event, defaultPath?: string) => {
         const options: OpenDialogOptions = {
             defaultPath,
             properties: ["openDirectory"],
@@ -55,13 +62,15 @@ export function register(deps: IpcDeps): void {
         return result.canceled ? null : (result.filePaths[0] ?? null);
     });
 
-    ipcMain.handle("launch-intent:take", async (event) => {
+    router.on("launch-intent:take", async (event) => {
         const window = BrowserWindow.fromWebContents(event.sender);
+
         return window ? takeIntentForWindow(window) : null;
     });
 
-    ipcMain.handle("window:new", async (_event, repoPath?: string) => {
+    router.on("window:new", async (_event, repoPath?: string) => {
         const intent = repoPath ? { kind: "working" as const, repoPath, walkthrough: false } : null;
+
         createWindow(intent);
     });
 }

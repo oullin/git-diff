@@ -1,9 +1,5 @@
 import { ref, type Ref } from "vue";
 
-// useDiffLayout holds per-file UI layout state that lives only in the
-// renderer: which file sections are collapsed and the split-pane ratio
-// each file remembers for its split-view. Both maps are keyed by file
-// path; entries are created lazily on first interaction.
 export interface UseDiffLayout {
     collapsed: Ref<Record<string, boolean>>;
     splitRatios: Ref<Record<string, number>>;

@@ -1,9 +1,14 @@
 import type { BundledLanguage } from "shiki";
 
-import HighlightWorker from "../workers/highlight.worker.ts?worker";
-import type { WorkerResponse } from "../workers/highlight.worker";
+import HighlightWorker from "@workers/highlight.worker.ts?worker";
+import type {
+    HighlightRequest,
+    HighlightThemeId,
+    PrewarmRequest,
+    WorkerResponse,
+} from "@workers/highlight-protocol";
 
-export type ThemeId = "Licht" | "Dunkel";
+export type ThemeId = HighlightThemeId;
 
 // Past this length the per-line tokenizer can stall the worker for hundreds of
 // ms on pathological inputs (minified bundles, generated JSON). Above the cap
@@ -138,7 +143,13 @@ export function requestHighlight(
 
     return new Promise<string>((resolve, reject) => {
         slot.pending.set(id, { resolve, reject });
-        slot.worker.postMessage({ kind: "highlight", id, text, lang, theme });
+        slot.worker.postMessage({
+            kind: "highlight",
+            id,
+            text,
+            lang,
+            theme,
+        } satisfies HighlightRequest);
     });
 }
 
@@ -161,7 +172,11 @@ export function prewarmLanguage(lang: BundledLanguage): Promise<void> {
                         resolve: () => resolve(),
                         reject,
                     });
-                    slot.worker.postMessage({ kind: "prewarm", id, lang });
+                    slot.worker.postMessage({
+                        kind: "prewarm",
+                        id,
+                        lang,
+                    } satisfies PrewarmRequest);
                 }),
         ),
     ).then(() => undefined);

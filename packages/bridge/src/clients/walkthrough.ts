@@ -1,19 +1,20 @@
 import type { WalkthroughRecord } from "@git-diff/contracts";
-import { requestJson } from "#bridge/http.js";
+import type { HttpTransport } from "#bridge/http.js";
 
-export function generateWalkthrough(
-    socketPath: string,
-    request: {
+export class WalkthroughClient {
+    constructor(private readonly transport: HttpTransport) {}
+
+    generate(request: {
         path?: string;
         kind?: "working" | "commit";
         sha?: string;
         refresh?: boolean;
-    },
-): Promise<WalkthroughRecord> {
-    return requestJson<WalkthroughRecord>(socketPath, "POST", "/v1/walkthrough", {
-        path: request.path ?? "",
-        kind: request.kind ?? "working",
-        sha: request.sha ?? "",
-        refresh: request.refresh ?? false,
-    });
+    }): Promise<WalkthroughRecord> {
+        return this.transport.request<WalkthroughRecord>("POST", "/v1/walkthrough", {
+            path: request.path ?? "",
+            kind: request.kind ?? "working",
+            sha: request.sha ?? "",
+            refresh: request.refresh ?? false,
+        });
+    }
 }

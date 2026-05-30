@@ -19,5 +19,6 @@ export function appIcon() {
     }
 
     const icon = nativeImage.createFromPath(iconPath);
+
     return icon.isEmpty() ? undefined : icon;
 }

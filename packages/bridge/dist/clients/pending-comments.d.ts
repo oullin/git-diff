@@ -1,17 +1,12 @@
 import type { PendingComment } from "@git-diff/contracts";
-export declare function listPendingComments(
-    socketPath: string,
-    request: {
-        path?: string;
-        kind?: "working" | "commit";
-        sha?: string;
-    },
-): Promise<{
-    comments: PendingComment[];
-}>;
-export declare function createPendingComment(
-    socketPath: string,
-    request: {
+import type { HttpTransport } from "#bridge/http.js";
+export declare class PendingCommentClient {
+    private readonly transport;
+    constructor(transport: HttpTransport);
+    list(request: { path?: string; kind?: "working" | "commit"; sha?: string }): Promise<{
+        comments: PendingComment[];
+    }>;
+    create(request: {
         repoRoot: string;
         contextKind: "working" | "commit";
         contextSha?: string;
@@ -19,28 +14,14 @@ export declare function createPendingComment(
         diffSection: string;
         side: string;
         lineNumber: number;
+        startLineNumber?: number;
+        startSide?: string;
         authorLabel: string;
         bodyHtml: string;
-    },
-): Promise<PendingComment>;
-export declare function updatePendingComment(
-    socketPath: string,
-    request: {
-        id: string;
-        bodyHtml: string;
-    },
-): Promise<PendingComment>;
-export declare function deletePendingComment(
-    socketPath: string,
-    request: {
-        id: string;
-    },
-): Promise<void>;
-export declare function promotePendingComments(
-    socketPath: string,
-    request: {
-        reviewId: string;
-    },
-): Promise<{
-    promoted: number;
-}>;
+    }): Promise<PendingComment>;
+    update(request: { id: number; bodyHtml: string }): Promise<PendingComment>;
+    delete(request: { id: number }): Promise<void>;
+    promote(request: { reviewId: number }): Promise<{
+        promoted: number;
+    }>;
+}

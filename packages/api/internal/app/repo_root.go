@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/app/setting"
+	"github.com/oullin/git-diff/internal/app/setting"
 )
 
 func findRepoRoot(start string) string {

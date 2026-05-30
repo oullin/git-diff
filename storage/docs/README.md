@@ -288,7 +288,7 @@ pnpm --dir packages/ui run dist:mac:unsigned
 Create a published GitHub release:
 
 ```sh
-pnpm release:mac:unsigned -- --notes-file /path/to/release-notes.md --repo gocanto/git-diff
+pnpm release:mac:unsigned -- --notes-file /path/to/release-notes.md --repo oullin/git-diff
 ```
 
 Unsigned builds require a manual first launch. Use right-click -> Open, or

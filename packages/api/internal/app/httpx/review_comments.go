@@ -4,10 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func (s Server) createReviewComment(w http.ResponseWriter, r *http.Request) {
+	reviewID, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
 	var input storage.ReviewCommentInput
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -16,7 +22,7 @@ func (s Server) createReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.ReviewService.CreateComment(r.Context(), r.PathValue("id"), input)
+	comment, err := s.reviews.CreateComment(r.Context(), reviewID, input)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -28,6 +34,18 @@ func (s Server) createReviewComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
+	reviewID, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
+	commentID, ok := pathInt64(w, r, "commentId")
+
+	if !ok {
+		return
+	}
+
 	var input struct {
 		BodyHTML string `json:"bodyHtml"`
 	}
@@ -38,12 +56,7 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.ReviewService.UpdateComment(
-		r.Context(),
-		r.PathValue("id"),
-		r.PathValue("commentId"),
-		input.BodyHTML,
-	)
+	comment, err := s.reviews.UpdateComment(r.Context(), reviewID, commentID, input.BodyHTML)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -55,11 +68,19 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deleteReviewComment(w http.ResponseWriter, r *http.Request) {
-	if err := s.ReviewService.DeleteComment(
-		r.Context(),
-		r.PathValue("id"),
-		r.PathValue("commentId"),
-	); err != nil {
+	reviewID, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
+	commentID, ok := pathInt64(w, r, "commentId")
+
+	if !ok {
+		return
+	}
+
+	if err := s.reviews.DeleteComment(r.Context(), reviewID, commentID); err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 
 		return

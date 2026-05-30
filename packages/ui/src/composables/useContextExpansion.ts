@@ -17,23 +17,6 @@ interface SectionState {
     inflight: Set<string>;
 }
 
-const sections = reactive(new Map<string, SectionState>());
-
-function ensureState(sectionId: string): SectionState {
-    let state = sections.get(sectionId);
-
-    if (!state) {
-        state = reactive({
-            expansions: [],
-            downwardEof: false,
-            inflight: new Set<string>(),
-        });
-        sections.set(sectionId, state);
-    }
-
-    return state;
-}
-
 async function fetchRange(
     req: ExpansionRequest,
     startLine: number,
@@ -54,7 +37,26 @@ async function fetchRange(
     return { lines: result.lines, eof: result.eof };
 }
 
+/** Per-instance store — two DiffBody instances no longer corrupt each
+ *  other's expansion state. */
 export function useContextExpansion() {
+    const sections = reactive(new Map<string, SectionState>());
+
+    function ensureState(sectionId: string): SectionState {
+        let state = sections.get(sectionId);
+
+        if (!state) {
+            state = reactive({
+                expansions: [],
+                downwardEof: false,
+                inflight: new Set<string>(),
+            });
+            sections.set(sectionId, state);
+        }
+
+        return state;
+    }
+
     function getExpansions(sectionId: string): ExpandedContext[] {
         return sections.get(sectionId)?.expansions ?? [];
     }

@@ -7,20 +7,17 @@ import (
 	"strings"
 )
 
-// ListCommitLog returns the most recent commits in the repository for use as
-// a picker. The slice is ordered newest-first.
+// ListCommitLog returns the most recent commits, newest first.
 func ListCommitLog(ctx context.Context, launchPath string, limit int) ([]CommitSummary, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return nil, fmt.Errorf("resolve git root: %w", err)
+		return nil, err
 	}
-
-	root = strings.TrimSpace(root)
 
 	const sep = "\x1f"
 	const recordSep = "\x1e"

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +20,7 @@ func (s Server) createReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := s.ReviewService.Create(r.Context(), s.Auth.CurrentUserID(), input)
+	created, err := s.reviews.Create(r.Context(), s.Session.CurrentUserID(), input)
 
 	switch {
 	case errors.Is(err, service.ErrAuthenticationRequired):
@@ -51,7 +51,7 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	reviews, err := s.ReviewService.List(r.Context(), s.Auth.CurrentUserID(), limit)
+	reviews, err := s.reviews.List(r.Context(), s.Session.CurrentUserID(), limit)
 
 	switch {
 	case errors.Is(err, service.ErrAuthenticationRequired):
@@ -68,7 +68,13 @@ func (s Server) listReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) reviewDetail(w http.ResponseWriter, r *http.Request) {
-	detail, err := s.ReviewService.Detail(r.Context(), r.PathValue("id"))
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
+	detail, err := s.reviews.Detail(r.Context(), id)
 
 	if err != nil {
 		writeError(w, http.StatusNotFound, err)
@@ -80,6 +86,12 @@ func (s Server) reviewDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) addReviewEvent(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
 	var input storage.ReviewEventInput
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -88,7 +100,7 @@ func (s Server) addReviewEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := s.ReviewService.AddEvent(r.Context(), r.PathValue("id"), input)
+	event, err := s.reviews.AddEvent(r.Context(), id, input)
 
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)

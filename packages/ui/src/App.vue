@@ -39,7 +39,8 @@ import type { PatchLine } from "@lib/patch";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
 import { useToasts } from "@composables/useToasts";
 import { useStyleWatchers } from "@composables/useStyleWatchers";
-import { useDiffNavigation, useKeyboardShortcuts } from "@composables/useDiffNavigation";
+import { useDiffNavigation } from "@composables/useDiffNavigation";
+import { useKeyboardShortcuts } from "@composables/useKeyboardShortcuts";
 import { useWalkthrough } from "@composables/useWalkthrough";
 import { useCommits } from "@composables/useCommits";
 import { usePullRequests } from "@composables/usePullRequests";
@@ -50,6 +51,8 @@ import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
 import { useReviewMarkdownCopy } from "@composables/useReviewMarkdownCopy";
+import { useCommandRegistry } from "@composables/useCommandRegistry";
+import CommandPalette from "@entry/components/CommandPalette.vue";
 import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth.store";
 import { useRepoStore } from "@/stores/repo.store";
@@ -226,6 +229,48 @@ const { selectAdjacent, jumpToHunk } = useDiffNavigation({
     onSelect: (path) => selectFile(path),
 });
 
+{
+    const palette = useCommandRegistry();
+
+    palette.register({
+        id: "diff.toggle-whitespace",
+        title: "Toggle whitespace-only changes",
+        section: "Diff",
+        keymapId: "toggle_whitespace",
+        run: () =>
+            savePreferences({ [PREF_KEYS.diffHideWhitespace]: hideWhitespace.value ? "0" : "1" }),
+    });
+
+    palette.register({
+        id: "review.copy-markdown",
+        title: "Copy active review as Markdown",
+        section: "Review",
+        run: () => copyReviewAsMarkdown(),
+    });
+
+    palette.register({
+        id: "walkthrough.generate",
+        title: "Generate AI walkthrough",
+        section: "Review",
+        run: async () => {
+            await generateWalkthrough();
+        },
+    });
+
+    palette.register({
+        id: "file.copy-path",
+        title: "Copy current file path",
+        section: "File",
+        run: () => {
+            const file = selectedFile.value;
+
+            if (file) {
+                copyPath(file.path);
+            }
+        },
+    });
+}
+
 const shortcutsEnabled = computed(() => authMode.value === "ready");
 let unsubscribeShortcuts: (() => void) | null = null;
 let unsubscribeLaunchIntent: (() => void) | null = null;
@@ -254,10 +299,13 @@ onMounted(async () => {
         }
 
         await openRepo(intent.repoPath);
-        if (intent.kind === "pull-request" && intent.prNumber && state.value) {
-            await openPullRequest(intent.prNumber);
-        } else if (intent.sha && state.value) {
-            await openCommit(intent.sha);
+        const prNumber = intent.pullRequestNumber ?? intent.prNumber;
+        const commitRef = intent.commitRef ?? intent.sha;
+
+        if (intent.kind === "pull-request" && prNumber && state.value) {
+            await openPullRequest(prNumber);
+        } else if (commitRef && state.value) {
+            await openCommit(commitRef);
         }
     });
 });
@@ -306,10 +354,13 @@ async function applyLaunchIntent() {
 
     await openRepo(initialPath);
 
-    if (intent?.kind === "pull-request" && intent.prNumber && state.value) {
-        await openPullRequest(intent.prNumber);
-    } else if (intent?.sha && state.value) {
-        await openCommit(intent.sha);
+    const prNumber = intent?.pullRequestNumber ?? intent?.prNumber;
+    const commitRef = intent?.commitRef ?? intent?.sha;
+
+    if (intent?.kind === "pull-request" && prNumber && state.value) {
+        await openPullRequest(prNumber);
+    } else if (commitRef && state.value) {
+        await openCommit(commitRef);
     }
 
     if (intent?.walkthrough) {
@@ -937,6 +988,8 @@ void ACCENTS;
             />
 
             <SearchBar :open="searchOpen" @close="searchOpen = false" />
+
+            <CommandPalette />
 
             <ToastViewport :toasts="toasts" @dismiss="dismissToast" />
         </div>

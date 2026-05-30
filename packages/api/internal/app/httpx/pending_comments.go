@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func (s Server) handlePendingCommentError(w http.ResponseWriter, err error) {
@@ -28,9 +28,9 @@ func (s Server) listPendingComments(w http.ResponseWriter, r *http.Request) {
 		repoRoot = s.Repo
 	}
 
-	comments, err := s.PendingCommentService.List(
+	comments, err := s.pending.List(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		repoRoot,
 		r.URL.Query().Get("kind"),
 		r.URL.Query().Get("sha"),
@@ -54,9 +54,9 @@ func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.PendingCommentService.Create(
+	comment, err := s.pending.Create(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		s.Repo,
 		input,
 	)
@@ -71,6 +71,12 @@ func (s Server) createPendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
 	var body struct {
 		BodyHTML string `json:"bodyHtml"`
 	}
@@ -81,10 +87,10 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	comment, err := s.PendingCommentService.Update(
+	comment, err := s.pending.Update(
 		r.Context(),
-		s.Auth.CurrentUserID(),
-		r.PathValue("id"),
+		s.Session.CurrentUserID(),
+		id,
 		body.BodyHTML,
 	)
 
@@ -104,10 +110,16 @@ func (s Server) updatePendingComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
-	if err := s.PendingCommentService.Delete(
+	id, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
+	if err := s.pending.Delete(
 		r.Context(),
-		s.Auth.CurrentUserID(),
-		r.PathValue("id"),
+		s.Session.CurrentUserID(),
+		id,
 	); err != nil {
 		s.handlePendingCommentError(w, err)
 
@@ -119,7 +131,7 @@ func (s Server) deletePendingComment(w http.ResponseWriter, r *http.Request) {
 
 func (s Server) promotePendingComments(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		ReviewID string `json:"reviewId"`
+		ReviewID int64 `json:"reviewId"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -128,9 +140,9 @@ func (s Server) promotePendingComments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	promoted, err := s.PendingCommentService.Promote(
+	promoted, err := s.pending.Promote(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		body.ReviewID,
 	)
 

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gocanto/git-diff/internal/service"
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/service"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func (s Server) handleRepositoryError(w http.ResponseWriter, err error) {
@@ -23,7 +23,7 @@ func (s Server) handleRepositoryError(w http.ResponseWriter, err error) {
 }
 
 func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
-	repos, err := s.RepositoryService.List(r.Context(), s.Auth.CurrentUserID())
+	repos, err := s.repos.List(r.Context(), s.Session.CurrentUserID())
 
 	if err != nil {
 		s.handleRepositoryError(w, err)
@@ -46,9 +46,9 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo, err := s.RepositoryService.Upsert(
+	repo, err := s.repos.Upsert(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		body.Path,
 		body.Name,
 	)
@@ -69,9 +69,9 @@ func (s Server) upsertRepository(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) removeRepository(w http.ResponseWriter, r *http.Request) {
-	err := s.RepositoryService.Remove(
+	err := s.repos.Remove(
 		r.Context(),
-		s.Auth.CurrentUserID(),
+		s.Session.CurrentUserID(),
 		r.URL.Query().Get("path"),
 	)
 

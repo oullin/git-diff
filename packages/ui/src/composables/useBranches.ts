@@ -1,9 +1,5 @@
 import { ref, type Ref } from "vue";
 
-// useBranches holds the branch picker's list state for a single repository
-// root. Callers invoke load(root) when the dropdown opens (or on demand);
-// errors stay surfaced via the error ref so the host UI can render them
-// inline without callback indirection.
 export interface UseBranches {
     items: Ref<string[]>;
     loading: Ref<boolean>;

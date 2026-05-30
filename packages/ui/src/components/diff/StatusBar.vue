@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Keyboard } from "lucide-vue-next";
-import Kbd from "./Kbd.vue";
+import Kbd from "@diff/Kbd.vue";
 import { languageFor } from "@lib/highlight";
 import { computed } from "vue";
 

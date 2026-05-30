@@ -2,33 +2,23 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
-	"fmt"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
-// ReviewService owns review-session, review-event, and review-comment use
-// cases. It abstracts away the store handle, the random-ID generation, and
-// the auto-event side effects so handlers can stay thin (decode -> dispatch
-// -> writeJSON).
 type ReviewService struct {
-	store *storage.Store
+	reviews  *storage.ReviewRepo
+	events   *storage.ReviewEventRepo
+	comments *storage.CommentRepo
 }
 
-func NewReviewService(store *storage.Store) *ReviewService {
-	return &ReviewService{store: store}
+func NewReviewService(reviews *storage.ReviewRepo, events *storage.ReviewEventRepo, comments *storage.CommentRepo) *ReviewService {
+	return &ReviewService{reviews: reviews, events: events, comments: comments}
 }
 
-// ErrAuthenticationRequired signals that an action needs a logged-in user;
-// handlers translate it to 401.
 var ErrAuthenticationRequired = errors.New("authentication required")
 
-// Create starts a new review session for `userID`. An empty input.ID is
-// auto-filled with a random identifier so callers can choose to delegate
-// id generation here.
 func (s *ReviewService) Create(
 	ctx context.Context,
 	userID int64,
@@ -38,15 +28,9 @@ func (s *ReviewService) Create(
 		return storage.ReviewSession{}, ErrAuthenticationRequired
 	}
 
-	if input.ID == "" {
-		input.ID = randomID("review")
-	}
-
-	return s.store.CreateReview(ctx, userID, input)
+	return s.reviews.CreateReview(ctx, userID, input)
 }
 
-// List returns up to `limit` review sessions owned by `userID`, most
-// recent first.
 func (s *ReviewService) List(
 	ctx context.Context,
 	userID int64,
@@ -60,54 +44,40 @@ func (s *ReviewService) List(
 		limit = 50
 	}
 
-	return s.store.ListReviews(ctx, userID, limit)
+	return s.reviews.ListReviews(ctx, userID, limit)
 }
 
-// Detail returns the session, its events, and its comments by review id.
-func (s *ReviewService) Detail(ctx context.Context, id string) (storage.ReviewDetail, error) {
-	return s.store.ReviewDetail(ctx, id)
+func (s *ReviewService) Detail(ctx context.Context, id int64) (storage.ReviewDetail, error) {
+	return s.reviews.ReviewDetail(ctx, s.comments, id)
 }
 
-// AddEvent appends a review-timeline event to the session.
 func (s *ReviewService) AddEvent(
 	ctx context.Context,
-	reviewID string,
+	reviewID int64,
 	input storage.ReviewEventInput,
 ) (storage.ReviewEvent, error) {
-	return s.store.AddReviewEvent(ctx, reviewID, input)
+	return s.events.Add(ctx, reviewID, input)
 }
 
-// CreateComment posts a new comment under the review session and
-// auto-generates its identifier. The store records a "comment_added"
-// review event side-effect.
+// CreateComment records a "comment_added" review event as a side effect.
 func (s *ReviewService) CreateComment(
 	ctx context.Context,
-	reviewID string,
+	reviewID int64,
 	input storage.ReviewCommentInput,
 ) (storage.ReviewComment, error) {
-	return s.store.CreateReviewComment(ctx, reviewID, randomID("comment"), input)
+	return s.comments.CreateReviewComment(ctx, reviewID, input)
 }
 
-// UpdateComment rewrites the body of an existing comment and emits a
-// "comment_edited" event.
+// UpdateComment emits a "comment_edited" event.
 func (s *ReviewService) UpdateComment(
 	ctx context.Context,
-	reviewID, commentID, bodyHTML string,
+	reviewID, commentID int64,
+	bodyHTML string,
 ) (storage.ReviewComment, error) {
-	return s.store.UpdateReviewComment(ctx, reviewID, commentID, bodyHTML)
+	return s.comments.UpdateReviewComment(ctx, reviewID, commentID, bodyHTML)
 }
 
 // DeleteComment soft-deletes the comment and emits a "comment_deleted" event.
-func (s *ReviewService) DeleteComment(ctx context.Context, reviewID, commentID string) error {
-	return s.store.DeleteReviewComment(ctx, reviewID, commentID)
-}
-
-func randomID(prefix string) string {
-	var bytes [12]byte
-
-	if _, err := rand.Read(bytes[:]); err != nil {
-		return fmt.Sprintf("%s-fallback", prefix)
-	}
-
-	return prefix + "-" + hex.EncodeToString(bytes[:])
+func (s *ReviewService) DeleteComment(ctx context.Context, reviewID, commentID int64) error {
+	return s.comments.DeleteReviewComment(ctx, reviewID, commentID)
 }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Check, MessageSquare } from "lucide-vue-next";
-import StatusBadge from "./StatusBadge.vue";
-import DiffStat from "./DiffStat.vue";
+import StatusBadge from "@diff/StatusBadge.vue";
+import DiffStat from "@diff/DiffStat.vue";
 import type { ChangedFile } from "@git-diff/contracts";
 
 const props = defineProps<{

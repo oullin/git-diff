@@ -1,10 +1,10 @@
 import { createHighlighterCore, type HighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import type { BundledLanguage } from "shiki";
-import { computed, shallowRef, watch } from "vue";
+import { computed, type ComputedRef, shallowRef, watch } from "vue";
 
-import lichtTheme from "../themes/licht.json" with { type: "json" };
-import dunkelTheme from "../themes/dunkel.json" with { type: "json" };
+import lichtTheme from "@themes/licht.json" with { type: "json" };
+import dunkelTheme from "@themes/dunkel.json" with { type: "json" };
 import { resolvedTheme } from "@composables/useTheme";
 import {
     isHighlightPoolAvailable,
@@ -70,60 +70,6 @@ export function languageFor(path: string): BundledLanguage | null {
     return EXTENSION_LANG[base.slice(dot + 1)] ?? null;
 }
 
-/** Increments whenever async tokens arrive OR the color scheme flips, so Vue re-renders. */
-export const highlighterRev = shallowRef(0);
-
-const currentTheme = computed<ThemeId>(() => (resolvedTheme.value === "dark" ? "Dunkel" : "Licht"));
-
-watch(currentTheme, () => {
-    // Theme change invalidates every cached token string. Reset the cache to
-    // free memory and force re-tokenization in the new theme.
-    cache.clear();
-    inflight.clear();
-    highlighterRev.value += 1;
-});
-
-// LRU cache for tokenized line HTML. Keyed by `${theme}:${lang}:${text}`. A few
-// thousand entries cover the visible viewport plus recent scrollback; older
-// entries get evicted automatically when the file changes.
-const CACHE_LIMIT = 5000;
-const cache = new Map<string, string>();
-const inflight = new Set<string>();
-
-function cacheGet(key: string): string | undefined {
-    const value = cache.get(key);
-
-    if (value === undefined) {
-        return undefined;
-    }
-
-    // LRU: refresh recency by re-inserting.
-    cache.delete(key);
-    cache.set(key, value);
-
-    return value;
-}
-
-function cacheSet(key: string, value: string): void {
-    if (cache.has(key)) {
-        cache.delete(key);
-    }
-
-    cache.set(key, value);
-
-    if (cache.size > CACHE_LIMIT) {
-        const oldest = cache.keys().next().value;
-
-        if (oldest !== undefined) {
-            cache.delete(oldest);
-        }
-    }
-}
-
-function keyFor(text: string, lang: BundledLanguage, theme: ThemeId): string {
-    return `${theme}:${lang}:${text}`;
-}
-
 function escapeHtml(str: string): string {
     return str
         .replace(/&/g, "&amp;")
@@ -131,48 +77,6 @@ function escapeHtml(str: string): string {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
-}
-
-// Main-thread highlighter. Used only when the worker pool is unavailable
-// (vitest happy-dom, Electron contexts without Web Worker support, etc.) so
-// tests and degraded environments still render highlighted output.
-let fallbackHighlighter: HighlighterCore | null = null;
-let fallbackInitPromise: Promise<HighlighterCore> | null = null;
-const fallbackLoadedLangs = new Set<string>();
-
-function getFallbackHighlighter(): Promise<HighlighterCore> {
-    if (fallbackHighlighter) {
-        return Promise.resolve(fallbackHighlighter);
-    }
-
-    if (!fallbackInitPromise) {
-        fallbackInitPromise = createHighlighterCore({
-            themes: [lichtTheme as never, dunkelTheme as never],
-            langs: [],
-            engine: createOnigurumaEngine(import("shiki/wasm")),
-        }).then((h) => {
-            fallbackHighlighter = h;
-
-            return h;
-        });
-    }
-
-    return fallbackInitPromise;
-}
-
-async function fallbackEnsureLanguage(lang: BundledLanguage): Promise<HighlighterCore> {
-    const h = await getFallbackHighlighter();
-
-    if (fallbackLoadedLangs.has(lang)) {
-        return h;
-    }
-
-    const mod = await import(/* @vite-ignore */ `shiki/langs/${lang}.mjs`);
-
-    await h.loadLanguage(mod.default ?? mod);
-    fallbackLoadedLangs.add(lang);
-
-    return h;
 }
 
 function tokenizeWithHighlighter(
@@ -198,66 +102,178 @@ function tokenizeWithHighlighter(
     return html;
 }
 
-export async function ensureLanguage(lang: BundledLanguage | null): Promise<void> {
-    if (!lang) {
-        return;
-    }
+/** `rev` bumps on async-token arrival and theme flip; consume it in a
+ *  computed to opt into re-render on cache fills. */
+export class Highlighter {
+    /** Tokenized-line HTML cache, keyed by `${theme}:${lang}:${text}`. LRU bounded. */
+    private readonly cache = new Map<string, string>();
+    private readonly inflight = new Set<string>();
+    private readonly cacheLimit: number;
+    private fallbackHighlighter: HighlighterCore | null = null;
+    private fallbackInit: Promise<HighlighterCore> | null = null;
+    private readonly fallbackLoaded = new Set<string>();
+    readonly rev = shallowRef(0);
+    private readonly theme: ComputedRef<ThemeId>;
 
-    if (isHighlightPoolAvailable()) {
-        await prewarmLanguage(lang);
-        highlighterRev.value += 1;
+    constructor(cacheLimit = 5000) {
+        this.cacheLimit = cacheLimit;
+        this.theme = computed<ThemeId>(() => (resolvedTheme.value === "dark" ? "Dunkel" : "Licht"));
 
-        return;
-    }
-
-    await fallbackEnsureLanguage(lang);
-    highlighterRev.value += 1;
-}
-
-function scheduleAsync(key: string, text: string, lang: BundledLanguage, theme: ThemeId): void {
-    if (inflight.has(key)) {
-        return;
-    }
-
-    inflight.add(key);
-
-    const tokenize = isHighlightPoolAvailable()
-        ? requestHighlight(text, lang, theme)
-        : fallbackEnsureLanguage(lang).then((h) => tokenizeWithHighlighter(h, text, lang, theme));
-
-    tokenize
-        .then((html) => {
-            cacheSet(key, html);
-        })
-        .catch(() => {
-            // Leave the cache empty so subsequent renders try again. Plaintext
-            // remains visible in the meantime — that's better than retrying in
-            // a hot loop on a permanent failure.
-        })
-        .finally(() => {
-            inflight.delete(key);
-            highlighterRev.value += 1;
+        watch(this.theme, () => {
+            // Theme change invalidates every cached token string.
+            this.cache.clear();
+            this.inflight.clear();
+            this.rev.value += 1;
         });
+    }
+
+    /** Async path: returns plaintext-escaped HTML now; the caller
+     *  observes `rev` to re-render once the cache fills. */
+    highlightLine(text: string, lang: BundledLanguage | null): string {
+        if (!lang) {
+            return escapeHtml(text);
+        }
+
+        if (text.length > MAX_LINE_TOKENIZE_LENGTH) {
+            return escapeHtml(text);
+        }
+
+        const theme = this.theme.value;
+        const key = this.keyFor(text, lang, theme);
+        const cached = this.cacheGet(key);
+
+        if (cached !== undefined) {
+            return cached;
+        }
+
+        this.scheduleAsync(key, text, lang, theme);
+
+        return escapeHtml(text);
+    }
+
+    async ensureLanguage(lang: BundledLanguage | null): Promise<void> {
+        if (!lang) {
+            return;
+        }
+
+        if (isHighlightPoolAvailable()) {
+            await prewarmLanguage(lang);
+            this.rev.value += 1;
+
+            return;
+        }
+
+        await this.fallbackEnsureLanguage(lang);
+        this.rev.value += 1;
+    }
+
+    private keyFor(text: string, lang: BundledLanguage, theme: ThemeId): string {
+        return `${theme}:${lang}:${text}`;
+    }
+
+    private cacheGet(key: string): string | undefined {
+        const value = this.cache.get(key);
+
+        if (value === undefined) {
+            return undefined;
+        }
+
+        // LRU: refresh recency by re-inserting.
+        this.cache.delete(key);
+        this.cache.set(key, value);
+
+        return value;
+    }
+
+    private cacheSet(key: string, value: string): void {
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        }
+
+        this.cache.set(key, value);
+
+        if (this.cache.size > this.cacheLimit) {
+            const oldest = this.cache.keys().next().value;
+
+            if (oldest !== undefined) {
+                this.cache.delete(oldest);
+            }
+        }
+    }
+
+    private scheduleAsync(key: string, text: string, lang: BundledLanguage, theme: ThemeId): void {
+        if (this.inflight.has(key)) {
+            return;
+        }
+
+        this.inflight.add(key);
+
+        const tokenize = isHighlightPoolAvailable()
+            ? requestHighlight(text, lang, theme)
+            : this.fallbackEnsureLanguage(lang).then((h) =>
+                  tokenizeWithHighlighter(h, text, lang, theme),
+              );
+
+        tokenize
+            .then((html) => {
+                this.cacheSet(key, html);
+            })
+            .catch(() => {
+                // Leave the cache empty so subsequent renders retry,
+                // but plaintext stays visible meanwhile.
+            })
+            .finally(() => {
+                this.inflight.delete(key);
+                this.rev.value += 1;
+            });
+    }
+
+    private getFallbackHighlighter(): Promise<HighlighterCore> {
+        if (this.fallbackHighlighter) {
+            return Promise.resolve(this.fallbackHighlighter);
+        }
+
+        if (!this.fallbackInit) {
+            this.fallbackInit = createHighlighterCore({
+                themes: [lichtTheme as never, dunkelTheme as never],
+                langs: [],
+                engine: createOnigurumaEngine(import("shiki/wasm")),
+            }).then((h) => {
+                this.fallbackHighlighter = h;
+
+                return h;
+            });
+        }
+
+        return this.fallbackInit;
+    }
+
+    private async fallbackEnsureLanguage(lang: BundledLanguage): Promise<HighlighterCore> {
+        const h = await this.getFallbackHighlighter();
+
+        if (this.fallbackLoaded.has(lang)) {
+            return h;
+        }
+
+        const mod = await import(/* @vite-ignore */ `shiki/langs/${lang}.mjs`);
+
+        await h.loadLanguage(mod.default ?? mod);
+        this.fallbackLoaded.add(lang);
+
+        return h;
+    }
 }
+
+// Singleton so a single cache covers the whole app; tests can construct
+// their own Highlighter to assert behaviour in isolation.
+const sharedHighlighter = new Highlighter();
+
+export const highlighterRev = sharedHighlighter.rev;
 
 export function highlightLine(text: string, lang: BundledLanguage | null): string {
-    if (!lang) {
-        return escapeHtml(text);
-    }
+    return sharedHighlighter.highlightLine(text, lang);
+}
 
-    if (text.length > MAX_LINE_TOKENIZE_LENGTH) {
-        return escapeHtml(text);
-    }
-
-    const theme = currentTheme.value;
-    const key = keyFor(text, lang, theme);
-    const cached = cacheGet(key);
-
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    scheduleAsync(key, text, lang, theme);
-
-    return escapeHtml(text);
+export function ensureLanguage(lang: BundledLanguage | null): Promise<void> {
+    return sharedHighlighter.ensureLanguage(lang);
 }

@@ -9,7 +9,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@ui/dropdown-menu";
-import DiffLogo from "./DiffLogo.vue";
+import DiffLogo from "@diff/DiffLogo.vue";
 import { Skeleton } from "@ui/skeleton";
 import type { Repository, RepositoryState } from "@git-diff/contracts";
 import { useSystemStatsPolling } from "@composables/useSystemStatsPolling";

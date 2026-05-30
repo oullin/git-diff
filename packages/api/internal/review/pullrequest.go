@@ -7,12 +7,11 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/oullin/git-diff/internal/lines"
 )
 
-// PullRequestSummary describes one entry returned by `gh pr list`. The UI
-// renders these in a sidebar tab so the user can pick a PR to review.
 type PullRequestSummary struct {
 	Number  int    `json:"number"`
 	Title   string `json:"title"`
@@ -23,25 +22,20 @@ type PullRequestSummary struct {
 	URL     string `json:"url"`
 }
 
-// ErrGhUnavailable is returned when the `gh` CLI isn't on PATH. The HTTP
-// layer maps this to a 412 so the UI can prompt the user to install it.
+// ErrGhUnavailable lets the HTTP layer surface a 412 when `gh` is missing.
 var ErrGhUnavailable = errors.New("gh CLI is required for pull-request operations; install from https://cli.github.com")
 
-// ListPullRequests returns the open pull requests for the repository at
-// launchPath. Backed by `gh pr list --json`. Limited to 50 entries — enough
-// to scroll through but cheap to fetch.
+// ListPullRequests returns open PRs (default 50, max 200).
 func ListPullRequests(ctx context.Context, launchPath string, limit int) ([]PullRequestSummary, error) {
 	if !hasGh(ctx) {
 		return nil, ErrGhUnavailable
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return nil, fmt.Errorf("resolve git root: %w", err)
+		return nil, err
 	}
-
-	root = strings.TrimSpace(root)
 
 	if limit <= 0 || limit > 200 {
 		limit = 50
@@ -95,10 +89,8 @@ func ListPullRequests(ctx context.Context, launchPath string, limit int) ([]Pull
 	return summaries, nil
 }
 
-// ReadPullRequestState fetches the PR head into a local ref and renders the
-// base..head diff through the same shape as ReadCommitState. Comments
-// attach to commit SHAs (head_sha) so they stay anchored even if the PR
-// branch updates upstream.
+// ReadPullRequestState anchors comments to head_sha so they stay attached
+// when the PR branch updates upstream.
 func ReadPullRequestState(ctx context.Context, launchPath string, number int) (RepositoryState, error) {
 	if number <= 0 {
 		return RepositoryState{}, errors.New("pull request number is required")
@@ -108,13 +100,11 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 		return RepositoryState{}, ErrGhUnavailable
 	}
 
-	root, err := gitOutput(ctx, launchPath, "rev-parse", "--show-toplevel")
+	root, err := RootFor(ctx, launchPath)
 
 	if err != nil {
-		return RepositoryState{}, fmt.Errorf("resolve git root: %w", err)
+		return RepositoryState{}, err
 	}
-
-	root = strings.TrimSpace(root)
 
 	detail, err := ghOutput(ctx, root,
 		"pr", "view", strconv.Itoa(number),
@@ -145,8 +135,7 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 		return RepositoryState{}, fmt.Errorf("decode gh pr view: %w", err)
 	}
 
-	// Fetch the head ref so the SHAs resolve locally even if the user hasn't
-	// pulled this PR before.
+	// Fetch so the SHAs resolve locally if the user hasn't pulled this PR.
 	if _, err := gitOutput(ctx, root, "fetch", "origin", fmt.Sprintf("pull/%d/head", number)); err != nil {
 		return RepositoryState{}, fmt.Errorf("fetch PR head: %w", err)
 	}
@@ -161,30 +150,14 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 	}
 
 	entries := parseDiffTreeNameStatus(nameStatusRaw)
-	files := make([]ChangedFile, 0, len(entries))
 
-	for _, entry := range entries {
-		patch, binary := pullRequestFilePatch(ctx, root, view.BaseRefOid, view.HeadRefOid, entry.path, entry.old)
+	patches, err := readPullRequestPatches(ctx, root, view.BaseRefOid, view.HeadRefOid)
 
-		section := DiffSection{
-			ID:     fmt.Sprintf("pr:%d:%s", number, entry.path),
-			Kind:   "commit",
-			Patch:  patch,
-			Binary: binary,
-		}
-
-		file := ChangedFile{
-			Path:     entry.path,
-			OldPath:  entry.old,
-			Status:   entry.status,
-			Binary:   binary,
-			Sections: []DiffSection{section},
-		}
-
-		file.Additions, file.Deletions = countPatchLines(patch)
-		file.Fingerprint = fingerprint(file)
-		files = append(files, file)
+	if err != nil {
+		return RepositoryState{}, err
 	}
+
+	files := buildPullRequestChangedFiles(entries, patches, number)
 
 	sort.SliceStable(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 
@@ -210,19 +183,45 @@ func ReadPullRequestState(ctx context.Context, launchPath string, number int) (R
 	return state, nil
 }
 
-func pullRequestFilePatch(ctx context.Context, root, baseSHA, headSHA, path, oldPath string) (string, bool) {
-	args := []string{"diff", "--binary", "--find-renames", baseSHA + ".." + headSHA, "--"}
-
-	if oldPath != "" {
-		args = append(args, oldPath)
-	}
-
-	args = append(args, path)
-	patch, err := gitOutput(ctx, root, args...)
+func readPullRequestPatches(ctx context.Context, root, baseSHA, headSHA string) (map[string][]byte, error) {
+	raw, err := gitBytes(ctx, root,
+		"diff", "--binary", "--find-renames",
+		baseSHA+".."+headSHA,
+	)
 
 	if err != nil {
-		return "", false
+		return nil, fmt.Errorf("read PR patches: %w", err)
 	}
 
-	return patch, isBinaryPatch(patch)
+	return lines.SplitUnifiedPatch(raw), nil
+}
+
+func buildPullRequestChangedFiles(entries []commitDiffEntry, patches map[string][]byte, number int) []ChangedFile {
+	files := make([]ChangedFile, 0, len(entries))
+
+	for _, entry := range entries {
+		patch := string(patches[entry.path])
+		binary := isBinaryPatch(patch)
+
+		section := DiffSection{
+			ID:     fmt.Sprintf("pr:%d:%s", number, entry.path),
+			Kind:   "commit",
+			Patch:  patch,
+			Binary: binary,
+		}
+
+		file := ChangedFile{
+			Path:     entry.path,
+			OldPath:  entry.old,
+			Status:   entry.status,
+			Binary:   binary,
+			Sections: []DiffSection{section},
+		}
+
+		file.Additions, file.Deletions = countPatchLines(patch)
+		file.Fingerprint = fingerprint(file)
+		files = append(files, file)
+	}
+
+	return files
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gocanto/git-diff/internal/command"
+	"github.com/oullin/git-diff/internal/command"
 )
 
 type stubRunner struct {

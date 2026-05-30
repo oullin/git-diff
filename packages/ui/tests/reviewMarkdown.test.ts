@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
-import { formatReviewAsMarkdown, htmlToMarkdown } from "../src/lib/reviewMarkdown";
+import { formatReviewAsMarkdown, htmlToMarkdown } from "@lib/reviewMarkdown";
 import type { ReviewComment, ReviewDetail, ReviewSession } from "@git-diff/contracts";
 
 function comment(overrides: Partial<ReviewComment> = {}): ReviewComment {
     return {
-        id: "c-1",
-        reviewId: "r-1",
+        id: 1,
+        reviewId: 1,
         filePath: "src/App.vue",
         diffSection: "unstaged:src/App.vue",
         side: "add",
@@ -21,7 +21,7 @@ function comment(overrides: Partial<ReviewComment> = {}): ReviewComment {
 
 function session(overrides: Partial<ReviewSession> = {}): ReviewSession {
     return {
-        id: "r-1",
+        id: 1,
         repoRoot: "/repo",
         userId: 1,
         branch: "feat/x",
@@ -34,6 +34,8 @@ function session(overrides: Partial<ReviewSession> = {}): ReviewSession {
         deletions: 1,
         startedAt: "2026-05-20T09:55:00Z",
         contextKind: "working",
+        createdAt: "2026-05-20T09:55:00Z",
+        updatedAt: "2026-05-20T09:55:00Z",
         ...overrides,
     };
 }
@@ -77,9 +79,9 @@ describe("formatReviewAsMarkdown", () => {
             events: [],
             comments: [
                 comment({ lineNumber: 12, bodyHtml: "<p>looks <strong>great</strong></p>" }),
-                comment({ id: "c-2", lineNumber: 20, bodyHtml: "<p>could be cleaner</p>" }),
+                comment({ id: 2, lineNumber: 20, bodyHtml: "<p>could be cleaner</p>" }),
                 comment({
-                    id: "c-3",
+                    id: 3,
                     filePath: "src/main.ts",
                     lineNumber: 1,
                     bodyHtml: "<p>nit</p>",
@@ -87,6 +89,7 @@ describe("formatReviewAsMarkdown", () => {
             ],
         };
         const out = formatReviewAsMarkdown(detail);
+
         expect(out).toContain("# Review feat/x");
         expect(out).toContain("Branch: `feat/x`");
         expect(out).toContain("HEAD: `abc1234`");
@@ -103,6 +106,7 @@ describe("formatReviewAsMarkdown", () => {
             events: [],
             comments: [comment()],
         };
+
         expect(formatReviewAsMarkdown(detail)).toContain("Commit: `deadbeef`");
     });
 
@@ -112,11 +116,13 @@ describe("formatReviewAsMarkdown", () => {
             events: [],
             comments: [comment({ deletedAt: "2026-05-20T11:00:00Z", bodyHtml: "<p>oops</p>" })],
         };
+
         expect(formatReviewAsMarkdown(detail)).toContain("_No comments yet._");
     });
 
     test("empty review surfaces a no-comments line", () => {
         const detail: ReviewDetail = { review: session(), events: [], comments: [] };
+
         expect(formatReviewAsMarkdown(detail)).toContain("_No comments yet._");
     });
 });

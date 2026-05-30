@@ -3,7 +3,7 @@ package setting
 import (
 	"strings"
 
-	"github.com/gocanto/git-diff/internal/storage"
+	"github.com/oullin/git-diff/internal/storage"
 )
 
 func DefaultRuntimeSettings(home, repo string) RuntimeSettings {
