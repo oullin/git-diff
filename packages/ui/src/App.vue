@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import AuthGate from "@entry/components/auth/AuthGate.vue";
 import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
@@ -15,12 +15,10 @@ import StatusBar from "@entry/components/diff/StatusBar.vue";
 import ReviewPanel from "@entry/components/diff/ReviewPanel.vue";
 import AddCommentDialog from "@entry/components/diff/AddCommentDialog.vue";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
-import type { AuthLoginResponse, DiffViewMode, FileSearchResult } from "@git-diff/contracts";
+import type { AuthLoginResponse, DiffViewMode } from "@git-diff/contracts";
 import { PREF_KEYS } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
-import type { LineSelectionRange } from "@composables/useLineSelection";
 import { ACCENTS, resolveAccent } from "@lib/accent";
-import type { PatchLine } from "@lib/patch";
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composables/useTweaks";
 import { useToasts } from "@composables/useToasts";
 import { useStyleWatchers } from "@composables/useStyleWatchers";
@@ -32,6 +30,7 @@ import { useCommits } from "@composables/useCommits";
 import { usePullRequests } from "@composables/usePullRequests";
 import { useRepositoryList } from "@composables/useRepositoryList";
 import { useReviewSession } from "@composables/useReviewSession";
+import { useRepoBrowsing } from "@composables/useRepoBrowsing";
 import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
@@ -42,7 +41,6 @@ import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth.store";
 import { useRepoStore } from "@/stores/repo.store";
 import { useReviewsStore } from "@/stores/reviews.store";
-import { parseBridgeError } from "@lib/bridgeError";
 
 const commentFeatures: RichTextFeatures = {
     checklist: false,
@@ -332,236 +330,47 @@ async function logOut() {
     await bootstrapAuth();
 }
 
-async function openRepo(path: string) {
-    activeRepoPath.value = path;
-
-    await repoStore.withBusy(async () => {
-        try {
-            const opened = await window.diffApp.repositoryState(path);
-
-            state.value = opened;
-            selectedPath.value = opened.files[0]?.path ?? "";
-            resetSelectedFile();
-            const reviewResponse = await window.diffApp.listReviews(25);
-
-            reviews.value = reviewResponse.reviews.filter(
-                (review) => review.repoRoot === opened.root,
-            );
-            activeReview.value = reviews.value[0]
-                ? await window.diffApp.reviewDetail(reviews.value[0].id)
-                : null;
-            await loadPendingComments();
-            await savePreferences({ [PREF_KEYS.lastRepoRoot]: opened.root });
-            await window.diffApp.upsertRepository({ path: opened.root });
-            await refreshRepositoryList();
-            activeRepoPath.value = opened.root;
-        } catch (cause) {
-            error.value = cause instanceof Error ? cause.message : String(cause);
-            state.value = null;
-        }
-    });
-}
-
-async function refresh() {
-    if (!state.value) {
-        if (activeRepoPath.value) {
-            await openRepo(activeRepoPath.value);
-        }
-
-        return;
-    }
-
-    await repoStore.withBusy(async () => {
-        try {
-            const current = state.value!;
-            const next =
-                current.mode === "commit" && current.commitSha
-                    ? await window.diffApp.readCommit(current.commitSha, current.root)
-                    : await window.diffApp.refreshRepository(current.root);
-
-            state.value = next;
-
-            if (!next.files.some((file) => file.path === selectedPath.value)) {
-                selectedPath.value = next.files[0]?.path ?? "";
-            }
-        } catch (cause) {
-            error.value = cause instanceof Error ? cause.message : String(cause);
-        }
-    });
-}
-
-async function openCommit(sha: string) {
-    if (!state.value) {
-        return;
-    }
-
-    await repoStore.withBusy(async () => {
-        try {
-            state.value = await window.diffApp.readCommit(sha, state.value!.root);
-            selectedPath.value = state.value.files[0]?.path ?? "";
-            activeReview.value = null;
-            activePullRequest.value = null;
-        } catch (cause) {
-            error.value = cause instanceof Error ? cause.message : String(cause);
-        }
-    });
-}
-
-async function returnToWorkingTree() {
-    if (!state.value) {
-        return;
-    }
-
-    activePullRequest.value = null;
-    await openRepo(state.value.root);
-}
-
-async function openPullRequest(number: number) {
-    if (!state.value) {
-        return;
-    }
-
-    await repoStore.withBusy(async () => {
-        try {
-            const opened = await window.diffApp.readPullRequest(number, state.value!.root);
-
-            state.value = opened;
-            selectedPath.value = opened.files[0]?.path ?? "";
-            activeReview.value = null;
-            activePullRequest.value = pullRequests.value.find((pr) => pr.number === number) ?? {
-                number,
-                title: "",
-                author: "",
-                state: "open",
-                baseRef: "",
-                headRef: opened.branch,
-                url: "",
-            };
-        } catch (cause) {
-            error.value = cause instanceof Error ? cause.message : String(cause);
-        }
-    });
-}
-
-const creatingBranch = ref(false);
-const branchCreateError = ref("");
-
-async function switchBranch(branch: string) {
-    if (!state.value) {
-        return;
-    }
-
-    await repoStore.withBusy(async () => {
-        try {
-            const next = await window.diffApp.checkoutBranch(state.value!.root, branch);
-
-            state.value = next;
-
-            if (!next.files.some((file) => file.path === selectedPath.value)) {
-                selectedPath.value = next.files[0]?.path ?? "";
-            }
-        } catch (cause) {
-            const structured = parseBridgeError(cause);
-
-            if (structured?.code === "working_tree_dirty") {
-                const files = structured.files ?? [];
-
-                showToast(
-                    {
-                        tone: "error",
-                        wide: true,
-                        title: "Commit or stash your changes before switching branches",
-                        description:
-                            files.length > 0
-                                ? `${files.length} file${files.length === 1 ? "" : "s"} would be overwritten by checkout: ${files.join(", ")}`
-                                : undefined,
-                    },
-                    0,
-                );
-
-                return;
-            }
-
-            error.value =
-                structured?.message ?? (cause instanceof Error ? cause.message : String(cause));
-        }
-    });
-}
-
-async function createBranch(name: string) {
-    if (!state.value) {
-        return;
-    }
-
-    creatingBranch.value = true;
-    branchCreateError.value = "";
-    try {
-        state.value = await window.diffApp.createBranch(state.value.root, name);
-        if (!state.value.files.some((file) => file.path === selectedPath.value)) {
-            selectedPath.value = state.value.files[0]?.path ?? "";
-        }
-    } catch (cause) {
-        branchCreateError.value = cause instanceof Error ? cause.message : String(cause);
-    } finally {
-        creatingBranch.value = false;
-    }
-}
-
-async function addRepository() {
-    const chosen = await window.diffApp.chooseRepository(
-        activeRepoPath.value || lastRepoRoot.value,
-    );
-
-    if (chosen) {
-        await openRepo(chosen);
-    }
-}
-
-async function removeRepository(path: string) {
-    await removeRepositoryFromList(path);
-    if (activeRepoPath.value === path) {
-        activeRepoPath.value = "";
-        state.value = null;
-        activeReview.value = null;
-        reviews.value = [];
-        selectedPath.value = "";
-        resetSelectedFile();
-        reviewPanelOpen.value = false;
-    }
-}
-
-async function openSearchResult(result: FileSearchResult) {
-    if (result.repoPath && result.repoPath !== activeRepoPath.value) {
-        await openRepo(result.repoPath);
-    }
-
-    selectFile(result.filePath);
-}
-
-function selectFile(path: string) {
-    selectedPath.value = path;
-    if (changedByPath.value.has(path)) {
-        resetSelectedFile();
-        nextTick(() =>
-            document.getElementById(fileElementID(path))?.scrollIntoView({ block: "start" }),
-        );
-
-        return;
-    }
-
-    if (state.value) {
-        void loadSelectedFile(state.value.root, path);
-    } else {
-        resetSelectedFile();
-    }
-}
+const {
+    creatingBranch,
+    branchCreateError,
+    fileElementID,
+    openRepo,
+    refresh,
+    openCommit,
+    returnToWorkingTree,
+    openPullRequest,
+    switchBranch,
+    createBranch,
+    addRepository,
+    removeRepository,
+    selectFile,
+    openSearchResult,
+} = useRepoBrowsing({
+    state,
+    activeRepoPath,
+    reviews,
+    activeReview,
+    selectedPath,
+    pullRequests,
+    activePullRequest,
+    changedByPath,
+    reviewPanelOpen,
+    lastRepoRoot,
+    withBusy: (fn) => repoStore.withBusy(fn),
+    savePreferences,
+    refreshRepositoryList,
+    removeRepositoryFromList,
+    loadPendingComments,
+    resetSelectedFile,
+    loadSelectedFile,
+    showToast,
+    onError: (message) => {
+        error.value = message;
+    },
+});
 
 async function updateTweak<K extends keyof Tweaks>(key: K, value: Tweaks[K]) {
     await savePreferences(tweakPrefPatch(key, value));
-}
-
-function fileElementID(path: string): string {
-    return `file-${path.replace(/[^a-z0-9_-]/gi, "-")}`;
 }
 
 function copyPath(path: string) {
