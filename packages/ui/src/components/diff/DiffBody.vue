@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from "vue";
-import { ChevronDown, ChevronUp, Loader2, Plus } from "lucide-vue-next";
+import { Plus } from "lucide-vue-next";
 import { languageFor } from "@lib/highlight";
 import {
     applyExpansions,
@@ -22,6 +22,9 @@ import {
 } from "@composables/useLineSelection";
 import CommentThread from "@diff/CommentThread.vue";
 import SplitHandle from "@diff/SplitHandle.vue";
+import DiffGutter from "@diff/DiffGutter.vue";
+import DiffCodeCell from "@diff/DiffCodeCell.vue";
+import DiffHunkHeader from "@diff/DiffHunkHeader.vue";
 import type {
     ChangedFile,
     DiffHunkStyle,
@@ -346,19 +349,6 @@ function renderPair(row: Extract<SplitRow, { kind: "pair" }>): {
         right: { kind: rightKind, num: right?.newLine ?? "", side: "right", html: rightHtml },
     };
 }
-
-function hunkHeaderText(text: string): { range: string; trailer: string } {
-    const parts = text.split("@@");
-
-    if (parts.length < 3) {
-        return { range: text, trailer: "" };
-    }
-
-    return {
-        range: `@@${parts[1]}@@`,
-        trailer: parts.slice(2).join("@@").trim(),
-    };
-}
 </script>
 
 <template>
@@ -382,120 +372,20 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                     <template v-if="viewMode === 'split'">
                         <template v-for="row in splitRows(section)" :key="row.id">
                             <template v-if="row.kind === 'meta'">
-                                <div
+                                <DiffHunkHeader
                                     v-if="row.line.text.startsWith('@@')"
-                                    class="flex items-center"
-                                    data-hunk-anchor
-                                    :style="{
-                                        gap: '10px',
-                                        padding: '8px 16px',
-                                        background: 'var(--gd-bg-gutter, var(--gd-panel))',
-                                        color: 'var(--gd-text-3)',
-                                        fontSize: '13px',
-                                        borderTop: '1px solid var(--gd-border-soft)',
-                                        borderBottom: '1px solid var(--gd-border-soft)',
-                                        boxShadow: '0 1px 0 var(--gd-edge-hi-2) inset',
-                                    }"
-                                >
-                                    <ChevronDown :size="12" />
-                                    <span
-                                        :style="{
-                                            fontFamily: 'var(--font-mono)',
-                                            color: 'var(--gd-accent)',
-                                        }"
-                                        >{{ hunkHeaderText(row.line.text).range }}</span
-                                    >
-                                    <span :style="{ color: 'var(--gd-text-3)' }">{{
-                                        hunkHeaderText(row.line.text).trailer
-                                    }}</span>
-                                    <div class="flex-1" />
-                                    <button
-                                        type="button"
-                                        title="Expand context up"
-                                        :disabled="
-                                            !canExpandUp(section, findHunk(section, row.line.id)) ||
-                                            isInflight(section.id, 'up', row.line.id)
-                                        "
-                                        :style="{
-                                            width: '26px',
-                                            height: '26px',
-                                            borderRadius: '6px',
-                                            border: '1px solid transparent',
-                                            background: 'transparent',
-                                            color: 'var(--gd-text-3)',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            padding: 0,
-                                            cursor:
-                                                canExpandUp(
-                                                    section,
-                                                    findHunk(section, row.line.id),
-                                                ) && !isInflight(section.id, 'up', row.line.id)
-                                                    ? 'pointer'
-                                                    : 'not-allowed',
-                                            opacity: canExpandUp(
-                                                section,
-                                                findHunk(section, row.line.id),
-                                            )
-                                                ? 1
-                                                : 0.35,
-                                        }"
-                                        @click="onExpandUp(section, findHunk(section, row.line.id))"
-                                    >
-                                        <Loader2
-                                            v-if="isInflight(section.id, 'up', row.line.id)"
-                                            :size="12"
-                                            class="animate-spin"
-                                        />
-                                        <ChevronUp v-else :size="12" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="Expand context down"
-                                        :disabled="
-                                            !canExpandDown(
-                                                section,
-                                                findHunk(section, row.line.id),
-                                            ) || isInflight(section.id, 'down', row.line.id)
-                                        "
-                                        :style="{
-                                            width: '26px',
-                                            height: '26px',
-                                            borderRadius: '6px',
-                                            border: '1px solid transparent',
-                                            background: 'transparent',
-                                            color: 'var(--gd-text-3)',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            padding: 0,
-                                            cursor:
-                                                canExpandDown(
-                                                    section,
-                                                    findHunk(section, row.line.id),
-                                                ) && !isInflight(section.id, 'down', row.line.id)
-                                                    ? 'pointer'
-                                                    : 'not-allowed',
-                                            opacity: canExpandDown(
-                                                section,
-                                                findHunk(section, row.line.id),
-                                            )
-                                                ? 1
-                                                : 0.35,
-                                        }"
-                                        @click="
-                                            onExpandDown(section, findHunk(section, row.line.id))
-                                        "
-                                    >
-                                        <Loader2
-                                            v-if="isInflight(section.id, 'down', row.line.id)"
-                                            :size="12"
-                                            class="animate-spin"
-                                        />
-                                        <ChevronDown v-else :size="12" />
-                                    </button>
-                                </div>
+                                    :text="row.line.text"
+                                    :can-up="canExpandUp(section, findHunk(section, row.line.id))"
+                                    :can-down="
+                                        canExpandDown(section, findHunk(section, row.line.id))
+                                    "
+                                    :up-inflight="isInflight(section.id, 'up', row.line.id)"
+                                    :down-inflight="isInflight(section.id, 'down', row.line.id)"
+                                    @expand-up="onExpandUp(section, findHunk(section, row.line.id))"
+                                    @expand-down="
+                                        onExpandDown(section, findHunk(section, row.line.id))
+                                    "
+                                />
                             </template>
                             <template v-else-if="row.kind === 'context'">
                                 <div
@@ -514,41 +404,8 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                             overflow: 'hidden',
                                         }"
                                     >
-                                        <div
-                                            :style="{
-                                                width: '56px',
-                                                flexShrink: 0,
-                                                textAlign: 'right',
-                                                padding: '0 10px 0 4px',
-                                                color: 'var(--gd-text-muted)',
-                                                fontSize: '12px',
-                                                fontVariantNumeric: 'tabular-nums',
-                                                userSelect: 'none',
-                                            }"
-                                        >
-                                            {{ row.line.oldLine ?? "" }}
-                                        </div>
-                                        <div
-                                            :style="{
-                                                flex: 1,
-                                                minWidth: 0,
-                                                padding: '0 12px',
-                                                whiteSpace: 'pre',
-                                                color: 'var(--gd-text)',
-                                            }"
-                                        >
-                                            <span
-                                                :style="{
-                                                    display: 'inline-block',
-                                                    width: '12px',
-                                                    color: 'var(--gd-text-muted)',
-                                                }"
-                                                >&nbsp;</span
-                                            ><code
-                                                data-diff-line-text
-                                                v-html="highlightHtml(row.line.text)"
-                                            />
-                                        </div>
+                                        <DiffGutter :num="row.line.oldLine ?? ''" />
+                                        <DiffCodeCell :html="highlightHtml(row.line.text)" />
                                     </div>
                                     <div
                                         class="flex"
@@ -560,41 +417,8 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                             overflow: 'hidden',
                                         }"
                                     >
-                                        <div
-                                            :style="{
-                                                width: '56px',
-                                                flexShrink: 0,
-                                                textAlign: 'right',
-                                                padding: '0 10px 0 4px',
-                                                color: 'var(--gd-text-muted)',
-                                                fontSize: '12px',
-                                                fontVariantNumeric: 'tabular-nums',
-                                                userSelect: 'none',
-                                            }"
-                                        >
-                                            {{ row.line.newLine ?? "" }}
-                                        </div>
-                                        <div
-                                            :style="{
-                                                flex: 1,
-                                                minWidth: 0,
-                                                padding: '0 12px',
-                                                whiteSpace: 'pre',
-                                                color: 'var(--gd-text)',
-                                            }"
-                                        >
-                                            <span
-                                                :style="{
-                                                    display: 'inline-block',
-                                                    width: '12px',
-                                                    color: 'var(--gd-text-muted)',
-                                                }"
-                                                >&nbsp;</span
-                                            ><code
-                                                data-diff-line-text
-                                                v-html="highlightHtml(row.line.text)"
-                                            />
-                                        </div>
+                                        <DiffGutter :num="row.line.newLine ?? ''" />
+                                        <DiffCodeCell :html="highlightHtml(row.line.text)" />
                                     </div>
                                     <button
                                         type="button"
@@ -781,106 +605,16 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                     </template>
                     <template v-else>
                         <template v-for="line in patchLines(section)" :key="line.id">
-                            <div
+                            <DiffHunkHeader
                                 v-if="line.type === 'meta' && line.text.startsWith('@@')"
-                                class="flex items-center"
-                                data-hunk-anchor
-                                :style="{
-                                    gap: '10px',
-                                    padding: '8px 16px',
-                                    background: 'var(--gd-bg-gutter, var(--gd-panel))',
-                                    color: 'var(--gd-text-3)',
-                                    fontSize: '13px',
-                                    borderTop: '1px solid var(--gd-border-soft)',
-                                    borderBottom: '1px solid var(--gd-border-soft)',
-                                    boxShadow: '0 1px 0 var(--gd-edge-hi-2) inset',
-                                }"
-                            >
-                                <ChevronDown :size="12" />
-                                <span
-                                    :style="{
-                                        fontFamily: 'var(--font-mono)',
-                                        color: 'var(--gd-accent)',
-                                    }"
-                                    >{{ hunkHeaderText(line.text).range }}</span
-                                >
-                                <span :style="{ color: 'var(--gd-text-3)' }">{{
-                                    hunkHeaderText(line.text).trailer
-                                }}</span>
-                                <div class="flex-1" />
-                                <button
-                                    type="button"
-                                    title="Expand context up"
-                                    :disabled="
-                                        !canExpandUp(section, findHunk(section, line.id)) ||
-                                        isInflight(section.id, 'up', line.id)
-                                    "
-                                    :style="{
-                                        width: '26px',
-                                        height: '26px',
-                                        borderRadius: '6px',
-                                        border: '1px solid transparent',
-                                        background: 'transparent',
-                                        color: 'var(--gd-text-3)',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: 0,
-                                        cursor:
-                                            canExpandUp(section, findHunk(section, line.id)) &&
-                                            !isInflight(section.id, 'up', line.id)
-                                                ? 'pointer'
-                                                : 'not-allowed',
-                                        opacity: canExpandUp(section, findHunk(section, line.id))
-                                            ? 1
-                                            : 0.35,
-                                    }"
-                                    @click="onExpandUp(section, findHunk(section, line.id))"
-                                >
-                                    <Loader2
-                                        v-if="isInflight(section.id, 'up', line.id)"
-                                        :size="12"
-                                        class="animate-spin"
-                                    />
-                                    <ChevronUp v-else :size="12" />
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Expand context down"
-                                    :disabled="
-                                        !canExpandDown(section, findHunk(section, line.id)) ||
-                                        isInflight(section.id, 'down', line.id)
-                                    "
-                                    :style="{
-                                        width: '26px',
-                                        height: '26px',
-                                        borderRadius: '6px',
-                                        border: '1px solid transparent',
-                                        background: 'transparent',
-                                        color: 'var(--gd-text-3)',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: 0,
-                                        cursor:
-                                            canExpandDown(section, findHunk(section, line.id)) &&
-                                            !isInflight(section.id, 'down', line.id)
-                                                ? 'pointer'
-                                                : 'not-allowed',
-                                        opacity: canExpandDown(section, findHunk(section, line.id))
-                                            ? 1
-                                            : 0.35,
-                                    }"
-                                    @click="onExpandDown(section, findHunk(section, line.id))"
-                                >
-                                    <Loader2
-                                        v-if="isInflight(section.id, 'down', line.id)"
-                                        :size="12"
-                                        class="animate-spin"
-                                    />
-                                    <ChevronDown v-else :size="12" />
-                                </button>
-                            </div>
+                                :text="line.text"
+                                :can-up="canExpandUp(section, findHunk(section, line.id))"
+                                :can-down="canExpandDown(section, findHunk(section, line.id))"
+                                :up-inflight="isInflight(section.id, 'up', line.id)"
+                                :down-inflight="isInflight(section.id, 'down', line.id)"
+                                @expand-up="onExpandUp(section, findHunk(section, line.id))"
+                                @expand-down="onExpandDown(section, findHunk(section, line.id))"
+                            />
                             <template v-else-if="line.type !== 'meta'">
                                 <div
                                     class="gd-row relative flex"
@@ -895,92 +629,47 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                         minHeight: `${lineH}px`,
                                     }"
                                 >
-                                    <div
-                                        :style="{
-                                            width: '56px',
-                                            flexShrink: 0,
-                                            textAlign: 'right',
-                                            padding: '0 10px 0 4px',
-                                            background: numBgFor(
+                                    <DiffGutter
+                                        :num="line.oldLine ?? ''"
+                                        :bg="
+                                            numBgFor(
                                                 line.type === 'add'
                                                     ? 'add'
                                                     : line.type === 'del'
                                                       ? 'rem'
                                                       : 'ctx',
-                                            ),
-                                            color: 'var(--gd-text-muted)',
-                                            fontSize: '12px',
-                                            fontVariantNumeric: 'tabular-nums',
-                                            userSelect: 'none',
-                                            position: 'relative',
-                                        }"
-                                    >
-                                        {{ line.oldLine ?? "" }}
-                                    </div>
-                                    <div
-                                        :style="{
-                                            width: '56px',
-                                            flexShrink: 0,
-                                            textAlign: 'right',
-                                            padding: '0 10px 0 4px',
-                                            background: numBgFor(
+                                            )
+                                        "
+                                    />
+                                    <DiffGutter
+                                        :num="line.newLine ?? ''"
+                                        :bg="
+                                            numBgFor(
                                                 line.type === 'add'
                                                     ? 'add'
                                                     : line.type === 'del'
                                                       ? 'rem'
                                                       : 'ctx',
-                                            ),
-                                            color: 'var(--gd-text-muted)',
-                                            fontSize: '12px',
-                                            fontVariantNumeric: 'tabular-nums',
-                                            userSelect: 'none',
-                                            position: 'relative',
-                                        }"
-                                    >
-                                        <div
-                                            v-if="line.type === 'add' || line.type === 'del'"
-                                            :style="{
-                                                position: 'absolute',
-                                                left: 0,
-                                                top: 0,
-                                                bottom: 0,
-                                                width: '2px',
-                                                background: barFor(
-                                                    line.type === 'add' ? 'add' : 'rem',
-                                                ),
-                                            }"
-                                        />
-                                        {{ line.newLine ?? "" }}
-                                    </div>
-                                    <div
-                                        :style="{
-                                            flex: 1,
-                                            minWidth: 0,
-                                            padding: '0 12px',
-                                            whiteSpace: 'pre',
-                                            color: 'var(--gd-text)',
-                                        }"
-                                    >
-                                        <span
-                                            :style="{
-                                                display: 'inline-block',
-                                                width: '12px',
-                                                color: 'var(--gd-text-muted)',
-                                            }"
-                                            >{{
-                                                sign(
-                                                    line.type === "add"
-                                                        ? "add"
-                                                        : line.type === "del"
-                                                          ? "rem"
-                                                          : "ctx",
-                                                )
-                                            }}</span
-                                        ><code
-                                            data-diff-line-text
-                                            v-html="highlightHtml(line.text)"
-                                        />
-                                    </div>
+                                            )
+                                        "
+                                        :bar="
+                                            line.type === 'add' || line.type === 'del'
+                                                ? barFor(line.type === 'add' ? 'add' : 'rem')
+                                                : undefined
+                                        "
+                                    />
+                                    <DiffCodeCell
+                                        :html="highlightHtml(line.text)"
+                                        :sign="
+                                            sign(
+                                                line.type === 'add'
+                                                    ? 'add'
+                                                    : line.type === 'del'
+                                                      ? 'rem'
+                                                      : 'ctx',
+                                            )
+                                        "
+                                    />
                                     <button
                                         type="button"
                                         class="gd-add-comment"
