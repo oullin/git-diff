@@ -3,12 +3,12 @@ package walks
 import (
 	"fmt"
 
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 // Validate keeps only paths present in state, normalises action/impact
 // to known values, and errors when nothing usable remains.
-func Validate(parsed parsedResponse, state review.RepositoryState) (parsedResponse, error) {
+func Validate(parsed parsedResponse, state repostate.RepositoryState) (parsedResponse, error) {
 	allowed := allowedPaths(state)
 
 	cleanGroups := parsed.Groups[:0]
@@ -43,7 +43,7 @@ func Validate(parsed parsedResponse, state review.RepositoryState) (parsedRespon
 	return parsed, nil
 }
 
-func allowedPaths(state review.RepositoryState) map[string]struct{} {
+func allowedPaths(state repostate.RepositoryState) map[string]struct{} {
 	allowed := make(map[string]struct{}, len(state.Files))
 
 	for _, file := range state.Files {

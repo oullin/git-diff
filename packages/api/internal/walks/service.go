@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/oullin/git-diff/internal/ai"
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 // Request configures one Generate call. An empty Budget gets DefaultBudget().
 type Request struct {
 	Provider ai.Provider
-	State    review.RepositoryState
+	State    repostate.RepositoryState
 	Budget   Budget
 }
 

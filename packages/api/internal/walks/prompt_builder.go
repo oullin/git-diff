@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 type PromptInput struct {
-	State  review.RepositoryState
+	State  repostate.RepositoryState
 	Budget Budget
 }
 

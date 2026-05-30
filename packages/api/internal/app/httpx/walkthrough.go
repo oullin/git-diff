@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/oullin/git-diff/internal/ai"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 	"github.com/oullin/git-diff/internal/review"
 	"github.com/oullin/git-diff/internal/service"
 	"github.com/oullin/git-diff/internal/storage"
@@ -39,7 +40,7 @@ func (s Server) walkthroughGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Kind == "" {
-		req.Kind = review.RepositoryModeWorking
+		req.Kind = repostate.RepositoryModeWorking
 	}
 
 	state, err := loadStateForWalkthrough(r.Context(), req)
@@ -85,10 +86,10 @@ func (s Server) walkthroughGenerate(w http.ResponseWriter, r *http.Request) {
 func loadStateForWalkthrough(
 	ctx context.Context,
 	req walkthroughRequest,
-) (review.RepositoryState, error) {
-	if req.Kind == review.RepositoryModeCommit {
+) (repostate.RepositoryState, error) {
+	if req.Kind == repostate.RepositoryModeCommit {
 		if strings.TrimSpace(req.SHA) == "" {
-			return review.RepositoryState{}, errors.New("sha is required for commit walkthroughs")
+			return repostate.RepositoryState{}, errors.New("sha is required for commit walkthroughs")
 		}
 
 		return review.ReadCommitState(ctx, req.Path, req.SHA)

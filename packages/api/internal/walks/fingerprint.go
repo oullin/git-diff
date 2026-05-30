@@ -4,7 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 // schemaVersion is mixed into the fingerprint so cached rows from older
@@ -12,13 +12,13 @@ import (
 const schemaVersion = "v2"
 
 // FingerprintForState falls back to the provider-agnostic hash.
-func FingerprintForState(state review.RepositoryState) string {
+func FingerprintForState(state repostate.RepositoryState) string {
 	return FingerprintForStateAndProvider(state, "")
 }
 
 // FingerprintForStateAndProvider mixes providerID into the hash so
 // switching providers invalidates the cache.
-func FingerprintForStateAndProvider(state review.RepositoryState, providerID string) string {
+func FingerprintForStateAndProvider(state repostate.RepositoryState, providerID string) string {
 	hash := sha1.New()
 
 	hash.Write([]byte(schemaVersion))

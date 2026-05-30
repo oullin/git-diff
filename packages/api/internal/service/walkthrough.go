@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/oullin/git-diff/internal/ai"
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 	"github.com/oullin/git-diff/internal/storage"
 	"github.com/oullin/git-diff/internal/usercfg"
 	"github.com/oullin/git-diff/internal/walks"
@@ -19,7 +19,7 @@ type WalkthroughService struct {
 }
 
 type GenerateRequest struct {
-	State      review.RepositoryState
+	State      repostate.RepositoryState
 	Kind       string
 	ContextSHA string
 	Refresh    bool

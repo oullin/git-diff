@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 type truncatedFile struct {
-	File         review.ChangedFile
+	File         repostate.ChangedFile
 	PatchBody    string
 	OmittedAfter bool // set on the last file when the total budget cut the rest
 }
@@ -16,7 +16,7 @@ type truncatedFile struct {
 // enforceBudget caps each file at PerFileBytes (appending "[…truncated]")
 // and stops once the running total crosses TotalBytes (setting
 // OmittedAfter on the final included file).
-func enforceBudget(files []review.ChangedFile, budget Budget) []truncatedFile {
+func enforceBudget(files []repostate.ChangedFile, budget Budget) []truncatedFile {
 	if budget.PerFileBytes <= 0 {
 		budget.PerFileBytes = DefaultBudget().PerFileBytes
 	}
@@ -53,7 +53,7 @@ func enforceBudget(files []review.ChangedFile, budget Budget) []truncatedFile {
 
 // concatenatePatches marks binary sections so the LLM doesn't try to
 // interpret the bytes.
-func concatenatePatches(file review.ChangedFile) string {
+func concatenatePatches(file repostate.ChangedFile) string {
 	var b strings.Builder
 
 	for _, section := range file.Sections {
