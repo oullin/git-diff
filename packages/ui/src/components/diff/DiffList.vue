@@ -3,7 +3,7 @@ import { isImagePath } from "@git-diff/contracts";
 import type { ChangedFile, DiffSection, RepositoryFile, ReviewComment } from "@git-diff/contracts";
 import type { PatchLine } from "@lib/patch";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
-import DiffBody from "@entry/components/diff/DiffBody.vue";
+import LazyDiffBody from "@entry/components/diff/LazyDiffBody.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
 import FileContentViewer from "@entry/components/FileContentViewer.vue";
 import ImageDiff from "@entry/components/diff/ImageDiff.vue";
@@ -24,6 +24,7 @@ defineProps<{
     tweaks: Tweaks;
     diffViewMode: DiffViewMode;
     hideWhitespace: boolean;
+    hideResolved: boolean;
     reviewComments: ReviewComment[];
     commentFeatures: RichTextFeatures;
     repoRoot: string;
@@ -46,6 +47,7 @@ const emit = defineEmits<{
     ];
     "delete-comment": [comment: ReviewComment];
     "reply-comment": [parent: ReviewComment, bodyHtml: string];
+    "resolve-comment": [comment: ReviewComment, resolved: boolean];
     "update:split-ratio": [path: string, ratio: number];
 }>();
 </script>
@@ -99,7 +101,7 @@ const emit = defineEmits<{
                 :repo-root="repoRoot"
                 :commit-ref="commitRef"
             />
-            <DiffBody
+            <LazyDiffBody
                 v-else-if="!collapsed[file.path]"
                 :file="file"
                 :view-mode="diffViewMode"
@@ -107,6 +109,7 @@ const emit = defineEmits<{
                 :density="tweaks.density"
                 :word-highlight="tweaks.wordHighlight"
                 :hide-whitespace="hideWhitespace"
+                :hide-resolved="hideResolved"
                 :comments="reviewComments"
                 :reply-features="commentFeatures"
                 :repo-root="repoRoot"
@@ -118,6 +121,7 @@ const emit = defineEmits<{
                 "
                 @delete-comment="(comment) => emit('delete-comment', comment)"
                 @reply-comment="(parent, bodyHtml) => emit('reply-comment', parent, bodyHtml)"
+                @resolve-comment="(comment, resolved) => emit('resolve-comment', comment, resolved)"
                 @update:split-ratio="
                     (value: number) => emit('update:split-ratio', file.path, value)
                 "

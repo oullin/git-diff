@@ -86,4 +86,16 @@ export class ReviewClient {
             `/v1/reviews/${request.reviewId}/comments/${request.commentId}`,
         );
     }
+
+    setCommentResolved(request: {
+        reviewId: number;
+        commentId: number;
+        resolved: boolean;
+    }): Promise<ReviewComment> {
+        return this.transport.request<ReviewComment>(
+            "PATCH",
+            `/v1/reviews/${request.reviewId}/comments/${request.commentId}/resolve`,
+            { resolved: request.resolved },
+        );
+    }
 }

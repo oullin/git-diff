@@ -1,5 +1,6 @@
 import type { ChangedFile } from "@git-diff/contracts";
 import type { ComputedRef } from "vue";
+import { forceRenderAllDiffFiles } from "@composables/useLazyRender";
 
 export interface UseDiffNavigationOptions {
     files: ComputedRef<ChangedFile[]>;
@@ -27,6 +28,9 @@ export function useDiffNavigation({ files, changedIndex, onSelect }: UseDiffNavi
         const anchors = Array.from(document.querySelectorAll<HTMLElement>("[data-hunk-anchor]"));
 
         if (anchors.length === 0) {
+            // Every diff is still viewport-deferred — reveal them so hunks exist.
+            forceRenderAllDiffFiles();
+
             return;
         }
 
@@ -43,7 +47,15 @@ export function useDiffNavigation({ files, changedIndex, onSelect }: UseDiffNavi
             }
         }
 
-        const target = Math.max(0, Math.min(anchors.length - 1, current + delta));
+        const rawTarget = current + delta;
+
+        if (rawTarget < 0 || rawTarget > anchors.length - 1) {
+            // Stepping past the rendered hunks: reveal deferred files so a
+            // follow-up press can land on their hunks instead of stalling.
+            forceRenderAllDiffFiles();
+        }
+
+        const target = Math.max(0, Math.min(anchors.length - 1, rawTarget));
         const element = anchors[target]!;
 
         element.scrollIntoView({ block: "center", behavior: "smooth" });

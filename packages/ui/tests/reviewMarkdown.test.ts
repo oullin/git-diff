@@ -13,6 +13,7 @@ function comment(overrides: Partial<ReviewComment> = {}): ReviewComment {
         lineNumber: 12,
         authorLabel: "Reviewer",
         bodyHtml: "<p>looks good</p>",
+        resolved: false,
         createdAt: "2026-05-20T10:00:00Z",
         updatedAt: "2026-05-20T10:00:00Z",
         ...overrides,

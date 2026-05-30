@@ -31,6 +31,8 @@ type ReviewComment struct {
 	AuthorLabel     string `json:"authorLabel"`
 	BodyHTML        string `json:"bodyHtml"`
 	DeletedAt       string `json:"deletedAt,omitempty"`
+	Resolved        bool   `json:"resolved"`
+	ResolvedAt      string `json:"resolvedAt,omitempty"`
 	CreatedAt       string `json:"createdAt"`
 	UpdatedAt       string `json:"updatedAt"`
 }
@@ -132,6 +134,46 @@ func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID int64, c
 	return nil
 }
 
+func (r *CommentRepo) SetReviewCommentResolved(ctx context.Context, reviewID int64, commentID int64, resolved bool) (ReviewComment, error) {
+	now := db.Now().UTC().Format(time.RFC3339Nano)
+
+	updates := map[string]any{
+		"resolved":    0,
+		"resolved_at": nil,
+		"updated_at":  now,
+	}
+
+	if resolved {
+		updates["resolved"] = 1
+		updates["resolved_at"] = now
+	}
+
+	if err := db.Conn().WithContext(ctx).
+		Model(&ReviewCommentRow{}).
+		Where("id = ? AND review_id = ?", commentID, reviewID).
+		Updates(updates).Error; err != nil {
+		return ReviewComment{}, err
+	}
+
+	comment, err := r.GetReviewComment(ctx, reviewID, commentID)
+
+	if err != nil {
+		return ReviewComment{}, err
+	}
+
+	eventType := "comment_unresolved"
+	message := fmt.Sprintf("Reopened comment on line %d", comment.LineNumber)
+
+	if resolved {
+		eventType = "comment_resolved"
+		message = fmt.Sprintf("Resolved comment on line %d", comment.LineNumber)
+	}
+
+	_, _ = r.events.Add(ctx, reviewID, ReviewEventInput{Type: eventType, FilePath: comment.FilePath, Message: message})
+
+	return comment, nil
+}
+
 func (r *CommentRepo) GetReviewComment(ctx context.Context, reviewID int64, commentID int64) (ReviewComment, error) {
 	var row ReviewCommentRow
 
@@ -174,6 +216,7 @@ func toReviewComment(row ReviewCommentRow) ReviewComment {
 		StartLineNumber: row.StartLineNumber,
 		AuthorLabel:     row.AuthorLabel,
 		BodyHTML:        row.BodyHTML,
+		Resolved:        row.Resolved != 0,
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
 	}
@@ -184,6 +227,10 @@ func toReviewComment(row ReviewCommentRow) ReviewComment {
 
 	if row.DeletedAt != nil {
 		comment.DeletedAt = *row.DeletedAt
+	}
+
+	if row.ResolvedAt != nil {
+		comment.ResolvedAt = *row.ResolvedAt
 	}
 
 	return comment

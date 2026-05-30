@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { ChevronDown, ChevronUp, X } from "lucide-vue-next";
 import { applyHighlights, clearHighlights, searchDiff, setActiveHighlight } from "@lib/diffSearch";
+import { forceRenderAllDiffFiles } from "@composables/useLazyRender";
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ close: [] }>();
@@ -38,8 +39,16 @@ function clear() {
     activeIndex.value = 0;
 }
 
-function refresh() {
+async function refresh() {
     clear();
+
+    // Lazy-deferred large files have no DOM yet; reveal them so search can match
+    // across the whole diff, then wait a tick for them to mount.
+    if (query.value) {
+        forceRenderAllDiffFiles();
+        await nextTick();
+    }
+
     const result = searchDiff(query.value, document, {
         caseSensitive: caseSensitive.value,
     });

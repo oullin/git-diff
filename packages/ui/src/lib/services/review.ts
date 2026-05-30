@@ -35,6 +35,11 @@ export interface ReviewService {
         bodyHtml: string;
     }): Promise<ReviewComment>;
     deleteComment(request: { reviewId: number; commentId: number }): Promise<void>;
+    setCommentResolved(request: {
+        reviewId: number;
+        commentId: number;
+        resolved: boolean;
+    }): Promise<ReviewComment>;
     listPendingComments(request: {
         path?: string;
         kind?: RepositoryMode;
@@ -69,6 +74,7 @@ export function createReviewService(): ReviewService {
         createComment: (request) => api().createReviewComment(request),
         updateComment: (request) => api().updateReviewComment(request),
         deleteComment: (request) => api().deleteReviewComment(request),
+        setCommentResolved: (request) => api().setReviewCommentResolved(request),
         listPendingComments: (request) => api().listPendingComments(request),
         createPendingComment: (request) => api().createPendingComment(request),
         updatePendingComment: (request) => api().updatePendingComment(request),

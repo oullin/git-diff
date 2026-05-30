@@ -44,6 +44,10 @@ export interface ReviewComment {
     startSide?: string;
     authorLabel: string;
     bodyHtml: string;
+    /** Whether the comment has been marked resolved. */
+    resolved: boolean;
+    /** Timestamp the comment was resolved; absent when unresolved. */
+    resolvedAt?: string;
     createdAt: string;
     updatedAt: string;
     deletedAt?: string;

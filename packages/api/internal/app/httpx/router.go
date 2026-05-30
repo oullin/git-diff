@@ -41,6 +41,7 @@ func (s Server) BuildMux() *http.ServeMux {
 	mux.HandleFunc("POST /v1/reviews/{id}/events", s.addReviewEvent)
 	mux.HandleFunc("POST /v1/reviews/{id}/comments", s.createReviewComment)
 	mux.HandleFunc("PATCH /v1/reviews/{id}/comments/{commentId}", s.updateReviewComment)
+	mux.HandleFunc("PATCH /v1/reviews/{id}/comments/{commentId}/resolve", s.setReviewCommentResolved)
 	mux.HandleFunc("DELETE /v1/reviews/{id}/comments/{commentId}", s.deleteReviewComment)
 
 	mux.HandleFunc("GET /v1/pending-comments", s.listPendingComments)

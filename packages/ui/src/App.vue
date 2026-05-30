@@ -40,6 +40,7 @@ import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from "@composa
 import { useToasts } from "@composables/useToasts";
 import { useStyleWatchers } from "@composables/useStyleWatchers";
 import { useDiffNavigation } from "@composables/useDiffNavigation";
+import { resetLazyRender } from "@composables/useLazyRender";
 import { useKeyboardShortcuts } from "@composables/useKeyboardShortcuts";
 import { useWalkthrough } from "@composables/useWalkthrough";
 import { useCommits } from "@composables/useCommits";
@@ -153,6 +154,14 @@ const {
 } = useWalkthrough(state);
 
 const files = computed(() => state.value?.files ?? []);
+
+// Reset viewport-deferred render bookkeeping whenever the diff context changes
+// so a previous search/navigation "render all" doesn't defeat lazy loading.
+watch(
+    () => [state.value?.root, state.value?.commitSha, state.value?.mode],
+    () => resetLazyRender(),
+);
+
 const changedByPath = computed(() => {
     const map = new Map<string, ChangedFile>();
 
@@ -784,6 +793,19 @@ async function deleteComment(comment: ReviewComment) {
     activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
 }
 
+async function resolveComment(comment: ReviewComment, resolved: boolean) {
+    if (!activeReview.value) {
+        return;
+    }
+
+    await window.diffApp.setReviewCommentResolved({
+        reviewId: activeReview.value.review.id,
+        commentId: comment.id,
+        resolved,
+    });
+    activeReview.value = await window.diffApp.reviewDetail(activeReview.value.review.id);
+}
+
 async function replyToComment(parent: ReviewComment, bodyHtml: string) {
     if (!activeReview.value) {
         return;
@@ -930,6 +952,7 @@ void ACCENTS;
                                 :tweaks="tweaks"
                                 :diff-view-mode="diffViewMode"
                                 :hide-whitespace="hideWhitespace"
+                                :hide-resolved="tweaks.hideResolved"
                                 :review-comments="reviewComments"
                                 :comment-features="commentFeatures"
                                 :repo-root="state?.root ?? ''"
@@ -944,6 +967,7 @@ void ACCENTS;
                                 @open-comment-for-line="openCommentForLine"
                                 @delete-comment="deleteComment"
                                 @reply-comment="replyToComment"
+                                @resolve-comment="resolveComment"
                                 @update:split-ratio="setSplitRatio"
                             />
                         </div>

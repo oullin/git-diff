@@ -32,4 +32,9 @@ export declare class ReviewClient {
         bodyHtml: string;
     }): Promise<ReviewComment>;
     deleteComment(request: { reviewId: number; commentId: number }): Promise<void>;
+    setCommentResolved(request: {
+        reviewId: number;
+        commentId: number;
+        resolved: boolean;
+    }): Promise<ReviewComment>;
 }

@@ -66,4 +66,16 @@ export function register(router: IpcRouter): void {
             },
         ) => (await client()).reviews.deleteComment(request),
     );
+
+    router.on(
+        "reviews:comment:resolve",
+        async (
+            _event,
+            request: {
+                reviewId: number;
+                commentId: number;
+                resolved: boolean;
+            },
+        ) => (await client()).reviews.setCommentResolved(request),
+    );
 }

@@ -125,6 +125,11 @@ export interface DiffAppApi {
         bodyHtml: string;
     }): Promise<ReviewComment>;
     deleteReviewComment(request: { reviewId: number; commentId: number }): Promise<void>;
+    setReviewCommentResolved(request: {
+        reviewId: number;
+        commentId: number;
+        resolved: boolean;
+    }): Promise<ReviewComment>;
     getUIPreferences(): Promise<UserPreferences>;
     saveUIPreferences(patch: Record<string, string>): Promise<UserPreferences>;
     getUserConfig(): Promise<UserConfig>;

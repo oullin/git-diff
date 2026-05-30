@@ -16,6 +16,7 @@ export interface Tweaks {
     showMinimap: boolean;
     showStatusBar: boolean;
     wordHighlight: boolean;
+    hideResolved: boolean;
     theme: ThemeChoice;
 }
 
@@ -27,6 +28,7 @@ export const TWEAK_DEFAULTS: Tweaks = {
     showMinimap: true,
     showStatusBar: true,
     wordHighlight: true,
+    hideResolved: false,
     theme: "system",
 };
 
@@ -78,6 +80,7 @@ export function useTweaks(prefs: ComputedRef<Record<string, string>>): ComputedR
             showMinimap: bool(p[PREF_KEYS.uiShowMinimap], TWEAK_DEFAULTS.showMinimap),
             showStatusBar: bool(p[PREF_KEYS.uiShowStatusBar], TWEAK_DEFAULTS.showStatusBar),
             wordHighlight: bool(p[PREF_KEYS.diffWordHi], TWEAK_DEFAULTS.wordHighlight),
+            hideResolved: bool(p[PREF_KEYS.diffHideResolved], TWEAK_DEFAULTS.hideResolved),
             theme: oneOf(
                 p[PREF_KEYS.theme],
                 ["light", "dark", "system"] as const,
@@ -106,6 +109,8 @@ export function tweakPrefPatch(
             return { [PREF_KEYS.uiShowStatusBar]: value ? "1" : "0" };
         case "wordHighlight":
             return { [PREF_KEYS.diffWordHi]: value ? "1" : "0" };
+        case "hideResolved":
+            return { [PREF_KEYS.diffHideResolved]: value ? "1" : "0" };
         case "theme":
             return { [PREF_KEYS.theme]: String(value) };
     }

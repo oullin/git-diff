@@ -46,4 +46,11 @@ export class ReviewClient {
             `/v1/reviews/${request.reviewId}/comments/${request.commentId}`,
         );
     }
+    setCommentResolved(request) {
+        return this.transport.request(
+            "PATCH",
+            `/v1/reviews/${request.reviewId}/comments/${request.commentId}/resolve`,
+            { resolved: request.resolved },
+        );
+    }
 }

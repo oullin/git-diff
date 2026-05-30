@@ -165,6 +165,21 @@ const themeOptions: { value: ThemeChoice; label: string; icon: typeof Sun }[] = 
                         @update:model-value="(value) => setKey('wordHighlight', value)"
                     />
                 </div>
+
+                <div class="flex items-center justify-between gap-3">
+                    <Label
+                        for="tweaks-hide-resolved"
+                        class="text-[12.5px] font-normal"
+                        :style="{ color: 'var(--gd-text-2)' }"
+                    >
+                        Hide resolved &amp; outdated comments
+                    </Label>
+                    <Switch
+                        id="tweaks-hide-resolved"
+                        :model-value="tweaks.hideResolved"
+                        @update:model-value="(value) => setKey('hideResolved', value)"
+                    />
+                </div>
             </div>
         </section>
 

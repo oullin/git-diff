@@ -16,11 +16,18 @@ import type { ReviewComment } from "@git-diff/contracts";
 const props = defineProps<{
     comment: ReviewComment;
     replyFeatures: RichTextFeatures;
+    outdated?: boolean;
 }>();
 
 const rangeLabel = computed(() => commentRangeLabel(props.comment));
+const resolved = computed(() => props.comment.resolved);
+const muted = computed(() => resolved.value || props.outdated === true);
 
-const emit = defineEmits<{ delete: []; reply: [bodyHtml: string] }>();
+const emit = defineEmits<{
+    delete: [];
+    reply: [bodyHtml: string];
+    resolve: [resolved: boolean];
+}>();
 
 const draft = ref("");
 
@@ -92,6 +99,7 @@ function relativeTime(iso: string): string {
                 padding: '12px',
                 fontFamily: 'var(--font-sans)',
                 maxWidth: '720px',
+                opacity: muted ? 0.6 : 1,
             }"
         >
             <div class="flex items-center" :style="{ gap: '10px' }">
@@ -129,6 +137,19 @@ function relativeTime(iso: string): string {
                     }"
                     >{{ rangeLabel }}</span
                 >
+                <span
+                    v-if="resolved || outdated"
+                    :style="{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: resolved ? 'var(--gd-success, #1a7f37)' : 'var(--gd-text-3)',
+                        padding: '2px 6px',
+                        background: 'var(--gd-panel-2)',
+                        border: '1px solid var(--gd-border)',
+                        borderRadius: '4px',
+                    }"
+                    >{{ resolved ? "Resolved" : "Outdated" }}</span
+                >
                 <div class="flex-1" />
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
@@ -151,6 +172,9 @@ function relativeTime(iso: string): string {
                         </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        <DropdownMenuItem @select="emit('resolve', !resolved)">
+                            {{ resolved ? "Reopen comment" : "Resolve comment" }}
+                        </DropdownMenuItem>
                         <DropdownMenuItem class="text-destructive" @select="emit('delete')">
                             Delete comment
                         </DropdownMenuItem>

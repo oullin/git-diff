@@ -94,6 +94,8 @@ contextBridge.exposeInMainWorld("diffApp", {
         ipcRenderer.invoke("reviews:comment:update", request),
     deleteReviewComment: (request: Record<string, unknown>) =>
         ipcRenderer.invoke("reviews:comment:delete", request),
+    setReviewCommentResolved: (request: Record<string, unknown>) =>
+        ipcRenderer.invoke("reviews:comment:resolve", request),
     getUIPreferences: () => ipcRenderer.invoke("ui-prefs:get"),
     saveUIPreferences: (patch: Record<string, string>) =>
         ipcRenderer.invoke("ui-prefs:save", patch),

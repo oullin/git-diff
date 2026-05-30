@@ -11,9 +11,9 @@ the repo so we can cut over without a flag day.
 |---|---|
 | `electron-builder` (current) | `packages/ui/package.json` "build" block; `pnpm dist:mac:unsigned` / `dist:mac:signed` |
 | `electron-forge` (target) | `packages/ui/forge.config.cjs`; not yet wired into `pnpm` scripts |
-| GitHub Releases publishing | Manual via `electron-builder` today; Forge publisher configured |
+| GitHub Releases publishing | Automated on `v*` tags via `.github/workflows/release.yml` (unsigned `electron-builder`); Forge publisher also configured |
 | Auto-update | Not wired |
-| Homebrew cask | Template at `packages/ui/scripts/Casks/git-diff.rb`; tap repo not yet created |
+| Homebrew cask | Template at `packages/ui/scripts/Casks/git-diff.rb`; release workflow opens a bump PR to `oullin/homebrew-tap` (tap repo must be created once) |
 | Terminal helper | Implemented — menu item "Install Terminal Helper…" writes a launcher script |
 
 ## Cutting over from electron-builder to Forge
@@ -99,15 +99,31 @@ The launcher forwards argv to `open -a "Git Diff Review" --args …`. Existing
 filesystem paths are resolved to absolute paths first so the app sees the
 user's actual cwd; commit SHAs and flags pass through unchanged.
 
-## Release workflow (planned)
+## Release workflow
 
-`.github/workflows/release.yml` on a `v*` tag will:
+`.github/workflows/release.yml` runs on a `v*` tag and:
 
-1. Check out the repo + setup Node 23 + Go.
-2. Build the Go API binary into `packages/api/dist/api`.
-3. Run `pnpm install` and `pnpm -C packages/ui publish` with these secrets:
-   - `APPLE_SIGNING_IDENTITY` — Developer ID Application
-   - `APPLE_API_KEY` / `APPLE_API_KEY_ID` / `APPLE_API_ISSUER` — App Store
-     Connect API key for notarization
-   - `GITHUB_TOKEN` — to push to Releases
-4. Open a PR to `oullin/homebrew-tap` bumping `version` + `sha256`.
+1. Checks out the repo and sets up pnpm, Node 23, and Go (from `packages/api/go.mod`).
+2. Builds the Go API binary into `packages/api/dist/api`.
+3. Builds the renderer + electron bundles (`pnpm -C packages/ui run build`).
+4. Builds the **unsigned** DMG + ZIP (`pnpm -C packages/ui run dist:mac:unsigned`),
+   computes `SHASUMS256.txt`, and publishes a GitHub Release on the tag with the
+   default `GITHUB_TOKEN`.
+5. On a final (non-prerelease) tag, opens a PR to `oullin/homebrew-tap` bumping the
+   cask `version` + `sha256`. Requires a `HOMEBREW_TAP_TOKEN` secret (a PAT with
+   write access to the tap — the default `GITHUB_TOKEN` cannot push cross-repo).
+
+The build ships **arm64-only and unsigned** today. Tag/artifact convention:
+tag `v{version}`, DMG `git-diff-review-{version}-arm64.dmg` (matches the
+`artifactName` in `packages/ui/package.json` and the cask `url`).
+
+### Enabling signing + notarization later
+
+Add these secrets and switch step 4 to `dist:mac:signed`:
+
+- `APPLE_SIGNING_IDENTITY` — Developer ID Application certificate
+- `APPLE_API_KEY` / `APPLE_API_KEY_ID` / `APPLE_API_ISSUER` — App Store Connect
+  API key for notarization
+
+A `mac.notarize` block must also be added to the `electron-builder` `build`
+config (the Forge config already handles notarization via `osxNotarize`).

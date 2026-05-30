@@ -316,6 +316,7 @@ export function createMockDiffApp(): DiffAppApi {
                 lineNumber: request.lineNumber,
                 authorLabel: request.authorLabel,
                 bodyHtml: request.bodyHtml,
+                resolved: false,
                 createdAt: now,
                 updatedAt: now,
             };
@@ -347,6 +348,21 @@ export function createMockDiffApp(): DiffAppApi {
                     (comment) => comment.id !== request.commentId,
                 );
             }
+        },
+        setReviewCommentResolved: async (request) => {
+            for (const detail of reviews) {
+                const comment = detail.comments.find((item) => item.id === request.commentId);
+
+                if (comment) {
+                    comment.resolved = request.resolved;
+                    comment.resolvedAt = request.resolved ? new Date().toISOString() : undefined;
+                    comment.updatedAt = new Date().toISOString();
+
+                    return comment;
+                }
+            }
+
+            throw new Error("Comment not found");
         },
         getUIPreferences: async () => preferences,
         getUserConfig: async () => fallbackUserConfig(),

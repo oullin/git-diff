@@ -13,6 +13,7 @@ export declare const PREF_KEYS: {
     readonly diffStyle: "diff.style";
     readonly diffDensity: "diff.density";
     readonly diffWordHi: "diff.wordHi";
+    readonly diffHideResolved: "diff.hideResolved";
     readonly lastRepoRoot: "repo.lastRoot";
     readonly panelLeftWidth: "panel.left.width";
     readonly panelFileTreeWidth: "panel.fileTree.width";

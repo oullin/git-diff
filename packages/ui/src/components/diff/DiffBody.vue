@@ -44,8 +44,9 @@ const props = withDefaults(
         repoRoot: string;
         commitRef?: string;
         splitRatio?: number;
+        hideResolved?: boolean;
     }>(),
-    { splitRatio: 0.5, commitRef: undefined },
+    { splitRatio: 0.5, commitRef: undefined, hideResolved: false },
 );
 
 const { getExpansions, isInflight, isDownwardEof, expandUp, expandDown } = useContextExpansion();
@@ -55,6 +56,7 @@ const emit = defineEmits<{
     "add-comment": [section: DiffSection, line: PatchLine, range?: LineSelectionRange];
     "delete-comment": [comment: ReviewComment];
     "reply-comment": [parent: ReviewComment, bodyHtml: string];
+    "resolve-comment": [comment: ReviewComment, resolved: boolean];
     "update:splitRatio": [value: number];
 }>();
 
@@ -259,6 +261,56 @@ function commentsForLine(section: DiffSection, line: PatchLine | undefined): Rev
 
         return lineNumberForSide === c.lineNumber;
     });
+}
+
+const fileComments = computed(() => props.comments.filter((c) => c.filePath === props.file.path));
+
+// Set of `${section.kind}:${side}:${lineNumber}` anchors that still exist in the
+// currently-rendered diff (reactive to expansions + whitespace hiding).
+const presentAnchors = computed(() => {
+    const set = new Set<string>();
+
+    for (const section of props.file.sections) {
+        for (const line of patchLines(section)) {
+            if (line.oldLine != null) {
+                set.add(`${section.kind}:left:${line.oldLine}`);
+            }
+
+            if (line.newLine != null) {
+                set.add(`${section.kind}:right:${line.newLine}`);
+            }
+        }
+    }
+
+    return set;
+});
+
+// A comment is "outdated" when its anchor line no longer exists in the diff.
+const outdatedIds = computed(() => {
+    const set = new Set<number>();
+
+    for (const c of fileComments.value) {
+        if (!presentAnchors.value.has(`${c.diffSection}:${c.side}:${c.lineNumber}`)) {
+            set.add(c.id);
+        }
+    }
+
+    return set;
+});
+
+// Outdated comments anchor to no rendered line, so they are surfaced once in a
+// footer block instead of inline. Hidden entirely when the tweak is on.
+const outdatedComments = computed(() => {
+    if (props.hideResolved) {
+        return [];
+    }
+
+    return fileComments.value.filter((c) => outdatedIds.value.has(c.id));
+});
+
+// Inline comments, minus resolved ones when the hide tweak is on.
+function renderableComments(section: DiffSection, line: PatchLine | undefined): ReviewComment[] {
+    return commentsForLine(section, line).filter((c) => !(props.hideResolved && c.resolved));
 }
 
 interface CellRender {
@@ -554,7 +606,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                     </button>
                                 </div>
                                 <template
-                                    v-for="c in commentsForLine(section, row.line)"
+                                    v-for="c in renderableComments(section, row.line)"
                                     :key="c.id"
                                 >
                                     <CommentThread
@@ -562,6 +614,7 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                         :reply-features="replyFeatures"
                                         @delete="emit('delete-comment', c)"
                                         @reply="(body) => emit('reply-comment', c, body)"
+                                        @resolve="(r) => emit('resolve-comment', c, r)"
                                     />
                                 </template>
                             </template>
@@ -714,12 +767,13 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                     :key="`${row.id}:${line.id}`"
                                 >
                                     <CommentThread
-                                        v-for="c in commentsForLine(section, line)"
+                                        v-for="c in renderableComments(section, line)"
                                         :key="c.id"
                                         :comment="c"
                                         :reply-features="replyFeatures"
                                         @delete="emit('delete-comment', c)"
                                         @reply="(body) => emit('reply-comment', c, body)"
+                                        @resolve="(r) => emit('resolve-comment', c, r)"
                                     />
                                 </template>
                             </template>
@@ -936,12 +990,16 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                                         <Plus :size="12" :stroke-width="2.5" />
                                     </button>
                                 </div>
-                                <template v-for="c in commentsForLine(section, line)" :key="c.id">
+                                <template
+                                    v-for="c in renderableComments(section, line)"
+                                    :key="c.id"
+                                >
                                     <CommentThread
                                         :comment="c"
                                         :reply-features="replyFeatures"
                                         @delete="emit('delete-comment', c)"
                                         @reply="(body) => emit('reply-comment', c, body)"
+                                        @resolve="(r) => emit('resolve-comment', c, r)"
                                     />
                                 </template>
                             </template>
@@ -950,5 +1008,17 @@ function hunkHeaderText(text: string): { range: string; trailer: string } {
                 </div>
             </div>
         </section>
+        <div v-if="outdatedComments.length">
+            <CommentThread
+                v-for="c in outdatedComments"
+                :key="`outdated-${c.id}`"
+                :comment="c"
+                :reply-features="replyFeatures"
+                :outdated="true"
+                @delete="emit('delete-comment', c)"
+                @reply="(body) => emit('reply-comment', c, body)"
+                @resolve="(r) => emit('resolve-comment', c, r)"
+            />
+        </div>
     </div>
 </template>

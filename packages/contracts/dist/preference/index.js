@@ -5,6 +5,7 @@ export const PREF_KEYS = {
     diffStyle: "diff.style",
     diffDensity: "diff.density",
     diffWordHi: "diff.wordHi",
+    diffHideResolved: "diff.hideResolved",
     lastRepoRoot: "repo.lastRoot",
     panelLeftWidth: "panel.left.width",
     panelFileTreeWidth: "panel.fileTree.width",
