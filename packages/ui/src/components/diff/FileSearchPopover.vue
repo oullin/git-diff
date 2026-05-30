@@ -5,7 +5,7 @@ import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@
 import { Popover, PopoverAnchor, PopoverContent } from "@ui/popover";
 import Kbd from "@components/diff/Kbd.vue";
 import { useFileSearch } from "@composables/useFileSearch";
-import type { FileSearchResult } from "@git-diff/contracts";
+import type { FileSearchResult } from "@git-diff/domain";
 
 const emit = defineEmits<{
     "select-result": [result: FileSearchResult];

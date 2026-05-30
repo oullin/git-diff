@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { Check, MessageSquare } from "lucide-vue-next";
 import StatusBadge from "@diff/StatusBadge.vue";
 import DiffStat from "@diff/DiffStat.vue";
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 
 const props = defineProps<{
     file: ChangedFile;

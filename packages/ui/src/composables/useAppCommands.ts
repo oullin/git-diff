@@ -1,5 +1,5 @@
 import type { Ref } from "vue";
-import { PREF_KEYS, type ChangedFile } from "@git-diff/contracts";
+import { PREF_KEYS, type ChangedFile } from "@git-diff/domain";
 import { useCommandRegistry } from "@composables/useCommandRegistry";
 
 /**

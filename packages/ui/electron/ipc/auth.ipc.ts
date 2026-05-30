@@ -4,7 +4,7 @@ import type {
     AuthStateResponse,
     AuthUser,
     AuthWipeRequest,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import { client } from "#electron/bridge.js";
 import type { IpcRouter } from "#electron/ipc/router.js";
 import {

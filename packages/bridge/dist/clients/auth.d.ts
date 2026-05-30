@@ -6,7 +6,7 @@ import type {
     AuthSetupRequest,
     AuthStateResponse,
     AuthWipeRequest,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 export declare class AuthClient {
     private readonly transport;

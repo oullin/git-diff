@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { isImagePath } from "@git-diff/contracts";
-import type { ChangedFile, DiffSection, RepositoryFile, ReviewComment } from "@git-diff/contracts";
-import type { PatchLine } from "@lib/patch";
+import { isImagePath } from "@git-diff/domain";
+import type { ChangedFile, DiffSection, RepositoryFile, ReviewComment } from "@git-diff/domain";
+import type { PatchLine } from "@git-diff/domain/diff";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 import LazyDiffBody from "@entry/components/diff/LazyDiffBody.vue";
 import FileHeader from "@entry/components/diff/FileHeader.vue";
@@ -9,7 +9,7 @@ import FileContentViewer from "@entry/components/FileContentViewer.vue";
 import ImageDiff from "@entry/components/diff/ImageDiff.vue";
 import MarkdownPreview from "@entry/components/diff/MarkdownPreview.vue";
 import type { LineSelectionRange } from "@composables/useLineSelection";
-import type { DiffViewMode } from "@git-diff/contracts";
+import type { DiffViewMode } from "@git-diff/domain";
 import type { Tweaks } from "@composables/useTweaks";
 
 defineProps<{

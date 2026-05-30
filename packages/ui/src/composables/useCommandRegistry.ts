@@ -1,5 +1,5 @@
 import { ref, computed, type Ref, type ComputedRef, getCurrentInstance, onUnmounted } from "vue";
-import type { KeymapAction } from "@git-diff/contracts";
+import type { KeymapAction } from "@git-diff/domain";
 
 export interface PaletteCommand {
     id: string;

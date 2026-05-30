@@ -5,7 +5,7 @@ import type {
     WalkthroughGroup,
     WalkthroughImpact,
     WalkthroughRecord,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 
 // Backwards compatible: when `groups` is empty but legacy `order`/`notes`
 // are present (cached row from before phase 5), we hoist them into a

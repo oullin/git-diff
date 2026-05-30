@@ -7,7 +7,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@ui/dropdown-menu";
-import type { AuthUser } from "@git-diff/contracts";
+import type { AuthUser } from "@git-diff/domain";
 
 defineProps<{
     currentUser: AuthUser | null;

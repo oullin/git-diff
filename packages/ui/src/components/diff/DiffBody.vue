@@ -9,7 +9,7 @@ import {
     type HunkInfo,
     type PatchLine,
     type SplitRow,
-} from "@lib/patch";
+} from "@git-diff/domain/diff";
 import { useContextExpansion } from "@composables/useContextExpansion";
 import { useContextExpansionControls } from "@composables/useContextExpansionControls";
 import { useDiffHighlighting } from "@composables/useDiffHighlighting";
@@ -35,7 +35,7 @@ import type {
     DiffSection,
     DiffViewMode,
     ReviewComment,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 
 const props = withDefaults(

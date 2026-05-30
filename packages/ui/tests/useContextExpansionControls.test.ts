@@ -2,9 +2,9 @@
 import { describe, expect, test, vi } from "vitest";
 
 import { useContextExpansionControls } from "@composables/useContextExpansionControls";
-import type { ExpandedContext, HunkInfo } from "@lib/patch";
+import type { ExpandedContext, HunkInfo } from "@git-diff/domain/diff";
 import type { ExpansionRequest } from "@composables/useContextExpansion";
-import type { DiffSection } from "@git-diff/contracts";
+import type { DiffSection } from "@git-diff/domain";
 
 type ExpandUpFn = (req: ExpansionRequest, hunk: HunkInfo) => Promise<void>;
 type ExpandDownFn = (req: ExpansionRequest, hunk: HunkInfo, next: number | null) => Promise<void>;

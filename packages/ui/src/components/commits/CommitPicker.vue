@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { GitCommitHorizontal, History, Loader2 } from "lucide-vue-next";
 import { Popover, PopoverContent, PopoverTrigger } from "@ui/popover";
-import type { CommitSummary } from "@git-diff/contracts";
+import type { CommitSummary } from "@git-diff/domain";
 
 const props = defineProps<{
     commits: CommitSummary[];

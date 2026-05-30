@@ -8,7 +8,7 @@ import Kbd from "@components/diff/Kbd.vue";
 import TweaksPanel from "@components/diff/TweaksPanel.vue";
 import UserMenu from "@components/diff/UserMenu.vue";
 import type { Tweaks } from "@composables/useTweaks";
-import type { AuthUser, FileSearchResult, RepositoryState } from "@git-diff/contracts";
+import type { AuthUser, FileSearchResult, RepositoryState } from "@git-diff/domain";
 
 defineProps<{
     state: RepositoryState | null;

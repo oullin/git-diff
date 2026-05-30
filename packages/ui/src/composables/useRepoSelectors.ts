@@ -5,7 +5,7 @@ import type {
     RepositoryState,
     ReviewComment,
     ReviewDetail,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 
 /**
  * Pure derived view-state over the repo/review/auth stores: changed-file maps,

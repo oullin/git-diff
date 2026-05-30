@@ -1,5 +1,5 @@
-import type { DiffSection, ReviewComment } from "@git-diff/contracts";
-import type { PatchLine } from "@lib/patch";
+import type { DiffSection, ReviewComment } from "@git-diff/domain";
+import type { PatchLine } from "@git-diff/domain/diff";
 import type { LineSide } from "@composables/useLineSelection";
 
 /**

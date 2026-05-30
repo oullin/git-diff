@@ -1,4 +1,4 @@
-import type { ReviewComment, ReviewDetail, ReviewEvent, ReviewSession } from "@git-diff/contracts";
+import type { ReviewComment, ReviewDetail, ReviewEvent, ReviewSession } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 
 export class ReviewClient {

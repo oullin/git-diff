@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { ReviewDetail, ReviewSession } from "@git-diff/contracts";
+import type { ReviewDetail, ReviewSession } from "@git-diff/domain";
 
 // useReviewsStore holds the review list scoped to the active repository,
 // the detail record for the review currently displayed (or null), and the

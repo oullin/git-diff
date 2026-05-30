@@ -2,8 +2,8 @@
 import { describe, expect, test } from "vitest";
 
 import { useSplitCellRender } from "@composables/useSplitCellRender";
-import type { SplitRow } from "@lib/patch";
-import type { Range } from "@lib/wordHi";
+import type { SplitRow } from "@git-diff/domain/diff";
+import type { Range } from "@git-diff/domain/diff";
 
 function pairRow(
     left: { text: string; oldLine: number } | null,

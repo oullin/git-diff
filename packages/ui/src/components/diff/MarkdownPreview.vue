@@ -4,7 +4,7 @@ import DOMPurify from "dompurify";
 import { Marked } from "marked";
 
 import { getAddedLineNumbers, renderMarkdownWithLineAnchors } from "@lib/markdownPreview";
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 
 // Standalone Marked instance keeps preview-specific options (line-by-line
 // inline rendering) isolated from any other markdown rendered in the app.

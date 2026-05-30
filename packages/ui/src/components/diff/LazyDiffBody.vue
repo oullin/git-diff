@@ -6,10 +6,10 @@ import type {
     DiffSection,
     DiffViewMode,
     ReviewComment,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
 import type { LineSelectionRange } from "@composables/useLineSelection";
-import type { PatchLine } from "@lib/patch";
+import type { PatchLine } from "@git-diff/domain/diff";
 import DiffBody from "@entry/components/diff/DiffBody.vue";
 import DiffPlaceholder from "@entry/components/diff/DiffPlaceholder.vue";
 import { LAZY_DIFF_LINE_THRESHOLD, useLazyDiffFile } from "@composables/useLazyDiffFile";

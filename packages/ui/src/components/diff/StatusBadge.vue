@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { GitFileStatus } from "@git-diff/contracts";
+import type { GitFileStatus } from "@git-diff/domain";
 
 const props = defineProps<{ status: GitFileStatus }>();
 

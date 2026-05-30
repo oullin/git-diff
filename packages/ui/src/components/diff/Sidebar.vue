@@ -6,7 +6,7 @@ import SegGroup from "@components/diff/SegGroup.vue";
 import SidebarActions from "@components/diff/SidebarActions.vue";
 import RepoFileTree from "@components/RepoFileTree.vue";
 import { useFileListFilter } from "@composables/useFileListFilter";
-import type { ChangedFile, ReviewComment } from "@git-diff/contracts";
+import type { ChangedFile, ReviewComment } from "@git-diff/domain";
 
 const props = defineProps<{
     files: ChangedFile[];

@@ -1,4 +1,4 @@
-import type { RuntimeSettings } from "@git-diff/contracts";
+import type { RuntimeSettings } from "@git-diff/domain";
 import { type ApiClient, createApiClient, waitForReady } from "@git-diff/bridge";
 import {
     type BridgeProcessHandle,

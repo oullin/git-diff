@@ -1,4 +1,4 @@
-import type { UserPreferences } from "@git-diff/contracts";
+import type { UserPreferences } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 
 export class PreferenceClient {

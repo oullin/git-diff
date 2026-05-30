@@ -1,4 +1,4 @@
-import type { WalkthroughRecord } from "@git-diff/contracts";
+import type { WalkthroughRecord } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 export declare class WalkthroughClient {
     private readonly transport;

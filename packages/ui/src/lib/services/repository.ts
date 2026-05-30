@@ -8,7 +8,7 @@ import type {
     RepositoryFile,
     RepositoryFileRange,
     RepositoryState,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 
 export interface RepositoryService {
     state(path?: string): Promise<RepositoryState>;

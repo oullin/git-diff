@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { ReviewDetail } from "@git-diff/contracts";
+import type { ReviewDetail } from "@git-diff/domain";
 import { formatReviewAsMarkdown } from "@lib/reviewMarkdown";
 
 // useReviewMarkdownCopy encapsulates the "Copy review as Markdown" toolbar

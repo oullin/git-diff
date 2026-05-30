@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { UserConfig } from "@git-diff/contracts";
+import type { UserConfig } from "@git-diff/domain";
 
 // Module-level singleton: the Go backend is the source of truth; we
 // fetch once on first use and expose a manual refetch. SSE isn't wired

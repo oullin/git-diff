@@ -1,4 +1,4 @@
-import type { FileSearchResult, Repository, RepositoryCollaborator } from "@git-diff/contracts";
+import type { FileSearchResult, Repository, RepositoryCollaborator } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 export declare class RepositoriesClient {
     private readonly transport;

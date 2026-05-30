@@ -2,7 +2,7 @@
 import { describe, expect, test } from "vitest";
 import { ref } from "vue";
 import { useRepoSelectors } from "@composables/useRepoSelectors";
-import type { AuthUser, ChangedFile, RepositoryState, ReviewDetail } from "@git-diff/contracts";
+import type { AuthUser, ChangedFile, RepositoryState, ReviewDetail } from "@git-diff/domain";
 
 function changed(path: string): ChangedFile {
     return { path, fingerprint: `fp:${path}` } as ChangedFile;

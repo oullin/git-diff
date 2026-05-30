@@ -1,6 +1,6 @@
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 
-import { parsePatch } from "@lib/patch";
+import { parsePatch } from "@git-diff/domain/diff";
 
 // Returns an empty set for fully-new files since highlighting every
 // line would be noise.

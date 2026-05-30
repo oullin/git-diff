@@ -8,9 +8,9 @@ import {
     type ReviewComment,
     type ReviewDetail,
     type ReviewSession,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import { sanitizeHtml } from "@ui/safe-html";
-import type { PatchLine } from "@lib/patch";
+import type { PatchLine } from "@git-diff/domain/diff";
 import type { LineSelectionRange } from "@composables/useLineSelection";
 import { useCommentDraft } from "@composables/useCommentDraft";
 import { usePendingComments } from "@composables/usePendingComments";

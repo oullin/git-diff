@@ -1,4 +1,4 @@
-import type { UserConfig } from "@git-diff/contracts";
+import type { UserConfig } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 
 /** Hot-reload SSE is separate — subscribe to GET /v1/userconfig/stream

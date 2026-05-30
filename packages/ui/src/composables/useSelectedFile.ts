@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { RepositoryFile } from "@git-diff/contracts";
+import type { RepositoryFile } from "@git-diff/domain";
 
 // useSelectedFile manages the file-viewer panel for paths that are NOT in
 // the diff (the FileContentViewer fallback). load() races against the latest

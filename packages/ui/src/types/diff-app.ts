@@ -22,7 +22,7 @@ import type {
     UserPreferences,
     UserConfig,
     WalkthroughRecord,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 
 export interface DiffAppApi {
     takeLaunchIntent(): Promise<LaunchIntent | null>;

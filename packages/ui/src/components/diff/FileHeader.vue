@@ -4,7 +4,7 @@ import { Check, ChevronDown, ChevronRight, Copy, Eye } from "lucide-vue-next";
 import StatusBadge from "@diff/StatusBadge.vue";
 import DiffStat from "@diff/DiffStat.vue";
 import { isMarkdownPath } from "@lib/markdownPreview";
-import type { ChangedFile, DiffSection } from "@git-diff/contracts";
+import type { ChangedFile, DiffSection } from "@git-diff/domain";
 
 const props = defineProps<{
     file: ChangedFile;

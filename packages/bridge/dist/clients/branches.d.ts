@@ -1,4 +1,4 @@
-import type { Branch, RepositoryState } from "@git-diff/contracts";
+import type { Branch, RepositoryState } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 export declare class BranchClient {
     private readonly transport;

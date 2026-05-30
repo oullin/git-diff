@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { CommitSummary, RepositoryState } from "@git-diff/contracts";
+import type { CommitSummary, RepositoryState } from "@git-diff/domain";
 
 // useCommits owns the commit-picker list state for the currently open
 // repository. load(limit) reaches into the bridge and fills `items`; opening

@@ -1,6 +1,6 @@
 import { reactive } from "vue";
 
-import type { ExpandedContext, HunkInfo } from "@lib/patch";
+import type { ExpandedContext, HunkInfo } from "@git-diff/domain/diff";
 
 export const CONTEXT_EXPANSION_LINE_COUNT = 100;
 

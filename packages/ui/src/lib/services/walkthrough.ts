@@ -1,4 +1,4 @@
-import type { RepositoryMode, WalkthroughRecord } from "@git-diff/contracts";
+import type { RepositoryMode, WalkthroughRecord } from "@git-diff/domain";
 
 export interface WalkthroughService {
     generate(request: {

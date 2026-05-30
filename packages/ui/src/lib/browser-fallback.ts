@@ -10,8 +10,8 @@ import type {
     ReviewSession,
     UserPreferences,
     UserConfig,
-} from "@git-diff/contracts";
-import { PREF_KEYS } from "@git-diff/contracts";
+} from "@git-diff/domain";
+import { PREF_KEYS } from "@git-diff/domain";
 import type { DiffAppApi } from "@/types/diff-app";
 
 // In-memory DiffAppApi for browser/test contexts with no Electron IPC.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CommitSummary, PullRequestSummary, RepositoryState } from "@git-diff/contracts";
+import type { CommitSummary, PullRequestSummary, RepositoryState } from "@git-diff/domain";
 import CommitPicker from "@entry/components/commits/CommitPicker.vue";
 import PullRequestPicker from "@entry/components/commits/PullRequestPicker.vue";
 

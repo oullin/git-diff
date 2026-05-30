@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { AuthLoginResponse, AuthUser } from "@git-diff/contracts";
+import type { AuthLoginResponse, AuthUser } from "@git-diff/domain";
 
 // useAuthStore owns the rendered-side auth session: the four-state mode
 // machine, the OS-derived username the backend pins to, and the current

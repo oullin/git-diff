@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, test } from "vitest";
 
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 
 import {
     getAddedLineNumbers,

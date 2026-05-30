@@ -37,7 +37,7 @@ format: format-start ## Format Go, TS, and Vue sources
 	@cd $(ROOT_PATH) && $(TSX) $(BLANK_LINES) \
 		packages/ui \
 		packages/bridge \
-		packages/contracts \
+		packages/domain \
 		scripts
 	@echo "oxfmt format in $(ROOT_PATH)"
 	@$(OXFMT) --write packages/ui packages/bridge package.json turbo.json
@@ -51,13 +51,13 @@ format-all: format-start ## Format Go + all JS/TS/Vue sources (incl. contracts a
 	@cd $(ROOT_PATH) && $(TSX) $(BLANK_LINES) \
 		packages/ui \
 		packages/bridge \
-		packages/contracts/src \
+		packages/domain/src \
 		scripts
 	@echo "oxfmt format across all JS/TS sources"
 	@$(OXFMT) --write \
 		packages/ui \
 		packages/bridge \
-		packages/contracts/src \
+		packages/domain/src \
 		scripts \
 		package.json \
 		turbo.json
@@ -65,7 +65,7 @@ format-all: format-start ## Format Go + all JS/TS/Vue sources (incl. contracts a
 	@$(OXLINT) --fix --vue-plugin \
 		packages/ui \
 		packages/bridge \
-		packages/contracts/src \
+		packages/domain/src \
 		scripts
 
 format-start:

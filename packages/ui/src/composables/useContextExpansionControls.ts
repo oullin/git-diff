@@ -1,5 +1,5 @@
-import type { DiffSection } from "@git-diff/contracts";
-import type { ExpandedContext, HunkInfo } from "@lib/patch";
+import type { DiffSection } from "@git-diff/domain";
+import type { ExpandedContext, HunkInfo } from "@git-diff/domain/diff";
 import type { ExpansionRequest } from "@composables/useContextExpansion";
 
 /**

@@ -30,7 +30,7 @@ requests, or modify the repository contents.
 | --------------------- | ------------------------------------------------------------ |
 | `packages/ui`         | Electron/Vue desktop app and renderer UI.                    |
 | `packages/bridge`     | TypeScript HTTP client used by Electron.                     |
-| `packages/contracts`  | Shared DTOs consumed by `ui` and `bridge`.                   |
+| `packages/domain`     | Shared DTOs + framework-agnostic diff logic, consumed by `ui` and `bridge`. |
 | `packages/api`        | Go backend that reads Git diffs and stores reviews.          |
 | `packages/tools`      | Turbo cache wrapper and unsigned macOS release helper.       |
 

@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { PullRequestSummary, RepositoryState } from "@git-diff/contracts";
+import type { PullRequestSummary, RepositoryState } from "@git-diff/domain";
 
 export interface UsePullRequests {
     items: Ref<PullRequestSummary[]>;

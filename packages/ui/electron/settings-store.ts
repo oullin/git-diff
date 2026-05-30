@@ -1,4 +1,4 @@
-import type { RuntimeSettings } from "@git-diff/contracts";
+import type { RuntimeSettings } from "@git-diff/domain";
 import { app } from "electron";
 import {
     copyFileSync,

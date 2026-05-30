@@ -24,7 +24,7 @@
         "lint": "oxlint ."
     },
     "dependencies": {
-        "@git-diff/contracts": "workspace:*"
+        "@git-diff/domain": "workspace:*"
     },
     "devDependencies": {
         "@types/node": "^25.6.2",

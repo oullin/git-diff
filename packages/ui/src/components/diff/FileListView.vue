@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 import FileRow from "@components/diff/FileRow.vue";
 import { ScrollArea } from "@ui/scroll-area";
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { FileText, Loader2 } from "lucide-vue-next";
-import { isImagePath } from "@git-diff/contracts";
-import type { RepositoryFile } from "@git-diff/contracts";
+import { isImagePath } from "@git-diff/domain";
+import type { RepositoryFile } from "@git-diff/domain";
 
 type Props = {
     file: RepositoryFile | null;

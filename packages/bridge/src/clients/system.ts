@@ -1,4 +1,4 @@
-import type { SystemStats } from "@git-diff/contracts";
+import type { SystemStats } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 
 export class SystemClient {

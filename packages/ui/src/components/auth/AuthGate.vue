@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import type { AuthLoginResponse } from "@git-diff/contracts";
+import type { AuthLoginResponse } from "@git-diff/domain";
 import AuthLogin from "@entry/components/AuthLogin.vue";
 import AuthSetup from "@entry/components/AuthSetup.vue";
 import { useAuthStore } from "@/stores/auth.store";

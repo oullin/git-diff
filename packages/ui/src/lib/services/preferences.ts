@@ -1,4 +1,4 @@
-import type { UserPreferences } from "@git-diff/contracts";
+import type { UserPreferences } from "@git-diff/domain";
 
 export interface PreferenceService {
     get(): Promise<UserPreferences>;

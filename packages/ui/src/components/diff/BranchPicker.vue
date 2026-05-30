@@ -17,7 +17,7 @@ import {
     DialogTitle,
 } from "@ui/dialog";
 import { useBranches } from "@composables/useBranches";
-import type { RepositoryState } from "@git-diff/contracts";
+import type { RepositoryState } from "@git-diff/domain";
 
 const props = defineProps<{
     state: RepositoryState | null;

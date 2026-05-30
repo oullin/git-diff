@@ -11,4 +11,4 @@ export { ReviewClient } from "#bridge/clients/reviews.js";
 export { SystemClient } from "#bridge/clients/system.js";
 export { UserConfigClient } from "#bridge/clients/userconfig.js";
 export { WalkthroughClient } from "#bridge/clients/walkthrough.js";
-export * from "@git-diff/contracts";
+export * from "@git-diff/domain";

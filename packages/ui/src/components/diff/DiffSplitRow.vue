@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { toRef } from "vue";
 import { Plus } from "lucide-vue-next";
-import type { DiffHunkStyle } from "@git-diff/contracts";
+import type { DiffHunkStyle } from "@git-diff/domain";
 import { useDiffStyles } from "@composables/useDiffStyles";
 import type { CellRender } from "@composables/useSplitCellRender";
 import DiffGutter from "@diff/DiffGutter.vue";

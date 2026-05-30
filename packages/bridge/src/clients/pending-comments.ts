@@ -1,4 +1,4 @@
-import type { PendingComment } from "@git-diff/contracts";
+import type { PendingComment } from "@git-diff/domain";
 import type { HttpTransport } from "#bridge/http.js";
 
 export class PendingCommentClient {

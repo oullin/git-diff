@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { RepositoryState } from "@git-diff/contracts";
+import type { RepositoryState } from "@git-diff/domain";
 
 // useRepoStore is the canonical home for the active RepositoryState, the
 // path of the repo the user picked (which can lag behind state.root when a

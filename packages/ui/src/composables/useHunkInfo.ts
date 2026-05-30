@@ -1,6 +1,6 @@
 import { computed, type Ref } from "vue";
-import type { DiffSection } from "@git-diff/contracts";
-import { getHunkInfos, parsePatch, type HunkInfo } from "@lib/patch";
+import type { DiffSection } from "@git-diff/domain";
+import { getHunkInfos, parsePatch, type HunkInfo } from "@git-diff/domain/diff";
 
 // Cache invalidates automatically when hideWhitespace flips, so no
 // manual key encoding the toggle is needed.

@@ -1,8 +1,4 @@
-import type {
-    AuthBootstrapResponse,
-    AuthLoginResponse,
-    AuthStateResponse,
-} from "@git-diff/contracts";
+import type { AuthBootstrapResponse, AuthLoginResponse, AuthStateResponse } from "@git-diff/domain";
 
 export interface AuthService {
     state(): Promise<AuthStateResponse>;

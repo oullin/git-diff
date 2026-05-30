@@ -1,7 +1,7 @@
 import type { Ref } from "vue";
 import type { BundledLanguage } from "shiki";
 import { highlighterRev, highlightLine } from "@lib/highlight";
-import { computeWordHi, type Range } from "@lib/wordHi";
+import { computeWordHi, type Range } from "@git-diff/domain/diff";
 
 function escapeHtml(value: string): string {
     return value.replace(/[&<>"']/g, (ch) => {

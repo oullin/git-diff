@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 import { estimatedDiffHeight } from "@composables/useLazyDiffFile";
 
 const props = defineProps<{ file: ChangedFile }>();

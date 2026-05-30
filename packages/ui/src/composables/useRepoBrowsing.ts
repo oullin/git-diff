@@ -7,7 +7,7 @@ import {
     type RepositoryState,
     type ReviewDetail,
     type ReviewSession,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import { parseBridgeError } from "@lib/bridgeError";
 import type { ToastItem } from "@ui/toast";
 

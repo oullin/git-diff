@@ -1,5 +1,5 @@
 import { onBeforeUnmount, onMounted, ref, type Ref } from "vue";
-import type { SystemStats } from "@git-diff/contracts";
+import type { SystemStats } from "@git-diff/domain";
 
 // useSystemStatsPolling refreshes the systemStats ref on a fixed interval and
 // pauses polling when the document is hidden so background tabs do not keep

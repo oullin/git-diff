@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { PendingComment, RepositoryState } from "@git-diff/contracts";
+import type { PendingComment, RepositoryState } from "@git-diff/domain";
 
 // usePendingComments holds the list of draft comments scoped to the active
 // repository / context (working tree, commit sha, ...). reload() reaches into

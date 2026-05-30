@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from "vue";
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 
 export interface UseFileListFilterOptions {
     files: Ref<ChangedFile[]> | ComputedRef<ChangedFile[]>;

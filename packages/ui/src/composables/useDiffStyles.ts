@@ -1,5 +1,5 @@
 import { computed, type Ref } from "vue";
-import type { DiffHunkStyle } from "@git-diff/contracts";
+import type { DiffHunkStyle } from "@git-diff/domain";
 import { diffBgs, type DiffStyleColors } from "@lib/accent";
 
 /** Kind label for a rendered cell in a split-view diff row. */

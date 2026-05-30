@@ -6,7 +6,7 @@ import type {
     RepositoryState,
     ReviewDetail,
     ReviewSession,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import { useKeyboardShortcuts } from "@composables/useKeyboardShortcuts";
 
 /**

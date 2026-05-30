@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { ChangedFile, DiffSection } from "@git-diff/contracts";
+import type { ChangedFile, DiffSection } from "@git-diff/domain";
 
 // side is "left" / "right" — the value the backend expects.
 export interface CommentTarget {

@@ -1,5 +1,5 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue";
-import type { FileSearchResult } from "@git-diff/contracts";
+import type { FileSearchResult } from "@git-diff/domain";
 
 // useFileSearch owns the debounced search-bar lifecycle: query string,
 // in-flight token (so a slow response can't overwrite results from a newer

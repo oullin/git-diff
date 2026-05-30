@@ -11,7 +11,7 @@ import {
     DropdownMenuTrigger,
 } from "@ui/dropdown-menu";
 import { commentRangeLabel } from "@composables/useLineSelection";
-import type { ReviewComment } from "@git-diff/contracts";
+import type { ReviewComment } from "@git-diff/domain";
 
 const props = defineProps<{
     comment: ReviewComment;

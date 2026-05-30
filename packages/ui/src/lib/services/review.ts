@@ -5,7 +5,7 @@ import type {
     ReviewEvent,
     ReviewSession,
     RepositoryMode,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 
 export interface ReviewService {
     create(request: Partial<ReviewSession>): Promise<ReviewSession>;

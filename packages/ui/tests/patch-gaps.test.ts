@@ -7,7 +7,7 @@ import {
     parseHunkHeader,
     parsePatch,
     splitPatchLines,
-} from "@lib/patch";
+} from "@git-diff/domain/diff";
 
 const SECTION = {
     id: "sec1",

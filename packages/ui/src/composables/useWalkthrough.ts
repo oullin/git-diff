@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { RepositoryState, WalkthroughRecord } from "@git-diff/contracts";
+import type { RepositoryState, WalkthroughRecord } from "@git-diff/domain";
 
 // useWalkthrough owns the LLM walkthrough panel state: the currently rendered
 // record (or null when nothing has been generated for the active repo), the

@@ -3,7 +3,7 @@ import type {
     RepositoryFile,
     RepositoryFileRange,
     RepositoryState,
-} from "@git-diff/contracts";
+} from "@git-diff/domain";
 import type { BytesResponse, HttpTransport } from "#bridge/http.js";
 export declare class RepositoryClient {
     private readonly transport;

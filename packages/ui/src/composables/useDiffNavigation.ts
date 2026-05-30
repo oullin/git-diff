@@ -1,4 +1,4 @@
-import type { ChangedFile } from "@git-diff/contracts";
+import type { ChangedFile } from "@git-diff/domain";
 import type { ComputedRef } from "vue";
 import { forceRenderAllDiffFiles } from "@composables/useLazyRender";
 

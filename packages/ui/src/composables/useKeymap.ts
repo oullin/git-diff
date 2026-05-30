@@ -1,5 +1,5 @@
 import { computed, type ComputedRef } from "vue";
-import type { Keymap, KeymapAction } from "@git-diff/contracts";
+import type { Keymap, KeymapAction } from "@git-diff/domain";
 import { useUserConfig } from "@/composables/useUserConfig";
 
 // Mirrors Go's userconfig.Defaults() — keep in sync. The UI needs *some*

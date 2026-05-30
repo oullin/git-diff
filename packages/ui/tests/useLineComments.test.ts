@@ -2,8 +2,8 @@
 import { describe, expect, test } from "vitest";
 
 import { lineSideAndNumber, useLineComments } from "@composables/useLineComments";
-import type { PatchLine } from "@lib/patch";
-import type { DiffSection, ReviewComment } from "@git-diff/contracts";
+import type { PatchLine } from "@git-diff/domain/diff";
+import type { DiffSection, ReviewComment } from "@git-diff/domain";
 
 function line(partial: Partial<PatchLine>): PatchLine {
     return {

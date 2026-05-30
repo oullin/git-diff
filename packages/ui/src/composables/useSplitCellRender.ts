@@ -1,5 +1,5 @@
-import type { SplitRow } from "@lib/patch";
-import type { Range } from "@lib/wordHi";
+import type { SplitRow } from "@git-diff/domain/diff";
+import type { Range } from "@git-diff/domain/diff";
 
 /** Rendered model for one cell (one side) of a split-view diff row. */
 export interface CellRender {

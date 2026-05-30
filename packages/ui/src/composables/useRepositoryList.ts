@@ -1,5 +1,5 @@
 import { ref, type Ref } from "vue";
-import type { Repository } from "@git-diff/contracts";
+import type { Repository } from "@git-diff/domain";
 
 // useRepositoryList owns the registry of repositories the renderer knows
 // about (whatever the backend's /v1/repositories returns). Adding a repo is
