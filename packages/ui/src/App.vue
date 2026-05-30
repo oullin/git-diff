@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import AuthGate from "@entry/components/auth/AuthGate.vue";
 import TitleBar from "@entry/components/diff/TitleBar.vue";
 import TopBar from "@entry/components/diff/TopBar.vue";
@@ -15,7 +15,7 @@ import StatusBar from "@entry/components/diff/StatusBar.vue";
 import ReviewPanel from "@entry/components/diff/ReviewPanel.vue";
 import AddCommentDialog from "@entry/components/diff/AddCommentDialog.vue";
 import type { RichTextFeatures } from "@ui/rich-text-editor";
-import type { AuthLoginResponse, DiffViewMode } from "@git-diff/contracts";
+import type { DiffViewMode } from "@git-diff/contracts";
 import { PREF_KEYS } from "@git-diff/contracts";
 import { ensureLanguage, languageFor } from "@lib/highlight";
 import { ACCENTS, resolveAccent } from "@lib/accent";
@@ -24,13 +24,13 @@ import { useToasts } from "@composables/useToasts";
 import { useStyleWatchers } from "@composables/useStyleWatchers";
 import { useDiffNavigation } from "@composables/useDiffNavigation";
 import { resetLazyRender } from "@composables/useLazyRender";
-import { useKeyboardShortcuts } from "@composables/useKeyboardShortcuts";
 import { useWalkthrough } from "@composables/useWalkthrough";
 import { useCommits } from "@composables/useCommits";
 import { usePullRequests } from "@composables/usePullRequests";
 import { useRepositoryList } from "@composables/useRepositoryList";
 import { useReviewSession } from "@composables/useReviewSession";
 import { useRepoBrowsing } from "@composables/useRepoBrowsing";
+import { useAppSession } from "@composables/useAppSession";
 import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
@@ -212,124 +212,6 @@ useAppCommands({
 });
 
 const shortcutsEnabled = computed(() => authMode.value === "ready");
-let unsubscribeShortcuts: (() => void) | null = null;
-let unsubscribeLaunchIntent: (() => void) | null = null;
-
-onMounted(async () => {
-    await bootstrapAuth();
-    unsubscribeShortcuts = useKeyboardShortcuts({
-        enabled: shortcutsEnabled,
-        onSelectAdjacent: selectAdjacent,
-        onJumpToHunk: jumpToHunk,
-        onToggleViewed: () => {
-            const file = selectedFile.value;
-
-            if (file && changedByPath.value.has(file.path)) {
-                void toggleViewed(file);
-            }
-        },
-        onStartReview: () => void startReview(),
-        onOpenSearch: () => {
-            searchOpen.value = true;
-        },
-    });
-    unsubscribeLaunchIntent = window.diffApp.onLaunchIntent(async (intent) => {
-        if (intent.kind === "help" || !intent.repoPath) {
-            return;
-        }
-
-        await openRepo(intent.repoPath);
-        const prNumber = intent.pullRequestNumber ?? intent.prNumber;
-        const commitRef = intent.commitRef ?? intent.sha;
-
-        if (intent.kind === "pull-request" && prNumber && state.value) {
-            await openPullRequest(prNumber);
-        } else if (commitRef && state.value) {
-            await openCommit(commitRef);
-        }
-    });
-});
-
-onUnmounted(() => {
-    unsubscribeShortcuts?.();
-    unsubscribeLaunchIntent?.();
-});
-
-async function bootstrapAuth() {
-    const { entered } = await authStore.bootstrap();
-
-    if (authStore.bootstrapError) {
-        error.value = authStore.bootstrapError;
-    }
-
-    if (entered) {
-        await enterApp();
-    }
-}
-
-async function enterApp() {
-    await loadPreferences();
-    await refreshRepositoryList();
-    await applyLaunchIntent();
-}
-
-async function applyLaunchIntent() {
-    let intent = null;
-
-    try {
-        intent = await window.diffApp.takeLaunchIntent();
-    } catch {
-        // No CLI in this build (browser fallback) — fall through to last-repo path.
-    }
-
-    const initialPath =
-        intent?.repoPath ??
-        repositories.value.find((repo) => repo.path === lastRepoRoot.value)?.path ??
-        repositories.value[0]?.path ??
-        "";
-
-    if (!initialPath) {
-        return;
-    }
-
-    await openRepo(initialPath);
-
-    const prNumber = intent?.pullRequestNumber ?? intent?.prNumber;
-    const commitRef = intent?.commitRef ?? intent?.sha;
-
-    if (intent?.kind === "pull-request" && prNumber && state.value) {
-        await openPullRequest(prNumber);
-    } else if (commitRef && state.value) {
-        await openCommit(commitRef);
-    }
-
-    if (intent?.walkthrough) {
-        await generateWalkthrough();
-    }
-}
-
-async function handleAuthCompleted(response: AuthLoginResponse) {
-    authStore.complete(response);
-    await enterApp();
-}
-
-async function handleAuthWiped() {
-    authStore.markWiped();
-}
-
-async function logOut() {
-    await authStore.logout();
-    resetPreferences();
-    state.value = null;
-    repositories.value = [];
-    activeRepoPath.value = "";
-    reviews.value = [];
-    activeReview.value = null;
-    selectedPath.value = "";
-    resetSelectedFile();
-    await bootstrapAuth();
-}
-
 const {
     creatingBranch,
     branchCreateError,
@@ -364,6 +246,40 @@ const {
     resetSelectedFile,
     loadSelectedFile,
     showToast,
+    onError: (message) => {
+        error.value = message;
+    },
+});
+
+const { handleAuthCompleted, handleAuthWiped, logOut } = useAppSession({
+    bootstrapAuthStore: () => authStore.bootstrap(),
+    authBootstrapError: () => authStore.bootstrapError,
+    completeAuth: (response) => authStore.complete(response),
+    markAuthWiped: () => authStore.markWiped(),
+    logoutAuth: () => authStore.logout(),
+    state,
+    activeRepoPath,
+    reviews,
+    activeReview,
+    selectedPath,
+    repositories,
+    searchOpen,
+    selectedFile,
+    changedByPath,
+    lastRepoRoot,
+    shortcutsEnabled,
+    loadPreferences,
+    refreshRepositoryList,
+    resetPreferences,
+    resetSelectedFile,
+    generateWalkthrough: () => generateWalkthrough(),
+    openRepo,
+    openPullRequest,
+    openCommit,
+    selectAdjacent,
+    jumpToHunk,
+    toggleViewed,
+    startReview,
     onError: (message) => {
         error.value = message;
     },
