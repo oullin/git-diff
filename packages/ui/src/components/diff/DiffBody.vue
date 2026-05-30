@@ -11,9 +11,12 @@ import {
     type SplitRow,
 } from "@lib/patch";
 import { useContextExpansion } from "@composables/useContextExpansion";
+import { useContextExpansionControls } from "@composables/useContextExpansionControls";
 import { useDiffHighlighting } from "@composables/useDiffHighlighting";
 import { useDiffStyles } from "@composables/useDiffStyles";
 import { useHunkInfo } from "@composables/useHunkInfo";
+import { useLineComments, lineSideAndNumber } from "@composables/useLineComments";
+import { useSplitCellRender } from "@composables/useSplitCellRender";
 import {
     useLineSelection,
     type LineAnchor,
@@ -53,7 +56,7 @@ const props = withDefaults(
 );
 
 const { getExpansions, isInflight, isDownwardEof, expandUp, expandDown } = useContextExpansion();
-const { setAnchor, getAnchor, clear: clearAnchor, rangeTo } = useLineSelection();
+const { setAnchor, clear: clearAnchor, rangeTo } = useLineSelection();
 
 const emit = defineEmits<{
     "add-comment": [section: DiffSection, line: PatchLine, range?: LineSelectionRange];
@@ -62,28 +65,6 @@ const emit = defineEmits<{
     "resolve-comment": [comment: ReviewComment, resolved: boolean];
     "update:splitRatio": [value: number];
 }>();
-
-function lineSideAndNumber(line: PatchLine): { side: LineSide; lineNumber: number } | null {
-    if (line.type === "add" && line.newLine != null) {
-        return { side: "right", lineNumber: line.newLine };
-    }
-
-    if (line.type === "del" && line.oldLine != null) {
-        return { side: "left", lineNumber: line.oldLine };
-    }
-
-    // Context lines render on both sides in split view; default to right so a
-    // single-line comment lands on the new-file side.
-    if (line.newLine != null) {
-        return { side: "right", lineNumber: line.newLine };
-    }
-
-    if (line.oldLine != null) {
-        return { side: "left", lineNumber: line.oldLine };
-    }
-
-    return null;
-}
 
 function handleAddCommentClick(
     event: MouseEvent,
@@ -123,18 +104,6 @@ function handleAddCommentClick(
     emit("add-comment", section, line);
 }
 
-function isAnchored(section: DiffSection, line: PatchLine, side: LineSide): boolean {
-    const anchor = getAnchor();
-
-    if (!anchor || anchor.sectionId !== section.id || anchor.side !== side) {
-        return false;
-    }
-
-    const lineNum = side === "left" ? line.oldLine : line.newLine;
-
-    return lineNum != null && lineNum === anchor.lineNumber;
-}
-
 const wrapperStyle = computed(() => {
     const left = Math.min(80, Math.max(20, props.splitRatio * 100));
     const right = 100 - left;
@@ -171,100 +140,21 @@ function splitRows(section: DiffSection): SplitRow[] {
     return splitPatchLines(patchLines(section));
 }
 
-function expansionRequest(section: DiffSection) {
-    return {
-        sectionId: section.id,
-        repoRoot: props.repoRoot,
-        filePath: props.file.path,
-        ref: props.commitRef,
-    };
-}
+const { canExpandUp, canExpandDown, onExpandUp, onExpandDown } = useContextExpansionControls({
+    getExpansions,
+    isDownwardEof,
+    nextHunkOldStart,
+    expandUp,
+    expandDown,
+    repoRoot: () => props.repoRoot,
+    filePath: () => props.file.path,
+    commitRef: () => props.commitRef,
+});
 
-function onExpandUp(section: DiffSection, hunk: HunkInfo | null): void {
-    if (!hunk || !props.repoRoot) {
-        return;
-    }
-
-    void expandUp(expansionRequest(section), hunk);
-}
-
-function onExpandDown(section: DiffSection, hunk: HunkInfo | null): void {
-    if (!hunk || !props.repoRoot) {
-        return;
-    }
-
-    void expandDown(expansionRequest(section), hunk, nextHunkOldStart(section, hunk));
-}
-
-function canExpandUp(section: DiffSection, hunk: HunkInfo | null): boolean {
-    if (!hunk) {
-        return false;
-    }
-
-    const lowest = lowestVisibleAbove(section, hunk);
-
-    return lowest > hunk.prevOldEnd + 1;
-}
-
-function canExpandDown(section: DiffSection, hunk: HunkInfo | null): boolean {
-    if (!hunk) {
-        return false;
-    }
-
-    const next = nextHunkOldStart(section, hunk);
-    const highest = highestVisibleBelow(section, hunk, next);
-
-    if (next != null) {
-        return highest < next - 1;
-    }
-
-    return !isDownwardEof(section.id);
-}
-
-function lowestVisibleAbove(section: DiffSection, hunk: HunkInfo): number {
-    let lowest = hunk.oldStart;
-
-    for (const exp of getExpansions(section.id)) {
-        if (exp.oldLine > hunk.prevOldEnd && exp.oldLine < hunk.oldStart && exp.oldLine < lowest) {
-            lowest = exp.oldLine;
-        }
-    }
-
-    return lowest;
-}
-
-function highestVisibleBelow(
-    section: DiffSection,
-    hunk: HunkInfo,
-    nextStart: number | null,
-): number {
-    let highest = hunk.oldEnd;
-    const upper = nextStart ?? Number.POSITIVE_INFINITY;
-
-    for (const exp of getExpansions(section.id)) {
-        if (exp.oldLine > hunk.oldEnd && exp.oldLine < upper && exp.oldLine > highest) {
-            highest = exp.oldLine;
-        }
-    }
-
-    return highest;
-}
-
-function commentsForLine(section: DiffSection, line: PatchLine | undefined): ReviewComment[] {
-    if (!line) {
-        return [];
-    }
-
-    return props.comments.filter((c) => {
-        if (c.filePath !== props.file.path || c.diffSection !== section.kind) {
-            return false;
-        }
-
-        const lineNumberForSide = c.side === "left" ? line.oldLine : line.newLine;
-
-        return lineNumberForSide === c.lineNumber;
-    });
-}
+const { commentsForLine } = useLineComments({
+    comments: () => props.comments,
+    filePath: () => props.file.path,
+});
 
 const fileComments = computed(() => props.comments.filter((c) => c.filePath === props.file.path));
 
@@ -316,39 +206,12 @@ function renderableComments(section: DiffSection, line: PatchLine | undefined): 
     return commentsForLine(section, line).filter((c) => !(props.hideResolved && c.resolved));
 }
 
-interface CellRender {
-    kind: "ctx" | "add" | "rem" | "empty";
-    num: number | "";
-    side: "left" | "right";
-    html: string;
-}
-
-function renderPair(row: Extract<SplitRow, { kind: "pair" }>): {
-    left: CellRender;
-    right: CellRender;
-} {
-    const left = row.left;
-    const right = row.right;
-    let leftHtml = "";
-    let rightHtml = "";
-    let leftKind: CellRender["kind"] = left ? "rem" : "empty";
-    let rightKind: CellRender["kind"] = right ? "add" : "empty";
-
-    if (left && right && props.wordHighlight) {
-        const { hiL, hiR } = computeWordHi(left.text, right.text);
-
-        leftHtml = withRanges(left.text, hiL, "wh-rem");
-        rightHtml = withRanges(right.text, hiR, "wh-add");
-    } else {
-        leftHtml = left ? highlightHtml(left.text) : "";
-        rightHtml = right ? highlightHtml(right.text) : "";
-    }
-
-    return {
-        left: { kind: leftKind, num: left?.oldLine ?? "", side: "left", html: leftHtml },
-        right: { kind: rightKind, num: right?.newLine ?? "", side: "right", html: rightHtml },
-    };
-}
+const { renderPair } = useSplitCellRender({
+    wordHighlight: () => props.wordHighlight,
+    highlightHtml,
+    withRanges,
+    computeWordHi,
+});
 </script>
 
 <template>
