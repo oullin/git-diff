@@ -52,6 +52,7 @@ import { useSelectedFile } from "@composables/useSelectedFile";
 import { usePreferences } from "@composables/usePreferences";
 import { useDiffLayout } from "@composables/useDiffLayout";
 import { useReviewMarkdownCopy } from "@composables/useReviewMarkdownCopy";
+import { useRepoSelectors } from "@composables/useRepoSelectors";
 import { useCommandRegistry } from "@composables/useCommandRegistry";
 import CommandPalette from "@entry/components/CommandPalette.vue";
 import { storeToRefs } from "pinia";
@@ -153,7 +154,18 @@ const {
     generate: generateWalkthrough,
 } = useWalkthrough(state);
 
-const files = computed(() => state.value?.files ?? []);
+const {
+    files,
+    changedByPath,
+    changedPathsSet,
+    repoPaths,
+    selectedFile,
+    selectedIsChanged,
+    reviewComments,
+    userInitials,
+    changedIndex,
+    threadsForFile,
+} = useRepoSelectors({ state, selectedPath, activeReview, currentUser });
 
 // Reset viewport-deferred render bookkeeping whenever the diff context changes
 // so a previous search/navigation "render all" doesn't defeat lazy loading.
@@ -161,57 +173,6 @@ watch(
     () => [state.value?.root, state.value?.commitSha, state.value?.mode],
     () => resetLazyRender(),
 );
-
-const changedByPath = computed(() => {
-    const map = new Map<string, ChangedFile>();
-
-    for (const file of files.value) {
-        map.set(file.path, file);
-    }
-
-    return map;
-});
-const changedPathsSet = computed(() => new Set(changedByPath.value.keys()));
-const trackedFiles = computed(() => state.value?.trackedFiles ?? []);
-const repoPaths = computed(() => {
-    const set = new Set<string>(trackedFiles.value);
-
-    for (const file of files.value) {
-        set.add(file.path);
-    }
-
-    return Array.from(set).sort();
-});
-const selectedFile = computed<ChangedFile | null>(
-    () => changedByPath.value.get(selectedPath.value) ?? files.value[0] ?? null,
-);
-const selectedIsChanged = computed(
-    () => !!selectedPath.value && changedByPath.value.has(selectedPath.value),
-);
-const reviewComments = computed<ReviewComment[]>(() => activeReview.value?.comments ?? []);
-const threadsByPath = computed(() => {
-    const counts = new Map<string, number>();
-
-    for (const comment of reviewComments.value) {
-        counts.set(comment.filePath, (counts.get(comment.filePath) ?? 0) + 1);
-    }
-
-    return counts;
-});
-
-const userInitials = computed(() => {
-    const name = currentUser.value?.displayName ?? currentUser.value?.osUsername ?? "GO";
-
-    return (
-        name
-            .split(/[\s_-]+/)
-            .map((part) => part[0]?.toUpperCase() ?? "")
-            .slice(0, 2)
-            .join("") || "GO"
-    );
-});
-
-const changedIndex = computed(() => files.value.findIndex((f) => f.path === selectedPath.value));
 
 watch(
     files,
@@ -660,10 +621,6 @@ function isViewed(file: ChangedFile): boolean {
     }
 
     return prefValues.value[viewedPrefKey(state.value.root, file.path)] === file.fingerprint;
-}
-
-function threadsForFile(path: string): number {
-    return threadsByPath.value.get(path) ?? 0;
 }
 
 async function openSearchResult(result: FileSearchResult) {
