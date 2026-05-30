@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { Check, ChevronDown, ChevronRight, Copy, Eye } from "lucide-vue-next";
 import StatusBadge from "@diff/StatusBadge.vue";
+import DiffStat from "@diff/DiffStat.vue";
 import { isMarkdownPath } from "@lib/markdownPreview";
 import type { ChangedFile, DiffSection } from "@git-diff/contracts";
 
@@ -99,6 +100,7 @@ const canPreview = computed(
 
         <div class="flex-1" />
 
+        <DiffStat :add="file.additions" :del="file.deletions" squares />
         <button
             v-if="canPreview"
             type="button"
