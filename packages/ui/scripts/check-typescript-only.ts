@@ -8,7 +8,7 @@ const roots = ["src", "tests", "electron", "scripts", "../../scripts", "../bridg
 // forge.config, vite.config, etc.). Scanned non-recursively so node_modules and
 // build output are not traversed.
 const flatRoots = [".", "../.."];
-const forbidden = /\.(?:js|jsx|mjs|cjs)$/u;
+const forbidden = /\.(?:js|jsx|mjs|cjs|tsx)$/u;
 const matches: string[] = [];
 
 for (const root of roots) {
