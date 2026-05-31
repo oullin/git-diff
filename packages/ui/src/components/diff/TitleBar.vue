@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Check, ChevronDown, Folder, Plus, Trash2 } from 'lucide-vue-next';
+import { Check, ChevronDown, Folder, Plus, Settings2, Trash2 } from 'lucide-vue-next';
 import DiffLogo from '@diff/DiffLogo.vue';
+import TweaksPanel from '@components/diff/TweaksPanel.vue';
+import UserMenu from '@components/diff/UserMenu.vue';
+import { Popover, PopoverContent, PopoverTrigger } from '@ui/popover';
 import { Skeleton } from '@ui/skeleton';
-import type { Repository, RepositoryState } from '@git-diff/domain';
+import type { Tweaks } from '@composables/useTweaks';
+import type { AuthUser, Repository, RepositoryState } from '@git-diff/domain';
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@ui/dropdown-menu';
 
@@ -12,6 +16,9 @@ const props = defineProps<{
 	repositories: Repository[];
 	repositoriesLoading: boolean;
 	activeRepoPath: string;
+	currentUser: AuthUser | null;
+	userInitials: string;
+	tweaks: Tweaks;
 }>();
 
 const emit = defineEmits<{
@@ -19,6 +26,8 @@ const emit = defineEmits<{
 	'add-repo': [];
 	'remove-repo': [path: string];
 	'refresh-repos': [];
+	'update:tweak': [key: keyof Tweaks, value: Tweaks[keyof Tweaks]];
+	'log-out': [];
 }>();
 
 function onRepoMenuOpen(open: boolean) {
@@ -44,7 +53,7 @@ const workspaceLabel = computed(() => {
 	<div
 		class="gd-titlebar relative flex items-center"
 		:style="{
-			height: '44px',
+			height: '56px',
 			gap: '12px',
 			padding: '0 14px',
 			borderBottom: '1px solid var(--gd-border)',
@@ -143,5 +152,73 @@ const workspaceLabel = computed(() => {
 		</DropdownMenu>
 
 		<div class="flex-1" />
+
+		<Popover>
+			<PopoverTrigger as-child>
+				<button
+					type="button"
+					class="inline-flex items-center"
+					:style="{
+						gap: '6px',
+						height: '30px',
+						padding: '0 10px',
+						borderRadius: '8px',
+						border: '1px solid transparent',
+						background: 'transparent',
+						color: 'var(--gd-text-2)',
+						fontSize: '13.5px',
+						fontWeight: 500,
+						whiteSpace: 'nowrap',
+						cursor: 'pointer',
+					}"
+					data-no-drag
+				>
+					<Settings2 :size="14" />
+					Tweaks
+				</button>
+			</PopoverTrigger>
+			<PopoverContent align="end" :side-offset="8" class="w-[280px] p-0 border-0 shadow-none bg-transparent">
+				<div
+					:style="{
+						width: '280px',
+						background: 'var(--gd-panel)',
+						border: '1px solid var(--gd-border)',
+						borderRadius: '10px',
+						boxShadow: 'var(--gd-shadow-lg)',
+						color: 'var(--gd-text)',
+						fontFamily: 'var(--font-sans)',
+						fontSize: '13px',
+						overflow: 'hidden',
+					}"
+				>
+					<div
+						:style="{
+							padding: '10px 12px',
+							borderBottom: '1px solid var(--gd-border)',
+							fontSize: '13px',
+							fontWeight: 600,
+							color: 'var(--gd-text)',
+						}"
+					>
+						Tweaks
+					</div>
+					<div :style="{ padding: '12px' }">
+						<TweaksPanel :tweaks="tweaks" @update:tweak="(key, value) => emit('update:tweak', key, value)" />
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
+
+		<div
+			:style="{
+				width: '1px',
+				height: '22px',
+				background: 'var(--gd-border)',
+				margin: '0 2px',
+			}"
+			data-no-drag
+		/>
+
+		<UserMenu :current-user="currentUser" :user-initials="userInitials" @log-out="emit('log-out')" />
 	</div>
 </template>

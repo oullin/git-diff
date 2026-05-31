@@ -79,13 +79,11 @@ const diffViewMode = computed<DiffViewMode>(() => tweaks.value.viewMode);
 const hideWhitespace = computed(() => prefValues.value[PREF_KEYS.diffHideWhitespace] === '1');
 
 const lastRepoRoot = computed(() => prefValues.value[PREF_KEYS.lastRepoRoot] ?? '');
-
 const { items: repositories, loading: repositoriesLoading, refresh: refreshRepositoryList, remove: removeRepositoryFromList } = useRepositoryList();
 
 const selectedPath = ref('');
 
 const searchQuery = ref('');
-
 const { collapsed, splitRatios, previewing, toggleCollapsed, setSplitRatio, togglePreview } = useDiffLayout();
 
 const reviewPanelOpen = ref(false);
@@ -146,7 +144,6 @@ const {
 });
 
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
-
 const { record: walkthrough, loading: walkthroughLoading, error: walkthroughError, generate: generateWalkthrough } = useWalkthrough(state);
 
 const { files, changedByPath, changedPathsSet, repoPaths, selectedFile, selectedIsChanged, reviewComments, userInitials, changedIndex, threadsForFile } = useRepoSelectors({
@@ -300,21 +297,21 @@ void ACCENTS;
 				:repositories="repositories"
 				:repositories-loading="repositoriesLoading"
 				:active-repo-path="activeRepoPath"
+				:current-user="currentUser"
+				:user-initials="userInitials"
+				:tweaks="tweaks"
 				@select-repo="openRepo"
 				@add-repo="addRepository"
 				@remove-repo="removeRepository"
 				@refresh-repos="refreshRepositoryList"
+				@update:tweak="updateTweak"
+				@log-out="logOut"
 			/>
 			<TopBar
 				:state="state"
-				:current-user="currentUser"
-				:user-initials="userInitials"
-				:tweaks="tweaks"
 				:creating-branch="creatingBranch"
 				:branch-create-error="branchCreateError"
-				@update:tweak="updateTweak"
 				@refresh="refresh"
-				@log-out="logOut"
 				@switch-branch="switchBranch"
 				@create-branch="createBranch"
 				@select-result="openSearchResult"
