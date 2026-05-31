@@ -4,15 +4,17 @@ ROOT_PATH := $(shell pwd)
 UI_DIR := packages/ui
 PORTLESS_APP_NAME := git-diff-ui
 PORTLESS_DEFAULT_DEV_SERVER_URL := https://$(PORTLESS_APP_NAME).localhost
-GO_FMT_COMPOSE_FILE := go-fmt.compose.yaml
-GO_FMT_SERVICE := go-fmt
-GO_FMT_COMPOSE := docker compose -f $(GO_FMT_COMPOSE_FILE)
-GO_FMT_BIN := /usr/local/bin/go-fmt
-GO_FMT_EXEC := $(GO_FMT_COMPOSE) exec -T $(GO_FMT_SERVICE) $(GO_FMT_BIN)
-OXFMT := pnpm exec oxfmt
-OXLINT := pnpm exec oxlint
-TSX := pnpm exec tsx
-BLANK_LINES := $(ROOT_PATH)/scripts/blank-lines.ts
+FMT_IMAGE := ghcr.io/oullin/go-fmt:v0.2.7
+FMT_RUN := docker run --rm \
+	-v $(ROOT_PATH):/work \
+	-v go-fmt-cache:/cache \
+	-w /work \
+	-e HOST_PROJECT_PATH=$(ROOT_PATH) \
+	-e GOCACHE=/cache/go-build \
+	-e GOPATH=/cache/gopath \
+	-e GOMODCACHE=/cache/gopath/pkg/mod \
+	$(FMT_IMAGE)
+TS_GLOBS := '*.ts' '*.tsx' '*.vue' '*.mts' '*.cts'
 APP_DATA_DIR := $$HOME/Library/Application Support/git-diff
 TURBO_CACHE_DIR := storage/.cache/turbo
 
@@ -21,7 +23,12 @@ API_COVERAGE_OUT := $(API_DIR)/coverage.out
 API_COVERAGE_FLOOR := 60.0
 
 .DEFAULT_GOAL := help
-.PHONY: help dev format format-all format-start format-stop format-login fresh test-api test-api-cover
+.PHONY: help dev format format-all format-login fresh test-api test-api-cover
+
+define run_ts_fmt
+@files=$$(git ls-files $(1) --exclude-standard -- $(TS_GLOBS) | while IFS= read -r f; do [ -f "$$f" ] && echo "$$f"; done); \
+	if [ -z "$$files" ]; then echo "No TS/Vue files to format."; else echo "$$files" | xargs $(FMT_RUN) ts; fi
+endef
 
 help: ## Show this help (list of make targets)
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -30,49 +37,15 @@ dev: ## Run the UI dev server (https://git-diff-ui.localhost)
 	@echo "Dev server will be available at: $(PORTLESS_DEFAULT_DEV_SERVER_URL)"
 	@pnpm --dir $(UI_DIR) run dev
 
-format: format-start ## Format Go, TS, and Vue sources
-	@echo "go-fmt format in $(ROOT_PATH)"; \
-	$(GO_FMT_EXEC) format --cwd $(ROOT_PATH) --host-path $(ROOT_PATH)
-	@echo "blank-lines fix across packages and root scripts"
-	@cd $(ROOT_PATH) && $(TSX) $(BLANK_LINES) \
-		packages/ui \
-		packages/bridge \
-		packages/domain \
-		scripts
-	@echo "oxfmt format in $(ROOT_PATH)"
-	@$(OXFMT) --write packages/ui packages/bridge package.json turbo.json
-	@echo "oxlint fix in $(ROOT_PATH)"
-	@$(OXLINT) --fix --vue-plugin packages/ui packages/bridge
+format: ## Format changed Go + TS/Vue sources via go-fmt
+	@echo "go-fmt: Go formatting (workspace)"
+	@$(FMT_RUN) go format
+	@echo "go-fmt: TS/Vue formatting (changed files)"
+	$(call run_ts_fmt,--others --modified)
 
-format-all: format-start ## Format Go + all JS/TS/Vue sources (incl. contracts and scripts)
-	@echo "go-fmt format in $(ROOT_PATH)"; \
-	$(GO_FMT_EXEC) format --cwd $(ROOT_PATH) --host-path $(ROOT_PATH)
-	@echo "blank-lines fix across packages and root scripts"
-	@cd $(ROOT_PATH) && $(TSX) $(BLANK_LINES) \
-		packages/ui \
-		packages/bridge \
-		packages/domain/src \
-		scripts
-	@echo "oxfmt format across all JS/TS sources"
-	@$(OXFMT) --write \
-		packages/ui \
-		packages/bridge \
-		packages/domain/src \
-		scripts \
-		package.json \
-		turbo.json
-	@echo "oxlint fix across all JS/TS sources"
-	@$(OXLINT) --fix --vue-plugin \
-		packages/ui \
-		packages/bridge \
-		packages/domain/src \
-		scripts
-
-format-start:
-	@$(GO_FMT_COMPOSE) up -d $(GO_FMT_SERVICE)
-
-format-stop:
-	@$(GO_FMT_COMPOSE) stop $(GO_FMT_SERVICE)
+format-all: ## Format the entire repo (Go + TS/Vue) via go-fmt
+	@echo "go-fmt: formatting whole repository"
+	@$(FMT_RUN) format
 
 format-login:
 	@gh auth token | docker login ghcr.io -u $$(gh api user -q .login) --password-stdin

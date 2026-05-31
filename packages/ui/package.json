@@ -29,8 +29,6 @@
         "start": "electron dist-electron/main.js",
         "dist:mac:unsigned": "pnpm run icon:generate && tsx scripts/dist-mac.ts unsigned",
         "dist:mac:signed": "pnpm run icon:generate && tsx scripts/dist-mac.ts signed",
-        "format": "tsx ../../scripts/blank-lines.ts && oxfmt .",
-        "format:check": "tsx ../../scripts/blank-lines.ts --check && oxfmt --check .",
         "lint": "oxlint .",
         "icon:generate": "bash scripts/generate-app-icon.sh"
     },
