@@ -6,59 +6,60 @@ import type { SystemStats } from "@git-diff/domain";
 // the timer alive. Errors are intentionally swallowed: the panel keeps the
 // last good sample on transient failures.
 export interface UseSystemStatsPolling {
-    stats: Ref<SystemStats | null>;
+  stats: Ref<SystemStats | null>;
 }
 
 export function useSystemStatsPolling(intervalMs = 5000): UseSystemStatsPolling {
-    const stats = ref<SystemStats | null>(null);
-    let timer: ReturnType<typeof setInterval> | null = null;
+  const stats = ref<SystemStats | null>(null);
 
-    async function refresh(): Promise<void> {
-        try {
-            stats.value = await window.diffApp.getSystemStats();
-        } catch {
-            // Non-critical — leave the previous value in place.
-        }
+  let timer: ReturnType<typeof setInterval> | null = null;
+
+  async function refresh(): Promise<void> {
+    try {
+      stats.value = await window.diffApp.getSystemStats();
+    } catch {
+      // Non-critical — leave the previous value in place.
+    }
+  }
+
+  function start(): void {
+    if (timer) {
+      return;
     }
 
-    function start(): void {
-        if (timer) {
-            return;
-        }
+    refresh();
+    timer = setInterval(refresh, intervalMs);
+  }
 
-        refresh();
-        timer = setInterval(refresh, intervalMs);
+  function stop(): void {
+    if (!timer) {
+      return;
     }
 
-    function stop(): void {
-        if (!timer) {
-            return;
-        }
+    clearInterval(timer);
+    timer = null;
+  }
 
-        clearInterval(timer);
-        timer = null;
+  function handleVisibilityChange(): void {
+    if (document.hidden) {
+      stop();
+    } else {
+      start();
+    }
+  }
+
+  onMounted(() => {
+    if (!document.hidden) {
+      start();
     }
 
-    function handleVisibilityChange(): void {
-        if (document.hidden) {
-            stop();
-        } else {
-            start();
-        }
-    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+  });
 
-    onMounted(() => {
-        if (!document.hidden) {
-            start();
-        }
+  onBeforeUnmount(() => {
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    stop();
+  });
 
-        document.addEventListener("visibilitychange", handleVisibilityChange);
-    });
-
-    onBeforeUnmount(() => {
-        document.removeEventListener("visibilitychange", handleVisibilityChange);
-        stop();
-    });
-
-    return { stats };
+  return { stats };
 }

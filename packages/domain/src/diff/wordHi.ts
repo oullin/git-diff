@@ -10,38 +10,39 @@ export type Range = [number, number];
 export const MAX_LINE_WORD_DIFF_LENGTH = 2000;
 
 export function computeWordHi(left: string, right: string): { hiL: Range[]; hiR: Range[] } {
-    if (left === right || !left || !right) {
-        return { hiL: [], hiR: [] };
-    }
+  if (left === right || !left || !right) {
+    return { hiL: [], hiR: [] };
+  }
 
-    if (left.length > MAX_LINE_WORD_DIFF_LENGTH || right.length > MAX_LINE_WORD_DIFF_LENGTH) {
-        return { hiL: [], hiR: [] };
-    }
+  if (left.length > MAX_LINE_WORD_DIFF_LENGTH || right.length > MAX_LINE_WORD_DIFF_LENGTH) {
+    return { hiL: [], hiR: [] };
+  }
 
-    const max = Math.min(left.length, right.length);
-    let prefix = 0;
+  const max = Math.min(left.length, right.length);
 
-    while (prefix < max && left[prefix] === right[prefix]) {
-        prefix++;
-    }
+  let prefix = 0;
 
-    let suffix = 0;
+  while (prefix < max && left[prefix] === right[prefix]) {
+    prefix++;
+  }
 
-    while (
-        suffix < max - prefix &&
-        left[left.length - 1 - suffix] === right[right.length - 1 - suffix]
-    ) {
-        suffix++;
-    }
+  let suffix = 0;
 
-    const hiL: Range[] = [[prefix, left.length - suffix]];
-    const hiR: Range[] = [[prefix, right.length - suffix]];
+  while (
+    suffix < max - prefix &&
+    left[left.length - 1 - suffix] === right[right.length - 1 - suffix]
+  ) {
+    suffix++;
+  }
 
-    // If either side has an empty range, both sides are pure insert/delete — no
-    // useful highlight to show.
-    if (hiL[0][1] <= hiL[0][0] && hiR[0][1] <= hiR[0][0]) {
-        return { hiL: [], hiR: [] };
-    }
+  const hiL: Range[] = [[prefix, left.length - suffix]];
+  const hiR: Range[] = [[prefix, right.length - suffix]];
 
-    return { hiL, hiR };
+  // If either side has an empty range, both sides are pure insert/delete — no
+  // useful highlight to show.
+  if (hiL[0][1] <= hiL[0][0] && hiR[0][1] <= hiR[0][0]) {
+    return { hiL: [], hiR: [] };
+  }
+
+  return { hiL, hiR };
 }

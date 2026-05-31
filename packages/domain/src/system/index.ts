@@ -1,6 +1,6 @@
 export interface SystemStats {
-    cpuPercent: number;
-    memoryUsedGB: number;
-    memoryTotalGB: number;
-    loadAvg1: number;
+  cpuPercent: number;
+  memoryUsedGB: number;
+  memoryTotalGB: number;
+  loadAvg1: number;
 }

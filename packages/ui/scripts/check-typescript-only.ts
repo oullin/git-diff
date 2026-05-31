@@ -12,19 +12,19 @@ const forbidden = /\.(?:js|jsx|mjs|cjs|tsx)$/u;
 const matches: string[] = [];
 
 for (const root of roots) {
-    for (const path of walkFiles(root)) {
-        if (forbidden.test(path)) {
-            matches.push(path);
-        }
+  for (const path of walkFiles(root)) {
+    if (forbidden.test(path)) {
+      matches.push(path);
     }
+  }
 }
 
 for (const root of flatRoots) {
-    for (const entry of readdirSync(root, { withFileTypes: true })) {
-        if (entry.isFile() && forbidden.test(entry.name)) {
-            matches.push(join(root, entry.name));
-        }
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (entry.isFile() && forbidden.test(entry.name)) {
+      matches.push(join(root, entry.name));
     }
+  }
 }
 
 failWithMatches(matches);

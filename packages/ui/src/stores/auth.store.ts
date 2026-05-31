@@ -11,65 +11,68 @@ import type { AuthLoginResponse, AuthUser } from "@git-diff/domain";
 export type AuthMode = "loading" | "setup" | "login" | "ready";
 
 export const useAuthStore = defineStore("auth", () => {
-    const mode = ref<AuthMode>("loading");
-    const osUsername = ref("");
-    const currentUser = ref<AuthUser | null>(null);
-    const bootstrapError = ref("");
+  const mode = ref<AuthMode>("loading");
 
-    async function bootstrap(): Promise<{ entered: boolean }> {
-        mode.value = "loading";
+  const osUsername = ref("");
 
-        try {
-            const result = await window.diffApp.authBootstrap();
+  const currentUser = ref<AuthUser | null>(null);
 
-            osUsername.value = result.state.osUsername;
+  const bootstrapError = ref("");
 
-            if (result.user) {
-                currentUser.value = result.user;
-                mode.value = "ready";
+  async function bootstrap(): Promise<{ entered: boolean }> {
+    mode.value = "loading";
 
-                return { entered: true };
-            }
+    try {
+      const result = await window.diffApp.authBootstrap();
 
-            mode.value = result.state.needsSetup ? "setup" : "login";
+      osUsername.value = result.state.osUsername;
 
-            return { entered: false };
-        } catch (cause) {
-            bootstrapError.value = cause instanceof Error ? cause.message : String(cause);
-            mode.value = "login";
-
-            return { entered: false };
-        }
-    }
-
-    function complete(response: AuthLoginResponse): void {
-        currentUser.value = response.user;
+      if (result.user) {
+        currentUser.value = result.user;
         mode.value = "ready";
+
+        return { entered: true };
+      }
+
+      mode.value = result.state.needsSetup ? "setup" : "login";
+
+      return { entered: false };
+    } catch (cause) {
+      bootstrapError.value = cause instanceof Error ? cause.message : String(cause);
+      mode.value = "login";
+
+      return { entered: false };
+    }
+  }
+
+  function complete(response: AuthLoginResponse): void {
+    currentUser.value = response.user;
+    mode.value = "ready";
+  }
+
+  function markWiped(): void {
+    currentUser.value = null;
+    mode.value = "setup";
+  }
+
+  async function logout(): Promise<void> {
+    try {
+      await window.diffApp.authLogout();
+    } catch {
+      // ignore: we reset locally either way.
     }
 
-    function markWiped(): void {
-        currentUser.value = null;
-        mode.value = "setup";
-    }
+    currentUser.value = null;
+  }
 
-    async function logout(): Promise<void> {
-        try {
-            await window.diffApp.authLogout();
-        } catch {
-            // ignore: we reset locally either way.
-        }
-
-        currentUser.value = null;
-    }
-
-    return {
-        mode,
-        osUsername,
-        currentUser,
-        bootstrapError,
-        bootstrap,
-        complete,
-        markWiped,
-        logout,
-    };
+  return {
+    mode,
+    osUsername,
+    currentUser,
+    bootstrapError,
+    bootstrap,
+    complete,
+    markWiped,
+    logout,
+  };
 });

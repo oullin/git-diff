@@ -1,37 +1,38 @@
 import { ref } from "vue";
 
 export function useAuthForm() {
-    const submitting = ref(false);
-    const error = ref("");
+  const submitting = ref(false);
 
-    async function submit<T>(action: () => Promise<T>): Promise<T | null> {
-        error.value = "";
-        submitting.value = true;
+  const error = ref("");
 
-        try {
-            return await action();
-        } catch (cause) {
-            error.value = cause instanceof Error ? cause.message : String(cause);
+  async function submit<T>(action: () => Promise<T>): Promise<T | null> {
+    error.value = "";
+    submitting.value = true;
 
-            return null;
-        } finally {
-            submitting.value = false;
-        }
+    try {
+      return await action();
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : String(cause);
+
+      return null;
+    } finally {
+      submitting.value = false;
     }
+  }
 
-    function fail(message: string): void {
-        error.value = message;
-    }
+  function fail(message: string): void {
+    error.value = message;
+  }
 
-    function clearError(): void {
-        error.value = "";
-    }
+  function clearError(): void {
+    error.value = "";
+  }
 
-    return {
-        submitting,
-        error,
-        submit,
-        fail,
-        clearError,
-    };
+  return {
+    submitting,
+    error,
+    submit,
+    fail,
+    clearError,
+  };
 }

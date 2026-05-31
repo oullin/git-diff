@@ -10,21 +10,21 @@ const relativeRequire = /require\(\s*['"]\.{1,2}\//u;
 const matches: string[] = [];
 
 for (const root of roots) {
-    for (const path of walkFiles(root)) {
-        if (!sourceFile.test(path)) {
-            continue;
-        }
-
-        const content = readFileSync(path, "utf8");
-
-        if (
-            relativeImport.test(content) ||
-            dynamicRelativeImport.test(content) ||
-            relativeRequire.test(content)
-        ) {
-            matches.push(path);
-        }
+  for (const path of walkFiles(root)) {
+    if (!sourceFile.test(path)) {
+      continue;
     }
+
+    const content = readFileSync(path, "utf8");
+
+    if (
+      relativeImport.test(content) ||
+      dynamicRelativeImport.test(content) ||
+      relativeRequire.test(content)
+    ) {
+      matches.push(path);
+    }
+  }
 }
 
 failWithMatches(matches);

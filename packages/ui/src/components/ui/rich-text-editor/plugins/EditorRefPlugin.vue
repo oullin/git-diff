@@ -11,5 +11,5 @@ onMounted(() => emit("ready", editor));
 </script>
 
 <template>
-    <span class="hidden" />
+  <span class="hidden" />
 </template>

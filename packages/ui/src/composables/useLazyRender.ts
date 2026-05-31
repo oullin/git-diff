@@ -5,30 +5,30 @@ import { reactive } from "vue";
 // not yet scrolled into view. Module-level singleton so SearchBar and the
 // navigation composable can reach it without prop drilling.
 interface LazyRenderState {
-    renderAll: boolean;
-    forced: Set<string>;
+  renderAll: boolean;
+  forced: Set<string>;
 }
 
 const state = reactive<LazyRenderState>({
-    renderAll: false,
-    forced: new Set<string>(),
+  renderAll: false,
+  forced: new Set<string>(),
 });
 
 export function forceRenderAllDiffFiles(): void {
-    state.renderAll = true;
+  state.renderAll = true;
 }
 
 export function forceRenderDiffFile(path: string): void {
-    state.forced.add(path);
+  state.forced.add(path);
 }
 
 export function isDiffFileForced(path: string): boolean {
-    return state.renderAll || state.forced.has(path);
+  return state.renderAll || state.forced.has(path);
 }
 
 // Called when the diff context changes (new repo, branch, or commit) so a
 // previous "render all" does not permanently defeat lazy loading.
 export function resetLazyRender(): void {
-    state.renderAll = false;
-    state.forced.clear();
+  state.renderAll = false;
+  state.forced.clear();
 }

@@ -203,6 +203,7 @@ func TestCheckoutBranchCleanWorkingTree(t *testing.T) {
 
 func gitOut(t *testing.T, dir string, args ...string) string {
 	t.Helper()
+
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	out, err := cmd.Output()
@@ -216,6 +217,7 @@ func gitOut(t *testing.T, dir string, args ...string) string {
 
 func git(t *testing.T, dir string, args ...string) {
 	t.Helper()
+
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
@@ -227,6 +229,7 @@ func git(t *testing.T, dir string, args ...string) {
 
 func writeFile(t *testing.T, root string, path string, content string) {
 	t.Helper()
+
 	full := filepath.Join(root, path)
 
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {

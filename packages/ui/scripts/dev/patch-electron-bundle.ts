@@ -17,61 +17,66 @@ const sourceIcon = join(uiDir, "build", "icon.icns");
 const targetIcon = join(resourcesDir, `${ICON_NAME}.icns`);
 
 export async function patchElectronBundle(): Promise<void> {
-    if (process.platform !== "darwin") {
-        return;
-    }
+  if (process.platform !== "darwin") {
+    return;
+  }
 
-    if (!existsSync(infoPlist)) {
-        return;
-    }
+  if (!existsSync(infoPlist)) {
+    return;
+  }
 
-    if (!existsSync(sourceIcon)) {
-        return;
-    }
+  if (!existsSync(sourceIcon)) {
+    return;
+  }
 
-    if (await isAlreadyPatched()) {
-        return;
-    }
+  if (await isAlreadyPatched()) {
+    return;
+  }
 
-    copyFileSync(sourceIcon, targetIcon);
+  copyFileSync(sourceIcon, targetIcon);
 
-    await applyPlistEntry(":CFBundleName", "string", PRODUCT_NAME);
-    await applyPlistEntry(":CFBundleDisplayName", "string", PRODUCT_NAME);
-    await applyPlistEntry(":CFBundleIdentifier", "string", DEV_BUNDLE_ID);
-    await applyPlistEntry(":CFBundleIconFile", "string", ICON_NAME);
-    await applyPlistEntry(":CFBundleIconName", "string", ICON_NAME);
-    await applyPlistEntry(`:${SENTINEL_KEY}`, "bool", "true");
+  await applyPlistEntry(":CFBundleName", "string", PRODUCT_NAME);
 
-    const now = new Date();
+  await applyPlistEntry(":CFBundleDisplayName", "string", PRODUCT_NAME);
 
-    utimesSync(infoPlist, now, now);
-    utimesSync(electronApp, now, now);
+  await applyPlistEntry(":CFBundleIdentifier", "string", DEV_BUNDLE_ID);
 
-    console.log("Patched Electron.app bundle for dev branding");
+  await applyPlistEntry(":CFBundleIconFile", "string", ICON_NAME);
+
+  await applyPlistEntry(":CFBundleIconName", "string", ICON_NAME);
+
+  await applyPlistEntry(`:${SENTINEL_KEY}`, "bool", "true");
+
+  const now = new Date();
+
+  utimesSync(infoPlist, now, now);
+  utimesSync(electronApp, now, now);
+
+  console.log("Patched Electron.app bundle for dev branding");
 }
 
 async function isAlreadyPatched(): Promise<boolean> {
-    if (!existsSync(targetIcon)) {
-        return false;
-    }
+  if (!existsSync(targetIcon)) {
+    return false;
+  }
 
-    if (statSync(sourceIcon).mtimeMs > statSync(targetIcon).mtimeMs) {
-        return false;
-    }
+  if (statSync(sourceIcon).mtimeMs > statSync(targetIcon).mtimeMs) {
+    return false;
+  }
 
-    try {
-        const value = await output(PLIST_BUDDY, ["-c", `Print :${SENTINEL_KEY}`, infoPlist], uiDir);
+  try {
+    const value = await output(PLIST_BUDDY, ["-c", `Print :${SENTINEL_KEY}`, infoPlist], uiDir);
 
-        return value.trim() === "true";
-    } catch {
-        return false;
-    }
+    return value.trim() === "true";
+  } catch {
+    return false;
+  }
 }
 
 async function applyPlistEntry(key: string, type: "string" | "bool", value: string): Promise<void> {
-    try {
-        await output(PLIST_BUDDY, ["-c", `Set ${key} ${value}`, infoPlist], uiDir);
-    } catch {
-        await output(PLIST_BUDDY, ["-c", `Add ${key} ${type} ${value}`, infoPlist], uiDir);
-    }
+  try {
+    await output(PLIST_BUDDY, ["-c", `Set ${key} ${value}`, infoPlist], uiDir);
+  } catch {
+    await output(PLIST_BUDDY, ["-c", `Add ${key} ${type} ${value}`, infoPlist], uiDir);
+  }
 }

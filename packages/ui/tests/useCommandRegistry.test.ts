@@ -4,58 +4,58 @@ import { useCommandRegistry } from "@composables/useCommandRegistry.js";
 // The registry is a module singleton — clear it between tests so leftover
 // commands from one case don't contaminate the next.
 afterEach(() => {
-    const { commands } = useCommandRegistry();
+  const { commands } = useCommandRegistry();
 
-    commands.value = [];
+  commands.value = [];
 });
 
 describe("useCommandRegistry", () => {
-    test("register adds a command and returns a disposer", () => {
-        const { register, list } = useCommandRegistry();
+  test("register adds a command and returns a disposer", () => {
+    const { register, list } = useCommandRegistry();
 
-        const dispose = register({
-            id: "test.cmd",
-            title: "Test",
-            run: () => {},
-        });
-
-        expect(list.value.find((c) => c.id === "test.cmd")?.title).toBe("Test");
-
-        dispose();
-
-        expect(list.value.find((c) => c.id === "test.cmd")).toBeUndefined();
+    const dispose = register({
+      id: "test.cmd",
+      title: "Test",
+      run: () => {},
     });
 
-    test("re-registering the same id replaces the existing entry", () => {
-        const { register, list } = useCommandRegistry();
+    expect(list.value.find((c) => c.id === "test.cmd")?.title).toBe("Test");
 
-        register({ id: "cmd.x", title: "v1", run: () => {} });
-        register({ id: "cmd.x", title: "v2", run: () => {} });
+    dispose();
 
-        const matches = list.value.filter((c) => c.id === "cmd.x");
+    expect(list.value.find((c) => c.id === "test.cmd")).toBeUndefined();
+  });
 
-        expect(matches).toHaveLength(1);
-        expect(matches[0]!.title).toBe("v2");
-    });
+  test("re-registering the same id replaces the existing entry", () => {
+    const { register, list } = useCommandRegistry();
 
-    test("deregister is a no-op for unknown ids", () => {
-        const { deregister, list } = useCommandRegistry();
+    register({ id: "cmd.x", title: "v1", run: () => {} });
+    register({ id: "cmd.x", title: "v2", run: () => {} });
 
-        const before = list.value.length;
+    const matches = list.value.filter((c) => c.id === "cmd.x");
 
-        deregister("never.registered");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.title).toBe("v2");
+  });
 
-        expect(list.value.length).toBe(before);
-    });
+  test("deregister is a no-op for unknown ids", () => {
+    const { deregister, list } = useCommandRegistry();
 
-    test("running a command invokes the registered handler", async () => {
-        const { register, list } = useCommandRegistry();
-        const handler = vi.fn();
+    const before = list.value.length;
 
-        register({ id: "cmd.run", title: "Run", run: handler });
+    deregister("never.registered");
 
-        await list.value.find((c) => c.id === "cmd.run")!.run();
+    expect(list.value.length).toBe(before);
+  });
 
-        expect(handler).toHaveBeenCalledOnce();
-    });
+  test("running a command invokes the registered handler", async () => {
+    const { register, list } = useCommandRegistry();
+    const handler = vi.fn();
+
+    register({ id: "cmd.run", title: "Run", run: handler });
+
+    await list.value.find((c) => c.id === "cmd.run")!.run();
+
+    expect(handler).toHaveBeenCalledOnce();
+  });
 });

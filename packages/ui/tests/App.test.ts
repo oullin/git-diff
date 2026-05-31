@@ -5,17 +5,19 @@ import App from "@entry/App.vue";
 import { installBrowserFallback } from "@lib/browser-fallback";
 
 describe("App", () => {
-    it("renders local repository changes and review controls", async () => {
-        installBrowserFallback();
-        const wrapper = mount(App, { global: { plugins: [createPinia()] } });
+  it("renders local repository changes and review controls", async () => {
+    installBrowserFallback();
 
-        await flushPromises();
-        await flushPromises();
+    const wrapper = mount(App, { global: { plugins: [createPinia()] } });
 
-        // Renders the local repository's changes...
-        expect(wrapper.text()).toContain("src/App.vue");
-        expect(wrapper.text()).toContain("changed file");
-        // ...and the review controls.
-        expect(wrapper.text()).toContain("Submit review");
-    });
+    await flushPromises();
+
+    await flushPromises();
+
+    // Renders the local repository's changes...
+    expect(wrapper.text()).toContain("src/App.vue");
+    expect(wrapper.text()).toContain("changed file");
+    // ...and the review controls.
+    expect(wrapper.text()).toContain("Submit review");
+  });
 });

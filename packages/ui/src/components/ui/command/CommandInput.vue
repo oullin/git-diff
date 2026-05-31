@@ -13,14 +13,14 @@ const forwarded = useForwardProps(delegatedProps);
 </script>
 
 <template>
-    <ListboxFilter
-        v-bind="forwarded"
-        :class="
-            cn(
-                'flex w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
-                props.class,
-            )
-        "
-        @update:model-value="(value) => emits('update:modelValue', value)"
-    />
+  <ListboxFilter
+    v-bind="forwarded"
+    :class="
+      cn(
+        'flex w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+        props.class,
+      )
+    "
+    @update:model-value="(value) => emits('update:modelValue', value)"
+  />
 </template>

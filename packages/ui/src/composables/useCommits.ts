@@ -5,43 +5,45 @@ import type { CommitSummary, RepositoryState } from "@git-diff/domain";
 // repository. load(limit) reaches into the bridge and fills `items`; opening
 // a specific commit still belongs to App.vue (it mutates RepositoryState).
 export interface UseCommits {
-    items: Ref<CommitSummary[]>;
-    loading: Ref<boolean>;
-    error: Ref<string>;
-    load: (limit?: number) => Promise<void>;
-    reset: () => void;
+  items: Ref<CommitSummary[]>;
+  loading: Ref<boolean>;
+  error: Ref<string>;
+  load: (limit?: number) => Promise<void>;
+  reset: () => void;
 }
 
 export function useCommits(state: Ref<RepositoryState | null>): UseCommits {
-    const items = ref<CommitSummary[]>([]);
-    const loading = ref(false);
-    const error = ref("");
+  const items = ref<CommitSummary[]>([]);
 
-    async function load(limit = 100): Promise<void> {
-        const current = state.value;
+  const loading = ref(false);
 
-        if (!current) {
-            return;
-        }
+  const error = ref("");
 
-        loading.value = true;
-        error.value = "";
+  async function load(limit = 100): Promise<void> {
+    const current = state.value;
 
-        try {
-            const response = await window.diffApp.listCommits(current.root, limit);
-
-            items.value = response.commits;
-        } catch (cause) {
-            error.value = cause instanceof Error ? cause.message : String(cause);
-        } finally {
-            loading.value = false;
-        }
+    if (!current) {
+      return;
     }
 
-    function reset(): void {
-        items.value = [];
-        error.value = "";
-    }
+    loading.value = true;
+    error.value = "";
 
-    return { items, loading, error, load, reset };
+    try {
+      const response = await window.diffApp.listCommits(current.root, limit);
+
+      items.value = response.commits;
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function reset(): void {
+    items.value = [];
+    error.value = "";
+  }
+
+  return { items, loading, error, load, reset };
 }

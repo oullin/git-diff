@@ -114,6 +114,7 @@ func TestResolveParentRefEmptyForRootCommit(t *testing.T) {
 
 func seedRepo(t *testing.T, root string) {
 	t.Helper()
+
 	git(t, root, "init")
 	git(t, root, "config", "user.email", "ref@example.com")
 	git(t, root, "config", "user.name", "Ref Tester")

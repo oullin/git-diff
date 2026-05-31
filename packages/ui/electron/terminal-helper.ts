@@ -27,80 +27,82 @@ exec open -a "Git Diff Review" --args $resolved
 const CANDIDATE_DIRS = ["/usr/local/bin", "/opt/homebrew/bin", join(homedir(), ".local", "bin")];
 
 function firstWritableDir(): string | null {
-    for (const dir of CANDIDATE_DIRS) {
-        try {
-            mkdirSync(dir, { recursive: true });
-            // Sentinel write/delete to verify writability without requiring sudo.
-            const probe = join(dir, `.git-diff-write-check-${process.pid}`);
+  for (const dir of CANDIDATE_DIRS) {
+    try {
+      mkdirSync(dir, { recursive: true });
+      // Sentinel write/delete to verify writability without requiring sudo.
+      const probe = join(dir, `.git-diff-write-check-${process.pid}`);
 
-            writeFileSync(probe, "ok");
-            try {
-                require("node:fs").unlinkSync(probe);
-            } catch {
-                // ignore
-            }
+      writeFileSync(probe, "ok");
+      try {
+        require("node:fs").unlinkSync(probe);
+      } catch {
+        // ignore
+      }
 
-            return dir;
-        } catch {
-            // Not writable without sudo — keep looking.
-        }
+      return dir;
+    } catch {
+      // Not writable without sudo — keep looking.
     }
+  }
 
-    return null;
+  return null;
 }
 
 export async function installTerminalHelper(): Promise<void> {
-    const dir = firstWritableDir();
+  const dir = firstWritableDir();
 
-    if (!dir) {
-        const fallback = join(homedir(), ".local", "bin");
+  if (!dir) {
+    const fallback = join(homedir(), ".local", "bin");
 
-        mkdirSync(fallback, { recursive: true });
-        const target = join(fallback, "git-diff");
+    mkdirSync(fallback, { recursive: true });
 
-        writeFileSync(target, LAUNCHER_SCRIPT, { mode: 0o755 });
-        chmodSync(target, 0o755);
-        await dialog.showMessageBox({
-            type: "info",
-            message: "Terminal Helper installed",
-            detail: `Installed git-diff at ${target}.\n\nNo writable directory was found on $PATH. Add ${fallback} to your shell rc (e.g. .zshrc):\n\nexport PATH="${fallback}:$PATH"`,
-        });
+    const target = join(fallback, "git-diff");
 
-        return;
-    }
-
-    const target = join(dir, "git-diff");
-
-    try {
-        writeFileSync(target, LAUNCHER_SCRIPT, { mode: 0o755 });
-        chmodSync(target, 0o755);
-    } catch (error) {
-        await dialog.showMessageBox({
-            type: "error",
-            message: "Could not install Terminal Helper",
-            detail: `Failed to write ${target}: ${(error as Error).message}`,
-        });
-
-        return;
-    }
+    writeFileSync(target, LAUNCHER_SCRIPT, { mode: 0o755 });
+    chmodSync(target, 0o755);
 
     await dialog.showMessageBox({
-        type: "info",
-        message: "Terminal Helper installed",
-        detail: `You can now run \`git-diff\`, \`git-diff <path>\`, or \`git-diff <commit-sha>\` from any terminal.\n\nLauncher installed at: ${target}`,
+      type: "info",
+      message: "Terminal Helper installed",
+      detail: `Installed git-diff at ${target}.\n\nNo writable directory was found on $PATH. Add ${fallback} to your shell rc (e.g. .zshrc):\n\nexport PATH="${fallback}:$PATH"`,
     });
+
+    return;
+  }
+
+  const target = join(dir, "git-diff");
+
+  try {
+    writeFileSync(target, LAUNCHER_SCRIPT, { mode: 0o755 });
+    chmodSync(target, 0o755);
+  } catch (error) {
+    await dialog.showMessageBox({
+      type: "error",
+      message: "Could not install Terminal Helper",
+      detail: `Failed to write ${target}: ${(error as Error).message}`,
+    });
+
+    return;
+  }
+
+  await dialog.showMessageBox({
+    type: "info",
+    message: "Terminal Helper installed",
+    detail: `You can now run \`git-diff\`, \`git-diff <path>\`, or \`git-diff <commit-sha>\` from any terminal.\n\nLauncher installed at: ${target}`,
+  });
 }
 
 export function terminalHelperPath(): string | null {
-    for (const dir of CANDIDATE_DIRS) {
-        const candidate = join(dir, "git-diff");
+  for (const dir of CANDIDATE_DIRS) {
+    const candidate = join(dir, "git-diff");
 
-        if (existsSync(candidate)) {
-            return candidate;
-        }
+    if (existsSync(candidate)) {
+      return candidate;
     }
+  }
 
-    return null;
+  return null;
 }
 
 // Touch app + dirname so the unused-import warning never fires when the file

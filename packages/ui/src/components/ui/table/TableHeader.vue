@@ -6,7 +6,7 @@ const props = defineProps<{ class?: HTMLAttributes["class"] }>();
 </script>
 
 <template>
-    <thead :class="cn('bg-muted/60 [&_tr]:border-b', props.class)">
-        <slot />
-    </thead>
+  <thead :class="cn('bg-muted/60 [&_tr]:border-b', props.class)">
+    <slot />
+  </thead>
 </template>

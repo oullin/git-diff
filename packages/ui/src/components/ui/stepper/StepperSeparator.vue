@@ -10,9 +10,9 @@ const delegatedProps = reactiveOmit(props, "class");
 </script>
 
 <template>
-    <StepperSeparator
-        data-slot="stepper-separator"
-        v-bind="delegatedProps"
-        :class="cn('shrink-0 bg-muted group-data-[state=completed]:bg-primary', props.class)"
-    />
+  <StepperSeparator
+    data-slot="stepper-separator"
+    v-bind="delegatedProps"
+    :class="cn('shrink-0 bg-muted group-data-[state=completed]:bg-primary', props.class)"
+  />
 </template>

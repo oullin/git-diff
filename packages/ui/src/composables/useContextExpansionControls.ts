@@ -9,101 +9,98 @@ import type { ExpansionRequest } from "@composables/useContextExpansion";
  * without mounting a component.
  */
 export interface ExpansionControlsOptions {
-    getExpansions: (sectionId: string) => ExpandedContext[];
-    isDownwardEof: (sectionId: string) => boolean;
-    nextHunkOldStart: (section: DiffSection, hunk: HunkInfo) => number | null;
-    expandUp: (req: ExpansionRequest, hunk: HunkInfo) => Promise<void>;
-    expandDown: (
-        req: ExpansionRequest,
-        hunk: HunkInfo,
-        nextHunkOldStart: number | null,
-    ) => Promise<void>;
-    repoRoot: () => string;
-    filePath: () => string;
-    commitRef: () => string | undefined;
+  getExpansions: (sectionId: string) => ExpandedContext[];
+  isDownwardEof: (sectionId: string) => boolean;
+  nextHunkOldStart: (section: DiffSection, hunk: HunkInfo) => number | null;
+  expandUp: (req: ExpansionRequest, hunk: HunkInfo) => Promise<void>;
+  expandDown: (
+    req: ExpansionRequest,
+    hunk: HunkInfo,
+    nextHunkOldStart: number | null,
+  ) => Promise<void>;
+  repoRoot: () => string;
+  filePath: () => string;
+  commitRef: () => string | undefined;
 }
 
 export function useContextExpansionControls(opts: ExpansionControlsOptions) {
-    function expansionRequest(section: DiffSection): ExpansionRequest {
-        return {
-            sectionId: section.id,
-            repoRoot: opts.repoRoot(),
-            filePath: opts.filePath(),
-            ref: opts.commitRef(),
-        };
+  function expansionRequest(section: DiffSection): ExpansionRequest {
+    return {
+      sectionId: section.id,
+      repoRoot: opts.repoRoot(),
+      filePath: opts.filePath(),
+      ref: opts.commitRef(),
+    };
+  }
+
+  function lowestVisibleAbove(section: DiffSection, hunk: HunkInfo): number {
+    let lowest = hunk.oldStart;
+
+    for (const exp of opts.getExpansions(section.id)) {
+      if (exp.oldLine > hunk.prevOldEnd && exp.oldLine < hunk.oldStart && exp.oldLine < lowest) {
+        lowest = exp.oldLine;
+      }
     }
 
-    function lowestVisibleAbove(section: DiffSection, hunk: HunkInfo): number {
-        let lowest = hunk.oldStart;
+    return lowest;
+  }
 
-        for (const exp of opts.getExpansions(section.id)) {
-            if (
-                exp.oldLine > hunk.prevOldEnd &&
-                exp.oldLine < hunk.oldStart &&
-                exp.oldLine < lowest
-            ) {
-                lowest = exp.oldLine;
-            }
-        }
+  function highestVisibleBelow(
+    section: DiffSection,
+    hunk: HunkInfo,
+    nextStart: number | null,
+  ): number {
+    let highest = hunk.oldEnd;
 
-        return lowest;
+    const upper = nextStart ?? Number.POSITIVE_INFINITY;
+
+    for (const exp of opts.getExpansions(section.id)) {
+      if (exp.oldLine > hunk.oldEnd && exp.oldLine < upper && exp.oldLine > highest) {
+        highest = exp.oldLine;
+      }
     }
 
-    function highestVisibleBelow(
-        section: DiffSection,
-        hunk: HunkInfo,
-        nextStart: number | null,
-    ): number {
-        let highest = hunk.oldEnd;
-        const upper = nextStart ?? Number.POSITIVE_INFINITY;
+    return highest;
+  }
 
-        for (const exp of opts.getExpansions(section.id)) {
-            if (exp.oldLine > hunk.oldEnd && exp.oldLine < upper && exp.oldLine > highest) {
-                highest = exp.oldLine;
-            }
-        }
-
-        return highest;
+  function canExpandUp(section: DiffSection, hunk: HunkInfo | null): boolean {
+    if (!hunk) {
+      return false;
     }
 
-    function canExpandUp(section: DiffSection, hunk: HunkInfo | null): boolean {
-        if (!hunk) {
-            return false;
-        }
+    return lowestVisibleAbove(section, hunk) > hunk.prevOldEnd + 1;
+  }
 
-        return lowestVisibleAbove(section, hunk) > hunk.prevOldEnd + 1;
+  function canExpandDown(section: DiffSection, hunk: HunkInfo | null): boolean {
+    if (!hunk) {
+      return false;
     }
 
-    function canExpandDown(section: DiffSection, hunk: HunkInfo | null): boolean {
-        if (!hunk) {
-            return false;
-        }
+    const next = opts.nextHunkOldStart(section, hunk);
+    const highest = highestVisibleBelow(section, hunk, next);
 
-        const next = opts.nextHunkOldStart(section, hunk);
-        const highest = highestVisibleBelow(section, hunk, next);
-
-        if (next != null) {
-            return highest < next - 1;
-        }
-
-        return !opts.isDownwardEof(section.id);
+    if (next != null) {
+      return highest < next - 1;
     }
 
-    function onExpandUp(section: DiffSection, hunk: HunkInfo | null): void {
-        if (!hunk || !opts.repoRoot()) {
-            return;
-        }
+    return !opts.isDownwardEof(section.id);
+  }
 
-        void opts.expandUp(expansionRequest(section), hunk);
+  function onExpandUp(section: DiffSection, hunk: HunkInfo | null): void {
+    if (!hunk || !opts.repoRoot()) {
+      return;
     }
 
-    function onExpandDown(section: DiffSection, hunk: HunkInfo | null): void {
-        if (!hunk || !opts.repoRoot()) {
-            return;
-        }
+    void opts.expandUp(expansionRequest(section), hunk);
+  }
 
-        void opts.expandDown(expansionRequest(section), hunk, opts.nextHunkOldStart(section, hunk));
+  function onExpandDown(section: DiffSection, hunk: HunkInfo | null): void {
+    if (!hunk || !opts.repoRoot()) {
+      return;
     }
 
-    return { canExpandUp, canExpandDown, onExpandUp, onExpandDown };
+    void opts.expandDown(expansionRequest(section), hunk, opts.nextHunkOldStart(section, hunk));
+  }
+
+  return { canExpandUp, canExpandDown, onExpandUp, onExpandDown };
 }

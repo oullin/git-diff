@@ -10,16 +10,16 @@ const delegatedProps = reactiveOmit(props, "class");
 </script>
 
 <template>
-    <StepperIndicator
-        data-slot="stepper-indicator"
-        v-bind="delegatedProps"
-        :class="
-            cn(
-                'flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors',
-                props.class,
-            )
-        "
-    >
-        <slot />
-    </StepperIndicator>
+  <StepperIndicator
+    data-slot="stepper-indicator"
+    v-bind="delegatedProps"
+    :class="
+      cn(
+        'flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors',
+        props.class,
+      )
+    "
+  >
+    <slot />
+  </StepperIndicator>
 </template>

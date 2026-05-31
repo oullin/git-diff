@@ -14,25 +14,25 @@ import { register as registerUserConfig } from "#electron/ipc/userconfig.ipc.js"
 import { register as registerWalkthrough } from "#electron/ipc/walkthrough.ipc.js";
 
 export function registerIpcHandlers(deps: IpcDeps): void {
-    const router = buildRouter(deps);
+  const router = buildRouter(deps);
 
-    router.register(ipcMain);
+  router.register(ipcMain);
 }
 
 export function buildRouter(deps: IpcDeps): IpcRouter {
-    const router = new IpcRouter();
+  const router = new IpcRouter();
 
-    registerRepository(router, deps);
-    registerRepositories(router);
-    registerBranches(router);
-    registerPullRequests(router);
-    registerWalkthrough(router);
-    registerPendingComments(router);
-    registerPreferences(router);
-    registerReviews(router);
-    registerAuth(router);
-    registerSystem(router, deps);
-    registerUserConfig(router);
+  registerRepository(router, deps);
+  registerRepositories(router);
+  registerBranches(router);
+  registerPullRequests(router);
+  registerWalkthrough(router);
+  registerPendingComments(router);
+  registerPreferences(router);
+  registerReviews(router);
+  registerAuth(router);
+  registerSystem(router, deps);
+  registerUserConfig(router);
 
-    return router;
+  return router;
 }

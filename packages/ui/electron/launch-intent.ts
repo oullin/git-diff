@@ -11,41 +11,42 @@ import { isAbsolute, resolve } from "node:path";
 const commitHashPattern = /^[0-9a-f]{4,64}$/i;
 const headCommitRefPattern = /^(?:HEAD|@)(?:(?:[~^]\d*)|\^\{[^}]+\}|@?\{[^}]+\})*$/;
 const pullRequestNumberPattern = /^#([1-9]\d*)$/;
-const pullRequestUrlPattern =
-    /^https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/([1-9]\d*)(?:[/?#].*)?$/i;
 const numericPattern = /^[0-9]{1,7}$/;
+
+const pullRequestUrlPattern =
+  /^https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/([1-9]\d*)(?:[/?#].*)?$/i;
 
 export type LaunchIntentKind = "working" | "commit" | "pull-request" | "help";
 
 export interface LaunchIntent {
-    kind: LaunchIntentKind;
-    /** Resolved absolute path of the repository the UI should open, when known. */
-    repoPath?: string;
-    /**
-     * The commit-ish the user asked for when kind === "commit". Accepts raw
-     * SHAs and HEAD/@ revision syntax; the backend resolves with
-     * `git rev-parse --verify <ref>^{commit}`.
-     */
-    commitRef?: string;
-    /**
-     * @deprecated Use {@link commitRef}. Retained for one release so existing
-     * renderer code that reads `intent.sha` keeps working.
-     */
-    sha?: string;
-    /** PR number when kind === "pull-request". */
-    pullRequestNumber?: number;
-    /**
-     * @deprecated Use {@link pullRequestNumber}. Retained for one release.
-     */
-    prNumber?: number;
-    /** Source GitHub URL when the user launched via `pr <url>`. */
-    pullRequestUrl?: string;
-    /** True when the -w / --walkthrough flag was set. */
-    walkthrough: boolean;
-    /** Set when --help / -h / help was requested. Renderer should not consume. */
-    helpText?: string;
-    /** Raw positional arg from argv, for diagnostics. */
-    raw?: string;
+  kind: LaunchIntentKind;
+  /** Resolved absolute path of the repository the UI should open, when known. */
+  repoPath?: string;
+  /**
+   * The commit-ish the user asked for when kind === "commit". Accepts raw
+   * SHAs and HEAD/@ revision syntax; the backend resolves with
+   * `git rev-parse --verify <ref>^{commit}`.
+   */
+  commitRef?: string;
+  /**
+   * @deprecated Use {@link commitRef}. Retained for one release so existing
+   * renderer code that reads `intent.sha` keeps working.
+   */
+  sha?: string;
+  /** PR number when kind === "pull-request". */
+  pullRequestNumber?: number;
+  /**
+   * @deprecated Use {@link pullRequestNumber}. Retained for one release.
+   */
+  prNumber?: number;
+  /** Source GitHub URL when the user launched via `pr <url>`. */
+  pullRequestUrl?: string;
+  /** True when the -w / --walkthrough flag was set. */
+  walkthrough: boolean;
+  /** Set when --help / -h / help was requested. Renderer should not consume. */
+  helpText?: string;
+  /** Raw positional arg from argv, for diagnostics. */
+  raw?: string;
 }
 
 const USAGE_TEXT = `git-diff serves the local diff review UI.
@@ -68,185 +69,186 @@ Usage:
  * intentionally irrelevant: both `-w <ref>` and `<ref> -w` are accepted.
  */
 export function parseLaunchArgs(argv: string[], isPackaged: boolean, cwd: string): LaunchIntent {
-    const userArgs = argv.slice(isPackaged ? 1 : 2).filter((arg) => !isElectronInternal(arg));
+  const userArgs = argv.slice(isPackaged ? 1 : 2).filter((arg) => !isElectronInternal(arg));
 
-    let walkthrough = false;
-    const positionals: string[] = [];
+  let walkthrough = false;
 
-    for (const arg of userArgs) {
-        if (arg === "-h" || arg === "--help" || arg === "help") {
-            return { kind: "help", walkthrough: false, helpText: USAGE_TEXT };
-        }
+  const positionals: string[] = [];
 
-        if (arg === "-w" || arg === "--walkthrough") {
-            walkthrough = true;
-            continue;
-        }
-
-        if (arg.startsWith("-")) {
-            return {
-                kind: "help",
-                walkthrough: false,
-                helpText: `Unknown flag: ${arg}\n\n${USAGE_TEXT}`,
-            };
-        }
-
-        positionals.push(arg);
+  for (const arg of userArgs) {
+    if (arg === "-h" || arg === "--help" || arg === "help") {
+      return { kind: "help", walkthrough: false, helpText: USAGE_TEXT };
     }
 
-    if (positionals[0] === "pr") {
-        return classifyPrSubcommand(positionals.slice(1), cwd, walkthrough);
+    if (arg === "-w" || arg === "--walkthrough") {
+      walkthrough = true;
+      continue;
     }
 
-    if (positionals.length === 0) {
-        return { kind: "working", walkthrough };
-    }
-
-    if (positionals.length === 1) {
-        return classifyPositional(positionals[0]!, cwd, walkthrough);
-    }
-
-    if (positionals.length === 2) {
-        const pathArg = positionals[0]!;
-        const refArg = positionals[1]!;
-        const resolvedPath = resolveExistingDir(pathArg, cwd);
-
-        if (!resolvedPath) {
-            return {
-                kind: "help",
-                walkthrough: false,
-                helpText: `First argument "${pathArg}" is not a directory.\n\n${USAGE_TEXT}`,
-            };
-        }
-
-        return classifyPositional(refArg, resolvedPath, walkthrough, {
-            repoPathOverride: resolvedPath,
-        });
-    }
-
-    return {
+    if (arg.startsWith("-")) {
+      return {
         kind: "help",
         walkthrough: false,
-        helpText: `Too many arguments.\n\n${USAGE_TEXT}`,
-    };
+        helpText: `Unknown flag: ${arg}\n\n${USAGE_TEXT}`,
+      };
+    }
+
+    positionals.push(arg);
+  }
+
+  if (positionals[0] === "pr") {
+    return classifyPrSubcommand(positionals.slice(1), cwd, walkthrough);
+  }
+
+  if (positionals.length === 0) {
+    return { kind: "working", walkthrough };
+  }
+
+  if (positionals.length === 1) {
+    return classifyPositional(positionals[0]!, cwd, walkthrough);
+  }
+
+  if (positionals.length === 2) {
+    const pathArg = positionals[0]!;
+    const refArg = positionals[1]!;
+    const resolvedPath = resolveExistingDir(pathArg, cwd);
+
+    if (!resolvedPath) {
+      return {
+        kind: "help",
+        walkthrough: false,
+        helpText: `First argument "${pathArg}" is not a directory.\n\n${USAGE_TEXT}`,
+      };
+    }
+
+    return classifyPositional(refArg, resolvedPath, walkthrough, {
+      repoPathOverride: resolvedPath,
+    });
+  }
+
+  return {
+    kind: "help",
+    walkthrough: false,
+    helpText: `Too many arguments.\n\n${USAGE_TEXT}`,
+  };
 }
 
 interface ClassifyOptions {
-    /** Force a specific repoPath instead of using cwd. */
-    repoPathOverride?: string;
+  /** Force a specific repoPath instead of using cwd. */
+  repoPathOverride?: string;
 }
 
 function classifyPositional(
-    arg: string,
-    cwd: string,
-    walkthrough: boolean,
-    opts: ClassifyOptions = {},
+  arg: string,
+  cwd: string,
+  walkthrough: boolean,
+  opts: ClassifyOptions = {},
 ): LaunchIntent {
-    // A real directory always wins over the SHA / HEAD pattern, even if its
-    // name looks hex. Matches what users expect when they `cd into-a-dir; git-diff .`.
-    if (!opts.repoPathOverride) {
-        const resolved = resolveExistingDir(arg, cwd);
+  // A real directory always wins over the SHA / HEAD pattern, even if its
+  // name looks hex. Matches what users expect when they `cd into-a-dir; git-diff .`.
+  if (!opts.repoPathOverride) {
+    const resolved = resolveExistingDir(arg, cwd);
 
-        if (resolved) {
-            return { kind: "working", repoPath: resolved, walkthrough, raw: arg };
-        }
+    if (resolved) {
+      return { kind: "working", repoPath: resolved, walkthrough, raw: arg };
     }
+  }
 
-    const repoPath = opts.repoPathOverride ?? cwd;
+  const repoPath = opts.repoPathOverride ?? cwd;
 
-    if (isCommitRefArgument(arg, cwd)) {
-        return {
-            kind: "commit",
-            commitRef: arg,
-            sha: arg,
-            repoPath,
-            walkthrough,
-            raw: arg,
-        };
-    }
+  if (isCommitRefArgument(arg, cwd)) {
+    return {
+      kind: "commit",
+      commitRef: arg,
+      sha: arg,
+      repoPath,
+      walkthrough,
+      raw: arg,
+    };
+  }
 
-    const prMatch = arg.match(pullRequestNumberPattern);
+  const prMatch = arg.match(pullRequestNumberPattern);
 
-    if (prMatch) {
-        const number = Number(prMatch[1]);
-
-        return {
-            kind: "pull-request",
-            pullRequestNumber: number,
-            prNumber: number,
-            repoPath,
-            walkthrough,
-            raw: arg,
-        };
-    }
-
-    const urlMatch = arg.match(pullRequestUrlPattern);
-
-    if (urlMatch) {
-        const number = Number(urlMatch[1]);
-
-        return {
-            kind: "pull-request",
-            pullRequestNumber: number,
-            prNumber: number,
-            pullRequestUrl: arg,
-            repoPath,
-            walkthrough,
-            raw: arg,
-        };
-    }
+  if (prMatch) {
+    const number = Number(prMatch[1]);
 
     return {
-        kind: "help",
-        walkthrough: false,
-        helpText: `Could not resolve "${arg}" as a path, commit ref, or pull request.\n\n${USAGE_TEXT}`,
+      kind: "pull-request",
+      pullRequestNumber: number,
+      prNumber: number,
+      repoPath,
+      walkthrough,
+      raw: arg,
     };
+  }
+
+  const urlMatch = arg.match(pullRequestUrlPattern);
+
+  if (urlMatch) {
+    const number = Number(urlMatch[1]);
+
+    return {
+      kind: "pull-request",
+      pullRequestNumber: number,
+      prNumber: number,
+      pullRequestUrl: arg,
+      repoPath,
+      walkthrough,
+      raw: arg,
+    };
+  }
+
+  return {
+    kind: "help",
+    walkthrough: false,
+    helpText: `Could not resolve "${arg}" as a path, commit ref, or pull request.\n\n${USAGE_TEXT}`,
+  };
 }
 
 function classifyPrSubcommand(args: string[], cwd: string, walkthrough: boolean): LaunchIntent {
-    if (args.length !== 1) {
-        return {
-            kind: "help",
-            walkthrough: false,
-            helpText: `\`pr\` subcommand requires a number or GitHub URL.\n\n${USAGE_TEXT}`,
-        };
-    }
+  if (args.length !== 1) {
+    return {
+      kind: "help",
+      walkthrough: false,
+      helpText: `\`pr\` subcommand requires a number or GitHub URL.\n\n${USAGE_TEXT}`,
+    };
+  }
 
-    const target = args[0]!;
-    const urlMatch = target.match(pullRequestUrlPattern);
+  const target = args[0]!;
+  const urlMatch = target.match(pullRequestUrlPattern);
 
-    if (urlMatch) {
-        const number = Number(urlMatch[1]);
-
-        return {
-            kind: "pull-request",
-            pullRequestNumber: number,
-            prNumber: number,
-            pullRequestUrl: target,
-            repoPath: cwd,
-            walkthrough,
-            raw: target,
-        };
-    }
-
-    if (numericPattern.test(target)) {
-        const number = Number(target);
-
-        return {
-            kind: "pull-request",
-            pullRequestNumber: number,
-            prNumber: number,
-            repoPath: cwd,
-            walkthrough,
-            raw: target,
-        };
-    }
+  if (urlMatch) {
+    const number = Number(urlMatch[1]);
 
     return {
-        kind: "help",
-        walkthrough: false,
-        helpText: `\`pr\` expected a number or GitHub URL, got "${target}".\n\n${USAGE_TEXT}`,
+      kind: "pull-request",
+      pullRequestNumber: number,
+      prNumber: number,
+      pullRequestUrl: target,
+      repoPath: cwd,
+      walkthrough,
+      raw: target,
     };
+  }
+
+  if (numericPattern.test(target)) {
+    const number = Number(target);
+
+    return {
+      kind: "pull-request",
+      pullRequestNumber: number,
+      prNumber: number,
+      repoPath: cwd,
+      walkthrough,
+      raw: target,
+    };
+  }
+
+  return {
+    kind: "help",
+    walkthrough: false,
+    helpText: `\`pr\` expected a number or GitHub URL, got "${target}".\n\n${USAGE_TEXT}`,
+  };
 }
 
 /**
@@ -255,45 +257,45 @@ function classifyPrSubcommand(args: string[], cwd: string, walkthrough: boolean)
  * first when ambiguous.
  */
 export function isCommitRefArgument(arg: string, cwd: string): boolean {
-    if (commitHashPattern.test(arg)) {
-        return true;
-    }
+  if (commitHashPattern.test(arg)) {
+    return true;
+  }
 
-    if (!headCommitRefPattern.test(arg)) {
-        return false;
-    }
+  if (!headCommitRefPattern.test(arg)) {
+    return false;
+  }
 
-    // Disambiguate `HEAD~3` from a file literally named `HEAD~3`.
-    return resolveExistingDir(arg, cwd) === null && !existsSync(resolveAbsolute(arg, cwd));
+  // Disambiguate `HEAD~3` from a file literally named `HEAD~3`.
+  return resolveExistingDir(arg, cwd) === null && !existsSync(resolveAbsolute(arg, cwd));
 }
 
 function resolveExistingDir(arg: string, cwd: string): string | null {
-    const resolved = resolveAbsolute(arg, cwd);
+  const resolved = resolveAbsolute(arg, cwd);
 
-    if (!existsSync(resolved)) {
-        return null;
-    }
+  if (!existsSync(resolved)) {
+    return null;
+  }
 
-    try {
-        return statSync(resolved).isDirectory() ? resolved : null;
-    } catch {
-        return null;
-    }
+  try {
+    return statSync(resolved).isDirectory() ? resolved : null;
+  } catch {
+    return null;
+  }
 }
 
 function resolveAbsolute(arg: string, cwd: string): string {
-    return isAbsolute(arg) ? arg : resolve(cwd, arg);
+  return isAbsolute(arg) ? arg : resolve(cwd, arg);
 }
 
 function isElectronInternal(arg: string): boolean {
-    // Electron forwards these to the renderer; they're not user arguments.
-    return (
-        arg.startsWith("--remote-debugging-") ||
-        arg.startsWith("--inspect") ||
-        arg.startsWith("--enable-") ||
-        arg.startsWith("--disable-") ||
-        arg.startsWith("--user-data-dir") ||
-        arg.startsWith("--no-sandbox") ||
-        arg === "--squirrel-firstrun"
-    );
+  // Electron forwards these to the renderer; they're not user arguments.
+  return (
+    arg.startsWith("--remote-debugging-") ||
+    arg.startsWith("--inspect") ||
+    arg.startsWith("--enable-") ||
+    arg.startsWith("--disable-") ||
+    arg.startsWith("--user-data-dir") ||
+    arg.startsWith("--no-sandbox") ||
+    arg === "--squirrel-firstrun"
+  );
 }
