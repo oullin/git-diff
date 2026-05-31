@@ -52,11 +52,17 @@ export function useLazyDiffFile(
             !options.shouldDefer.value || intersected.value || isDiffFileForced(options.path.value),
     );
 
-    watch(rendered, (value) => {
-        if (value) {
-            stop();
-        }
-    });
+    // immediate: a file that is already rendered on init (e.g. small files that
+    // never defer) must stop its observer right away, otherwise it leaks.
+    watch(
+        rendered,
+        (value) => {
+            if (value) {
+                stop();
+            }
+        },
+        { immediate: true },
+    );
 
     return { rendered };
 }

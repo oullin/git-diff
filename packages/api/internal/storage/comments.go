@@ -135,6 +135,18 @@ func (r *CommentRepo) DeleteReviewComment(ctx context.Context, reviewID int64, c
 }
 
 func (r *CommentRepo) SetReviewCommentResolved(ctx context.Context, reviewID int64, commentID int64, resolved bool) (ReviewComment, error) {
+	comment, err := r.GetReviewComment(ctx, reviewID, commentID)
+
+	if err != nil {
+		return ReviewComment{}, err
+	}
+
+	// No-op when already in the desired state: avoids a redundant write and a
+	// duplicate resolved/unresolved event.
+	if comment.Resolved == resolved {
+		return comment, nil
+	}
+
 	now := db.Now().UTC().Format(time.RFC3339Nano)
 
 	updates := map[string]any{
@@ -155,10 +167,13 @@ func (r *CommentRepo) SetReviewCommentResolved(ctx context.Context, reviewID int
 		return ReviewComment{}, err
 	}
 
-	comment, err := r.GetReviewComment(ctx, reviewID, commentID)
+	comment.Resolved = resolved
+	comment.UpdatedAt = now
 
-	if err != nil {
-		return ReviewComment{}, err
+	if resolved {
+		comment.ResolvedAt = now
+	} else {
+		comment.ResolvedAt = ""
 	}
 
 	eventType := "comment_unresolved"
