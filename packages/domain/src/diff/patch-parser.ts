@@ -1,5 +1,5 @@
 import { parsePatchFiles } from "@pierre/diffs";
-import type { DiffSection } from "../repo/index.js";
+import type { DiffSection } from "#domain/repo/index.js";
 
 // Expansion logic (splicing in fetched context) lives in patch-expander.ts.
 

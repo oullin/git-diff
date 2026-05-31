@@ -5,6 +5,12 @@
     "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
+    "imports": {
+        "#domain/*.js": {
+            "types": "./src/*.ts",
+            "default": "./dist/*.js"
+        }
+    },
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -64,7 +70,8 @@
         }
     },
     "scripts": {
-        "build": "tsc -p tsconfig.json",
+        "check:imports": "tsx ../../scripts/check-no-relative-imports.ts src",
+        "build": "pnpm run check:imports && tsc -p tsconfig.json",
         "lint": "oxlint ."
     },
     "dependencies": {

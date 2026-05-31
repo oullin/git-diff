@@ -18,7 +18,8 @@
         }
     },
     "scripts": {
-        "build": "tsc -p tsconfig.json",
+        "check:imports": "tsx ../../scripts/check-no-relative-imports.ts src",
+        "build": "pnpm run check:imports && tsc -p tsconfig.json",
         "lint": "oxlint ."
     },
     "dependencies": {

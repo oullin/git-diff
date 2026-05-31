@@ -1,4 +1,4 @@
-import { type PatchLine, parseHunkHeader } from "./patch-parser.js";
+import { type PatchLine, parseHunkHeader } from "#domain/diff/patch-parser.js";
 
 // oldLine/newLine are 1-indexed.
 export interface ExpandedContext {

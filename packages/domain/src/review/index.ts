@@ -1,4 +1,4 @@
-import type { RepositoryMode } from "../repo/index.js";
+import type { RepositoryMode } from "#domain/repo/index.js";
 
 export interface ReviewSession {
   id: number;

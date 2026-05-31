@@ -3,14 +3,14 @@ export type {
   GitFileStatus,
   RepositoryMode,
   RepositoryRole,
-} from "../common/index.js";
+} from "#domain/common/index.js";
 
 import type {
   DiffSectionKind,
   GitFileStatus,
   RepositoryMode,
   RepositoryRole,
-} from "../common/index.js";
+} from "#domain/common/index.js";
 
 export interface DiffSection {
   id: string;

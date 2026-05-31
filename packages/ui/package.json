@@ -20,7 +20,7 @@
     },
     "scripts": {
         "check:typescript": "tsx scripts/check-typescript-only.ts",
-        "check:imports": "tsx scripts/check-no-relative-imports.ts",
+        "check:imports": "tsx ../../scripts/check-no-relative-imports.ts src tests electron scripts ../../scripts",
         "dev": "tsx scripts/dev/index.ts",
         "dev:vite": "portless git-diff-ui vite --host 127.0.0.1",
         "dev:electron": "pnpm exec tsc -p tsconfig.electron.json && pnpm exec vite build --config vite.electron.config.ts && VITE_DEV_SERVER_URL=https://git-diff-ui.localhost:1355 electron dist-electron/main.js",
