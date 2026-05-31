@@ -54,6 +54,11 @@ jobs:
       - name: Build Go API binary
         run: pnpm --dir packages/api run build
 
+      # The renderer build resolves @git-diff/domain and @git-diff/bridge from their
+      # compiled dist/, which is no longer committed — build the libraries first.
+      - name: Build shared TS libraries
+        run: pnpm --dir packages/tools run turbo -- run build --filter=@git-diff/bridge --filter=@git-diff/domain
+
       - name: Build renderer + electron bundles
         run: pnpm -C packages/ui run build
 
