@@ -67,6 +67,40 @@ func (s Server) updateReviewComment(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, comment)
 }
 
+func (s Server) setReviewCommentResolved(w http.ResponseWriter, r *http.Request) {
+	reviewID, ok := pathInt64(w, r, "id")
+
+	if !ok {
+		return
+	}
+
+	commentID, ok := pathInt64(w, r, "commentId")
+
+	if !ok {
+		return
+	}
+
+	var input struct {
+		Resolved bool `json:"resolved"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+
+		return
+	}
+
+	comment, err := s.reviews.SetCommentResolved(r.Context(), reviewID, commentID, input.Resolved)
+
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	writeJSON(w, http.StatusOK, comment)
+}
+
 func (s Server) deleteReviewComment(w http.ResponseWriter, r *http.Request) {
 	reviewID, ok := pathInt64(w, r, "id")
 

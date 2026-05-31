@@ -1,109 +1,113 @@
-import { computed, ref, type ComputedRef, type Ref } from "vue";
-import type { FileSearchResult } from "@git-diff/contracts";
+import { computed, ref, type ComputedRef, type Ref } from 'vue';
+import type { FileSearchResult } from '@git-diff/domain';
 
 // useFileSearch owns the debounced search-bar lifecycle: query string,
 // in-flight token (so a slow response can't overwrite results from a newer
 // query), and the result list. The composable wires its own setTimeout-based
 // debouncer; callers just forward the input event to onInput().
 export interface UseFileSearch {
-    query: Ref<string>;
-    results: Ref<FileSearchResult[]>;
-    loading: Ref<boolean>;
-    error: Ref<string>;
-    open: ComputedRef<boolean>;
-    onInput: (value: string) => void;
-    reset: () => void;
+	query: Ref<string>;
+	results: Ref<FileSearchResult[]>;
+	loading: Ref<boolean>;
+	error: Ref<string>;
+	open: ComputedRef<boolean>;
+	onInput: (value: string) => void;
+	reset: () => void;
 }
 
 export interface UseFileSearchOptions {
-    debounceMs?: number;
-    limit?: number;
+	debounceMs?: number;
+	limit?: number;
 }
 
 export function useFileSearch(opts: UseFileSearchOptions = {}): UseFileSearch {
-    const debounceMs = opts.debounceMs ?? 150;
-    const limit = opts.limit ?? 50;
+	const debounceMs = opts.debounceMs ?? 150;
+	const limit = opts.limit ?? 50;
 
-    const query = ref("");
-    const results = ref<FileSearchResult[]>([]);
-    const loading = ref(false);
-    const error = ref("");
-    const open = computed(() => query.value.trim().length > 0);
+	const query = ref('');
 
-    let debounce: ReturnType<typeof setTimeout> | null = null;
-    let token = 0;
+	const results = ref<FileSearchResult[]>([]);
 
-    async function run(input: string): Promise<void> {
-        const trimmed = input.trim();
+	const loading = ref(false);
 
-        if (!trimmed) {
-            results.value = [];
-            loading.value = false;
-            error.value = "";
+	const error = ref('');
 
-            return;
-        }
+	const open = computed(() => query.value.trim().length > 0);
 
-        const current = ++token;
+	let debounce: ReturnType<typeof setTimeout> | null = null;
+	let token = 0;
 
-        loading.value = true;
-        error.value = "";
+	async function run(input: string): Promise<void> {
+		const trimmed = input.trim();
 
-        try {
-            const found = await window.diffApp.searchRepositoryFiles(trimmed, limit);
+		if (!trimmed) {
+			results.value = [];
+			loading.value = false;
+			error.value = '';
 
-            if (current !== token) {
-                return;
-            }
+			return;
+		}
 
-            results.value = found;
-        } catch (cause) {
-            if (current !== token) {
-                return;
-            }
+		const current = ++token;
 
-            error.value = cause instanceof Error ? cause.message : String(cause);
-            results.value = [];
-        } finally {
-            if (current === token) {
-                loading.value = false;
-            }
-        }
-    }
+		loading.value = true;
+		error.value = '';
 
-    function onInput(value: string): void {
-        query.value = value;
+		try {
+			const found = await window.diffApp.searchRepositoryFiles(trimmed, limit);
 
-        if (debounce) {
-            clearTimeout(debounce);
-        }
+			if (current !== token) {
+				return;
+			}
 
-        if (!value.trim()) {
-            token++;
-            results.value = [];
-            loading.value = false;
-            error.value = "";
+			results.value = found;
+		} catch (cause) {
+			if (current !== token) {
+				return;
+			}
 
-            return;
-        }
+			error.value = cause instanceof Error ? cause.message : String(cause);
+			results.value = [];
+		} finally {
+			if (current === token) {
+				loading.value = false;
+			}
+		}
+	}
 
-        debounce = setTimeout(() => {
-            void run(value);
-        }, debounceMs);
-    }
+	function onInput(value: string): void {
+		query.value = value;
 
-    function reset(): void {
-        if (debounce) {
-            clearTimeout(debounce);
-            debounce = null;
-        }
+		if (debounce) {
+			clearTimeout(debounce);
+		}
 
-        token++;
-        query.value = "";
-        results.value = [];
-        loading.value = false;
-        error.value = "";
-    }
+		if (!value.trim()) {
+			token++;
+			results.value = [];
+			loading.value = false;
+			error.value = '';
 
-    return { query, results, loading, error, open, onInput, reset };
+			return;
+		}
+
+		debounce = setTimeout(() => {
+			void run(value);
+		}, debounceMs);
+	}
+
+	function reset(): void {
+		if (debounce) {
+			clearTimeout(debounce);
+			debounce = null;
+		}
+
+		token++;
+		query.value = '';
+		results.value = [];
+		loading.value = false;
+		error.value = '';
+	}
+
+	return { query, results, loading, error, open, onInput, reset };
 }

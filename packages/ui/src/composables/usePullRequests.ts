@@ -1,59 +1,62 @@
-import { ref, type Ref } from "vue";
-import type { PullRequestSummary, RepositoryState } from "@git-diff/contracts";
+import { ref, type Ref } from 'vue';
+import type { PullRequestSummary, RepositoryState } from '@git-diff/domain';
 
 export interface UsePullRequests {
-    items: Ref<PullRequestSummary[]>;
-    loading: Ref<boolean>;
-    active: Ref<PullRequestSummary | null>;
-    error: Ref<string>;
-    load: () => Promise<void>;
-    setActive: (pr: PullRequestSummary | null) => void;
-    reset: () => void;
+	items: Ref<PullRequestSummary[]>;
+	loading: Ref<boolean>;
+	active: Ref<PullRequestSummary | null>;
+	error: Ref<string>;
+	load: () => Promise<void>;
+	setActive: (pr: PullRequestSummary | null) => void;
+	reset: () => void;
 }
 
 export interface UsePullRequestsOptions {
-    state: Ref<RepositoryState | null>;
-    onLoadError?: (cause: unknown) => void;
+	state: Ref<RepositoryState | null>;
+	onLoadError?: (cause: unknown) => void;
 }
 
 export function usePullRequests(opts: UsePullRequestsOptions): UsePullRequests {
-    const items = ref<PullRequestSummary[]>([]);
-    const loading = ref(false);
-    const active = ref<PullRequestSummary | null>(null);
-    const error = ref("");
+	const items = ref<PullRequestSummary[]>([]);
 
-    async function load(): Promise<void> {
-        const current = opts.state.value;
+	const loading = ref(false);
 
-        if (!current) {
-            return;
-        }
+	const active = ref<PullRequestSummary | null>(null);
 
-        loading.value = true;
-        error.value = "";
+	const error = ref('');
 
-        try {
-            const response = await window.diffApp.listPullRequests(current.root);
+	async function load(): Promise<void> {
+		const current = opts.state.value;
 
-            items.value = response.pullRequests;
-        } catch (cause) {
-            items.value = [];
-            error.value = cause instanceof Error ? cause.message : String(cause);
-            opts.onLoadError?.(cause);
-        } finally {
-            loading.value = false;
-        }
-    }
+		if (!current) {
+			return;
+		}
 
-    function setActive(pr: PullRequestSummary | null): void {
-        active.value = pr;
-    }
+		loading.value = true;
+		error.value = '';
 
-    function reset(): void {
-        items.value = [];
-        active.value = null;
-        error.value = "";
-    }
+		try {
+			const response = await window.diffApp.listPullRequests(current.root);
 
-    return { items, loading, active, error, load, setActive, reset };
+			items.value = response.pullRequests;
+		} catch (cause) {
+			items.value = [];
+			error.value = cause instanceof Error ? cause.message : String(cause);
+			opts.onLoadError?.(cause);
+		} finally {
+			loading.value = false;
+		}
+	}
+
+	function setActive(pr: PullRequestSummary | null): void {
+		active.value = pr;
+	}
+
+	function reset(): void {
+		items.value = [];
+		active.value = null;
+		error.value = '';
+	}
+
+	return { items, loading, active, error, load, setActive, reset };
 }

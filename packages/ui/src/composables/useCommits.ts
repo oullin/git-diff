@@ -1,47 +1,49 @@
-import { ref, type Ref } from "vue";
-import type { CommitSummary, RepositoryState } from "@git-diff/contracts";
+import { ref, type Ref } from 'vue';
+import type { CommitSummary, RepositoryState } from '@git-diff/domain';
 
 // useCommits owns the commit-picker list state for the currently open
 // repository. load(limit) reaches into the bridge and fills `items`; opening
 // a specific commit still belongs to App.vue (it mutates RepositoryState).
 export interface UseCommits {
-    items: Ref<CommitSummary[]>;
-    loading: Ref<boolean>;
-    error: Ref<string>;
-    load: (limit?: number) => Promise<void>;
-    reset: () => void;
+	items: Ref<CommitSummary[]>;
+	loading: Ref<boolean>;
+	error: Ref<string>;
+	load: (limit?: number) => Promise<void>;
+	reset: () => void;
 }
 
 export function useCommits(state: Ref<RepositoryState | null>): UseCommits {
-    const items = ref<CommitSummary[]>([]);
-    const loading = ref(false);
-    const error = ref("");
+	const items = ref<CommitSummary[]>([]);
 
-    async function load(limit = 100): Promise<void> {
-        const current = state.value;
+	const loading = ref(false);
 
-        if (!current) {
-            return;
-        }
+	const error = ref('');
 
-        loading.value = true;
-        error.value = "";
+	async function load(limit = 100): Promise<void> {
+		const current = state.value;
 
-        try {
-            const response = await window.diffApp.listCommits(current.root, limit);
+		if (!current) {
+			return;
+		}
 
-            items.value = response.commits;
-        } catch (cause) {
-            error.value = cause instanceof Error ? cause.message : String(cause);
-        } finally {
-            loading.value = false;
-        }
-    }
+		loading.value = true;
+		error.value = '';
 
-    function reset(): void {
-        items.value = [];
-        error.value = "";
-    }
+		try {
+			const response = await window.diffApp.listCommits(current.root, limit);
 
-    return { items, loading, error, load, reset };
+			items.value = response.commits;
+		} catch (cause) {
+			error.value = cause instanceof Error ? cause.message : String(cause);
+		} finally {
+			loading.value = false;
+		}
+	}
+
+	function reset(): void {
+		items.value = [];
+		error.value = '';
+	}
+
+	return { items, loading, error, load, reset };
 }

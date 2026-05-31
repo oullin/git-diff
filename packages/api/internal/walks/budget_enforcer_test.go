@@ -4,14 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 func TestEnforceBudgetTruncatesOversizedFile(t *testing.T) {
-	files := []review.ChangedFile{
+	files := []repostate.ChangedFile{
 		{
 			Path: "big.go",
-			Sections: []review.DiffSection{
+			Sections: []repostate.DiffSection{
 				{Kind: "patch", Patch: strings.Repeat("a", 5000)},
 			},
 		},
@@ -33,10 +33,10 @@ func TestEnforceBudgetTruncatesOversizedFile(t *testing.T) {
 }
 
 func TestEnforceBudgetStopsOnTotalAndSetsOmittedAfter(t *testing.T) {
-	files := []review.ChangedFile{
-		{Path: "a.go", Sections: []review.DiffSection{{Patch: strings.Repeat("a", 200)}}},
-		{Path: "b.go", Sections: []review.DiffSection{{Patch: strings.Repeat("b", 200)}}},
-		{Path: "c.go", Sections: []review.DiffSection{{Patch: strings.Repeat("c", 200)}}},
+	files := []repostate.ChangedFile{
+		{Path: "a.go", Sections: []repostate.DiffSection{{Patch: strings.Repeat("a", 200)}}},
+		{Path: "b.go", Sections: []repostate.DiffSection{{Patch: strings.Repeat("b", 200)}}},
+		{Path: "c.go", Sections: []repostate.DiffSection{{Patch: strings.Repeat("c", 200)}}},
 	}
 
 	out := enforceBudget(files, Budget{PerFileBytes: 1024, TotalBytes: 300})
@@ -53,7 +53,7 @@ func TestEnforceBudgetStopsOnTotalAndSetsOmittedAfter(t *testing.T) {
 }
 
 func TestEnforceBudgetDefaultsZeroValues(t *testing.T) {
-	files := []review.ChangedFile{{Path: "a.go", Sections: []review.DiffSection{{Patch: "hi"}}}}
+	files := []repostate.ChangedFile{{Path: "a.go", Sections: []repostate.DiffSection{{Patch: "hi"}}}}
 
 	out := enforceBudget(files, Budget{})
 
@@ -67,8 +67,8 @@ func TestEnforceBudgetDefaultsZeroValues(t *testing.T) {
 }
 
 func TestConcatenatePatchesMarksBinarySection(t *testing.T) {
-	file := review.ChangedFile{
-		Sections: []review.DiffSection{
+	file := repostate.ChangedFile{
+		Sections: []repostate.DiffSection{
 			{Kind: "binary", Binary: true},
 			{Kind: "text", Patch: "+foo\n"},
 		},

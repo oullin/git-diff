@@ -80,6 +80,7 @@ func mustMkdir(t *testing.T, path string) {
 
 func mustWrite(t *testing.T, path string, content string) {
 	t.Helper()
+
 	mustMkdir(t, filepath.Dir(path))
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -89,6 +90,7 @@ func mustWrite(t *testing.T, path string, content string) {
 
 func assertFile(t *testing.T, path string, want string) {
 	t.Helper()
+
 	got, err := os.ReadFile(path)
 
 	if err != nil {

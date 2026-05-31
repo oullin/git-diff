@@ -1,60 +1,60 @@
-import { computed, type Ref } from "vue";
-import type { DiffHunkStyle } from "@git-diff/contracts";
-import { diffBgs, type DiffStyleColors } from "@lib/accent";
+import { computed, type Ref } from 'vue';
+import type { DiffHunkStyle } from '@git-diff/domain';
+import { diffBgs, type DiffStyleColors } from '@lib/accent';
 
 /** Kind label for a rendered cell in a split-view diff row. */
-export type DiffCellKind = "ctx" | "add" | "rem" | "empty";
+export type DiffCellKind = 'ctx' | 'add' | 'rem' | 'empty';
 
 export function useDiffStyles(diffStyle: Ref<DiffHunkStyle>) {
-    const colors = computed<DiffStyleColors>(() => diffBgs(diffStyle.value));
+	const colors = computed<DiffStyleColors>(() => diffBgs(diffStyle.value));
 
-    function bgFor(kind: DiffCellKind): string {
-        if (kind === "add") {
-            return colors.value.addBg;
-        }
+	function bgFor(kind: DiffCellKind): string {
+		if (kind === 'add') {
+			return colors.value.addBg;
+		}
 
-        if (kind === "rem") {
-            return colors.value.remBg;
-        }
+		if (kind === 'rem') {
+			return colors.value.remBg;
+		}
 
-        return "transparent";
-    }
+		return 'transparent';
+	}
 
-    function numBgFor(kind: DiffCellKind): string {
-        if (kind === "add") {
-            return colors.value.addNum;
-        }
+	function numBgFor(kind: DiffCellKind): string {
+		if (kind === 'add') {
+			return colors.value.addNum;
+		}
 
-        if (kind === "rem") {
-            return colors.value.remNum;
-        }
+		if (kind === 'rem') {
+			return colors.value.remNum;
+		}
 
-        return "transparent";
-    }
+		return 'transparent';
+	}
 
-    function barFor(kind: DiffCellKind): string {
-        if (kind === "add") {
-            return colors.value.addBar;
-        }
+	function barFor(kind: DiffCellKind): string {
+		if (kind === 'add') {
+			return colors.value.addBar;
+		}
 
-        if (kind === "rem") {
-            return colors.value.remBar;
-        }
+		if (kind === 'rem') {
+			return colors.value.remBar;
+		}
 
-        return "transparent";
-    }
+		return 'transparent';
+	}
 
-    function sign(kind: DiffCellKind): string {
-        if (kind === "add") {
-            return "+";
-        }
+	function sign(kind: DiffCellKind): string {
+		if (kind === 'add') {
+			return '+';
+		}
 
-        if (kind === "rem") {
-            return "−";
-        }
+		if (kind === 'rem') {
+			return '−';
+		}
 
-        return " ";
-    }
+		return ' ';
+	}
 
-    return { colors, bgFor, numBgFor, barFor, sign };
+	return { colors, bgFor, numBgFor, barFor, sign };
 }

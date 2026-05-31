@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/oullin/git-diff/internal/ai"
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 type mockProvider struct {
@@ -17,11 +17,11 @@ type mockProvider struct {
 }
 
 func TestFingerprintForStateIsStableAndOrderSensitive(t *testing.T) {
-	build := func() review.RepositoryState {
-		return review.RepositoryState{
-			Mode:    review.RepositoryModeWorking,
+	build := func() repostate.RepositoryState {
+		return repostate.RepositoryState{
+			Mode:    repostate.RepositoryModeWorking,
 			HeadSHA: "abc",
-			Files: []review.ChangedFile{
+			Files: []repostate.ChangedFile{
 				{Path: "a.go", Fingerprint: "fp-a"},
 				{Path: "b.go", Fingerprint: "fp-b"},
 			},
@@ -43,9 +43,9 @@ func TestFingerprintForStateIsStableAndOrderSensitive(t *testing.T) {
 }
 
 func TestFingerprintMixesProviderID(t *testing.T) {
-	state := review.RepositoryState{
-		Mode:  review.RepositoryModeWorking,
-		Files: []review.ChangedFile{{Path: "x.go", Fingerprint: "fp"}},
+	state := repostate.RepositoryState{
+		Mode:  repostate.RepositoryModeWorking,
+		Files: []repostate.ChangedFile{{Path: "x.go", Fingerprint: "fp"}},
 	}
 
 	if FingerprintForStateAndProvider(state, "anthropic") == FingerprintForStateAndProvider(state, "codex") {
@@ -54,13 +54,13 @@ func TestFingerprintMixesProviderID(t *testing.T) {
 }
 
 func TestBuildPromptIncludesPathsAndTruncates(t *testing.T) {
-	state := review.RepositoryState{
+	state := repostate.RepositoryState{
 		Root: "/repo",
-		Mode: review.RepositoryModeWorking,
-		Files: []review.ChangedFile{
+		Mode: repostate.RepositoryModeWorking,
+		Files: []repostate.ChangedFile{
 			{
 				Path: "src/main.ts",
-				Sections: []review.DiffSection{
+				Sections: []repostate.DiffSection{
 					{Kind: "unstaged", Patch: "@@ -1 +1,2 @@\n+console.log('hi')\n"},
 				},
 			},
@@ -79,10 +79,10 @@ func TestBuildPromptIncludesPathsAndTruncates(t *testing.T) {
 }
 
 func TestEnforceBudgetStopsAtTotalCap(t *testing.T) {
-	files := []review.ChangedFile{
-		{Path: "a", Sections: []review.DiffSection{{Patch: strings.Repeat("x", 40)}}},
-		{Path: "b", Sections: []review.DiffSection{{Patch: strings.Repeat("y", 40)}}},
-		{Path: "c", Sections: []review.DiffSection{{Patch: strings.Repeat("z", 40)}}},
+	files := []repostate.ChangedFile{
+		{Path: "a", Sections: []repostate.DiffSection{{Patch: strings.Repeat("x", 40)}}},
+		{Path: "b", Sections: []repostate.DiffSection{{Patch: strings.Repeat("y", 40)}}},
+		{Path: "c", Sections: []repostate.DiffSection{{Patch: strings.Repeat("z", 40)}}},
 	}
 
 	got := enforceBudget(files, Budget{PerFileBytes: 100, TotalBytes: 50})
@@ -125,8 +125,8 @@ func TestParseLeavesGroupsEmptyForLegacyOrderNotes(t *testing.T) {
 }
 
 func TestValidateDropsHallucinatedPathsAndNormalisesEnums(t *testing.T) {
-	state := review.RepositoryState{
-		Files: []review.ChangedFile{{Path: "real.go"}},
+	state := repostate.RepositoryState{
+		Files: []repostate.ChangedFile{{Path: "real.go"}},
 	}
 
 	parsed := parsedResponse{
@@ -160,8 +160,8 @@ func TestValidateDropsHallucinatedPathsAndNormalisesEnums(t *testing.T) {
 }
 
 func TestValidateRejectsAllFiltered(t *testing.T) {
-	state := review.RepositoryState{
-		Files: []review.ChangedFile{{Path: "real.go"}},
+	state := repostate.RepositoryState{
+		Files: []repostate.ChangedFile{{Path: "real.go"}},
 	}
 
 	parsed := parsedResponse{
@@ -182,9 +182,9 @@ func TestGenerateOrchestratesProviderParseValidate(t *testing.T) {
 		text: `{"summary":"theme","groups":[{"id":"g","title":"T","rationale":"r","files":[{"path":"x.go","note":"check","action":"review","impact":"contained"}]}]}`,
 	}
 
-	state := review.RepositoryState{
-		Mode:  review.RepositoryModeWorking,
-		Files: []review.ChangedFile{{Path: "x.go"}},
+	state := repostate.RepositoryState{
+		Mode:  repostate.RepositoryModeWorking,
+		Files: []repostate.ChangedFile{{Path: "x.go"}},
 	}
 
 	got, err := Generate(context.Background(), Request{Provider: provider, State: state})
@@ -203,7 +203,7 @@ func TestGenerateOrchestratesProviderParseValidate(t *testing.T) {
 }
 
 func TestGenerateRequiresProvider(t *testing.T) {
-	_, err := Generate(context.Background(), Request{State: review.RepositoryState{}})
+	_, err := Generate(context.Background(), Request{State: repostate.RepositoryState{}})
 
 	if !errors.Is(err, ErrProviderRequired) {
 		t.Fatalf("err = %v, want ErrProviderRequired", err)
@@ -213,7 +213,7 @@ func TestGenerateRequiresProvider(t *testing.T) {
 func TestGenerateShortCircuitsOnEmptyState(t *testing.T) {
 	provider := &mockProvider{shouldNotBeCalled: true}
 
-	got, err := Generate(context.Background(), Request{Provider: provider, State: review.RepositoryState{}})
+	got, err := Generate(context.Background(), Request{Provider: provider, State: repostate.RepositoryState{}})
 
 	if err != nil {
 		t.Fatal(err)

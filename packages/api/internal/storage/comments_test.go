@@ -120,6 +120,86 @@ func TestDeleteReviewCommentIsSoftDelete(t *testing.T) {
 	}
 }
 
+func TestSetReviewCommentResolvedTogglesAndEmitsEvent(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := seedUser(t, store, "alice")
+	review := seedReview(t, store, user.ID, ReviewSessionStart{RepoRoot: "/r"})
+	comment := seedReviewComment(t, store, review.ID, ReviewCommentInput{FilePath: "a.go", LineNumber: 1})
+
+	resolved, err := store.Comments.SetReviewCommentResolved(ctx, review.ID, comment.ID, true)
+
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+
+	if !resolved.Resolved {
+		t.Fatalf("expected comment resolved")
+	}
+
+	if resolved.ResolvedAt == "" {
+		t.Fatalf("expected resolved_at set after resolve")
+	}
+
+	reopened, err := store.Comments.SetReviewCommentResolved(ctx, review.ID, comment.ID, false)
+
+	if err != nil {
+		t.Fatalf("unresolve: %v", err)
+	}
+
+	if reopened.Resolved {
+		t.Fatalf("expected comment unresolved")
+	}
+
+	if reopened.ResolvedAt != "" {
+		t.Fatalf("expected resolved_at cleared after unresolve, got %q", reopened.ResolvedAt)
+	}
+
+	events, _ := store.ReviewEvents.List(ctx, review.ID)
+
+	foundResolved := false
+	foundUnresolved := false
+
+	for _, e := range events {
+		switch e.Type {
+		case "comment_resolved":
+			foundResolved = true
+		case "comment_unresolved":
+			foundUnresolved = true
+		}
+	}
+
+	if !foundResolved || !foundUnresolved {
+		t.Fatalf("expected resolve and unresolve events, got %v", events)
+	}
+}
+
+func TestListReviewCommentsIncludesResolved(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	user := seedUser(t, store, "alice")
+	review := seedReview(t, store, user.ID, ReviewSessionStart{RepoRoot: "/r"})
+	comment := seedReviewComment(t, store, review.ID, ReviewCommentInput{FilePath: "a.go", LineNumber: 1})
+
+	if _, err := store.Comments.SetReviewCommentResolved(ctx, review.ID, comment.ID, true); err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+
+	list, err := store.Comments.ListReviewComments(ctx, review.ID)
+
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+
+	if len(list) != 1 {
+		t.Fatalf("expected resolved comment still listed, got %d", len(list))
+	}
+
+	if !list[0].Resolved {
+		t.Fatalf("expected listed comment to be resolved")
+	}
+}
+
 func TestListReviewCommentsOrderedByCreatedAt(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)

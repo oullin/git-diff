@@ -4,17 +4,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 func TestBuildPromptIncludesInstructionsAndContext(t *testing.T) {
-	state := review.RepositoryState{
+	state := repostate.RepositoryState{
 		Root:      "/r",
 		Mode:      "working",
 		CommitSHA: "abc123",
-		Files: []review.ChangedFile{
-			{Path: "a.go", Status: review.StatusModified, Additions: 2, Deletions: 1,
-				Sections: []review.DiffSection{{Patch: "+ hi\n- bye"}}},
+		Files: []repostate.ChangedFile{
+			{Path: "a.go", Status: repostate.StatusModified, Additions: 2, Deletions: 1,
+				Sections: []repostate.DiffSection{{Patch: "+ hi\n- bye"}}},
 		},
 	}
 
@@ -42,9 +42,9 @@ func TestBuildPromptIncludesInstructionsAndContext(t *testing.T) {
 }
 
 func TestBuildPromptOmitsCommitWhenEmpty(t *testing.T) {
-	state := review.RepositoryState{
+	state := repostate.RepositoryState{
 		Root: "/r", Mode: "working",
-		Files: []review.ChangedFile{{Path: "a.go", Sections: []review.DiffSection{{Patch: "+hi"}}}},
+		Files: []repostate.ChangedFile{{Path: "a.go", Sections: []repostate.DiffSection{{Patch: "+hi"}}}},
 	}
 
 	out := BuildPrompt(PromptInput{State: state, Budget: DefaultBudget()})
@@ -55,11 +55,11 @@ func TestBuildPromptOmitsCommitWhenEmpty(t *testing.T) {
 }
 
 func TestBuildPromptAddsOmittedMarkerWhenBudgetCutsTail(t *testing.T) {
-	state := review.RepositoryState{
-		Files: []review.ChangedFile{
-			{Path: "a.go", Sections: []review.DiffSection{{Patch: strings.Repeat("a", 500)}}},
-			{Path: "b.go", Sections: []review.DiffSection{{Patch: strings.Repeat("b", 500)}}},
-			{Path: "c.go", Sections: []review.DiffSection{{Patch: strings.Repeat("c", 500)}}},
+	state := repostate.RepositoryState{
+		Files: []repostate.ChangedFile{
+			{Path: "a.go", Sections: []repostate.DiffSection{{Patch: strings.Repeat("a", 500)}}},
+			{Path: "b.go", Sections: []repostate.DiffSection{{Patch: strings.Repeat("b", 500)}}},
+			{Path: "c.go", Sections: []repostate.DiffSection{{Patch: strings.Repeat("c", 500)}}},
 		},
 	}
 

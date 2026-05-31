@@ -76,7 +76,7 @@ func TestFingerprintChangesWithContent(t *testing.T) {
 func TestPathSectionID(t *testing.T) {
 	file := ChangedFile{Path: "src/main.go"}
 
-	if got := file.pathSectionID("staged"); got != "staged:src/main.go" {
+	if got := pathSectionID(file, "staged"); got != "staged:src/main.go" {
 		t.Fatalf("unexpected id %q", got)
 	}
 }

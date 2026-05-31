@@ -55,9 +55,43 @@ func TestMigratorRunOnFreshDB(t *testing.T) {
 		t.Fatalf("version: %v", err)
 	}
 
-	if !ok || v != 1 || dirty {
-		t.Fatalf("version = %d dirty=%t ok=%t, want version=1 clean ok=true", v, dirty, ok)
+	if !ok || v != 2 || dirty {
+		t.Fatalf("version = %d dirty=%t ok=%t, want version=2 clean ok=true", v, dirty, ok)
 	}
+
+	if !columnExists(t, db, "review_comments", "resolved") {
+		t.Fatalf("expected review_comments.resolved column after migrate")
+	}
+
+	if !columnExists(t, db, "review_comments", "resolved_at") {
+		t.Fatalf("expected review_comments.resolved_at column after migrate")
+	}
+}
+
+func columnExists(t *testing.T, db *sql.DB, table, column string) bool {
+	t.Helper()
+
+	rows, err := db.Query("SELECT name FROM pragma_table_info(?)", table)
+
+	if err != nil {
+		t.Fatalf("pragma_table_info %s: %v", table, err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+
+		if err := rows.Scan(&name); err != nil {
+			t.Fatalf("scan column name: %v", err)
+		}
+
+		if name == column {
+			return true
+		}
+	}
+
+	return false
 }
 
 func TestMigratorRunIsIdempotent(t *testing.T) {

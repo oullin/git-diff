@@ -3,11 +3,11 @@ package walks
 import (
 	"testing"
 
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 )
 
 func TestValidateDropsUnknownPaths(t *testing.T) {
-	state := review.RepositoryState{Files: []review.ChangedFile{{Path: "a.go"}}}
+	state := repostate.RepositoryState{Files: []repostate.ChangedFile{{Path: "a.go"}}}
 
 	parsed := parsedResponse{
 		Summary: "x",
@@ -39,7 +39,7 @@ func TestValidateDropsUnknownPaths(t *testing.T) {
 }
 
 func TestValidateRemovesEmptyGroups(t *testing.T) {
-	state := review.RepositoryState{Files: []review.ChangedFile{{Path: "a.go"}}}
+	state := repostate.RepositoryState{Files: []repostate.ChangedFile{{Path: "a.go"}}}
 
 	parsed := parsedResponse{
 		Groups: []Group{
@@ -60,7 +60,7 @@ func TestValidateRemovesEmptyGroups(t *testing.T) {
 }
 
 func TestValidateErrorsWhenNothingRemains(t *testing.T) {
-	state := review.RepositoryState{Files: []review.ChangedFile{{Path: "a.go"}}}
+	state := repostate.RepositoryState{Files: []repostate.ChangedFile{{Path: "a.go"}}}
 
 	parsed := parsedResponse{
 		Groups: []Group{
@@ -74,7 +74,7 @@ func TestValidateErrorsWhenNothingRemains(t *testing.T) {
 }
 
 func TestValidateNormalisesActionAndImpact(t *testing.T) {
-	state := review.RepositoryState{Files: []review.ChangedFile{{Path: "a.go"}}}
+	state := repostate.RepositoryState{Files: []repostate.ChangedFile{{Path: "a.go"}}}
 
 	parsed := parsedResponse{
 		Groups: []Group{

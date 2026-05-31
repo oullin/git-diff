@@ -1,6 +1,6 @@
-import { defineStore } from "pinia";
-import { ref } from "vue";
-import type { AuthLoginResponse, AuthUser } from "@git-diff/contracts";
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import type { AuthLoginResponse, AuthUser } from '@git-diff/domain';
 
 // useAuthStore owns the rendered-side auth session: the four-state mode
 // machine, the OS-derived username the backend pins to, and the current
@@ -8,68 +8,71 @@ import type { AuthLoginResponse, AuthUser } from "@git-diff/contracts";
 // login/logout/wipe transitions just update local state -- the heavy
 // lifting (preferences hydration, repo refresh, launch-intent replay) is
 // orchestrated by App.vue because it spans multiple domains.
-export type AuthMode = "loading" | "setup" | "login" | "ready";
+export type AuthMode = 'loading' | 'setup' | 'login' | 'ready';
 
-export const useAuthStore = defineStore("auth", () => {
-    const mode = ref<AuthMode>("loading");
-    const osUsername = ref("");
-    const currentUser = ref<AuthUser | null>(null);
-    const bootstrapError = ref("");
+export const useAuthStore = defineStore('auth', () => {
+	const mode = ref<AuthMode>('loading');
 
-    async function bootstrap(): Promise<{ entered: boolean }> {
-        mode.value = "loading";
+	const osUsername = ref('');
 
-        try {
-            const result = await window.diffApp.authBootstrap();
+	const currentUser = ref<AuthUser | null>(null);
 
-            osUsername.value = result.state.osUsername;
+	const bootstrapError = ref('');
 
-            if (result.user) {
-                currentUser.value = result.user;
-                mode.value = "ready";
+	async function bootstrap(): Promise<{ entered: boolean }> {
+		mode.value = 'loading';
 
-                return { entered: true };
-            }
+		try {
+			const result = await window.diffApp.authBootstrap();
 
-            mode.value = result.state.needsSetup ? "setup" : "login";
+			osUsername.value = result.state.osUsername;
 
-            return { entered: false };
-        } catch (cause) {
-            bootstrapError.value = cause instanceof Error ? cause.message : String(cause);
-            mode.value = "login";
+			if (result.user) {
+				currentUser.value = result.user;
+				mode.value = 'ready';
 
-            return { entered: false };
-        }
-    }
+				return { entered: true };
+			}
 
-    function complete(response: AuthLoginResponse): void {
-        currentUser.value = response.user;
-        mode.value = "ready";
-    }
+			mode.value = result.state.needsSetup ? 'setup' : 'login';
 
-    function markWiped(): void {
-        currentUser.value = null;
-        mode.value = "setup";
-    }
+			return { entered: false };
+		} catch (cause) {
+			bootstrapError.value = cause instanceof Error ? cause.message : String(cause);
+			mode.value = 'login';
 
-    async function logout(): Promise<void> {
-        try {
-            await window.diffApp.authLogout();
-        } catch {
-            // ignore: we reset locally either way.
-        }
+			return { entered: false };
+		}
+	}
 
-        currentUser.value = null;
-    }
+	function complete(response: AuthLoginResponse): void {
+		currentUser.value = response.user;
+		mode.value = 'ready';
+	}
 
-    return {
-        mode,
-        osUsername,
-        currentUser,
-        bootstrapError,
-        bootstrap,
-        complete,
-        markWiped,
-        logout,
-    };
+	function markWiped(): void {
+		currentUser.value = null;
+		mode.value = 'setup';
+	}
+
+	async function logout(): Promise<void> {
+		try {
+			await window.diffApp.authLogout();
+		} catch {
+			// ignore: we reset locally either way.
+		}
+
+		currentUser.value = null;
+	}
+
+	return {
+		mode,
+		osUsername,
+		currentUser,
+		bootstrapError,
+		bootstrap,
+		complete,
+		markWiped,
+		logout,
+	};
 });

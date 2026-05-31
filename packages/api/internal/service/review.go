@@ -81,3 +81,13 @@ func (s *ReviewService) UpdateComment(
 func (s *ReviewService) DeleteComment(ctx context.Context, reviewID, commentID int64) error {
 	return s.comments.DeleteReviewComment(ctx, reviewID, commentID)
 }
+
+// SetCommentResolved toggles the resolved state and emits a
+// "comment_resolved"/"comment_unresolved" event.
+func (s *ReviewService) SetCommentResolved(
+	ctx context.Context,
+	reviewID, commentID int64,
+	resolved bool,
+) (storage.ReviewComment, error) {
+	return s.comments.SetReviewCommentResolved(ctx, reviewID, commentID, resolved)
+}

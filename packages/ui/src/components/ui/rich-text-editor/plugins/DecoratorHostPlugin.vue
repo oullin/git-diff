@@ -1,47 +1,35 @@
 <script lang="ts">
-import {
-    Fragment,
-    Teleport,
-    defineComponent,
-    h,
-    onBeforeUnmount,
-    shallowRef,
-    type VNode,
-} from "vue";
-import { useLexicalComposer } from "lexical-vue";
+import { useLexicalComposer } from 'lexical-vue';
+
+import { Fragment, Teleport, defineComponent, h, onBeforeUnmount, shallowRef, type VNode } from 'vue';
 
 export default defineComponent({
-    name: "DecoratorHostPlugin",
-    setup() {
-        const editor = useLexicalComposer();
-        const decorators = shallowRef(editor.getDecorators<VNode>());
+	name: 'DecoratorHostPlugin',
+	setup() {
+		const editor = useLexicalComposer();
 
-        const unregister = editor.registerDecoratorListener<VNode>((next) => {
-            decorators.value = next;
-        });
+		const decorators = shallowRef(editor.getDecorators<VNode>());
 
-        onBeforeUnmount(() => unregister());
+		const unregister = editor.registerDecoratorListener<VNode>((next) => {
+			decorators.value = next;
+		});
 
-        return () => {
-            const map = decorators.value;
-            const teleports: VNode[] = [];
+		onBeforeUnmount(() => unregister());
 
-            for (const nodeKey of Object.keys(map)) {
-                const target = editor.getElementByKey(nodeKey);
+		return () => {
+			const map = decorators.value;
+			const teleports: VNode[] = [];
 
-                if (target !== null) {
-                    teleports.push(
-                        h(
-                            Teleport as unknown as object,
-                            { to: target, key: nodeKey },
-                            () => map[nodeKey],
-                        ) as VNode,
-                    );
-                }
-            }
+			for (const nodeKey of Object.keys(map)) {
+				const target = editor.getElementByKey(nodeKey);
 
-            return h(Fragment, null, teleports);
-        };
-    },
+				if (target !== null) {
+					teleports.push(h(Teleport as unknown as object, { to: target, key: nodeKey }, () => map[nodeKey]) as VNode);
+				}
+			}
+
+			return h(Fragment, null, teleports);
+		};
+	},
 });
 </script>

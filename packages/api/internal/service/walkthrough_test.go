@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/oullin/git-diff/internal/ai"
-	"github.com/oullin/git-diff/internal/review"
+	"github.com/oullin/git-diff/internal/domain/repostate"
 	"github.com/oullin/git-diff/internal/storage"
 	"github.com/oullin/git-diff/internal/usercfg"
 	"github.com/oullin/git-diff/internal/walks"
@@ -23,7 +23,7 @@ type stubProvider struct {
 	err      error
 }
 
-func walksFingerprint(state review.RepositoryState, providerID string) string {
+func walksFingerprint(state repostate.RepositoryState, providerID string) string {
 	return walks.FingerprintForStateAndProvider(state, providerID)
 }
 
@@ -55,7 +55,7 @@ func TestWalkthroughGenerateProviderUnavailable(t *testing.T) {
 	svc := newWalkthroughService(t, store, providers, reader)
 
 	_, err := svc.Generate(context.Background(), GenerateRequest{
-		State: review.RepositoryState{Root: "/r"},
+		State: repostate.RepositoryState{Root: "/r"},
 		Kind:  "branch",
 	})
 
@@ -85,7 +85,7 @@ func TestWalkthroughGenerateReturnsCachedWhenFingerprintMatches(t *testing.T) {
 	// Pre-seed a walkthrough whose Fingerprint matches the one the service
 	// will compute. Because the service derives the fingerprint from
 	// (state, provider.ID()), we can construct it the same way.
-	state := review.RepositoryState{Root: "/r"}
+	state := repostate.RepositoryState{Root: "/r"}
 	expectedFP := walksFingerprint(state, provider.ID())
 
 	if err := store.Walkthroughs.UpsertWalkthrough(ctx, storage.WalkthroughRecord{
@@ -137,7 +137,7 @@ func TestWalkthroughGenerateBypassesCacheOnRefresh(t *testing.T) {
 	reader := usercfg.NewAtomicReader(usercfg.Defaults())
 	svc := newWalkthroughService(t, store, providers, reader)
 
-	state := review.RepositoryState{Root: "/r"}
+	state := repostate.RepositoryState{Root: "/r"}
 	expectedFP := walksFingerprint(state, provider.ID())
 
 	if err := store.Walkthroughs.UpsertWalkthrough(ctx, storage.WalkthroughRecord{

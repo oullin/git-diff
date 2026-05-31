@@ -1,100 +1,59 @@
-import type { ViteDevServer } from "vite";
-import { waitForViteReady } from "#scripts/dev/http.js";
-import { appName, portlessEnv, portlessPort, uiDir } from "#scripts/dev/paths.js";
-import { output, run } from "#scripts/dev/processes.js";
-import { delay } from "#scripts/dev/timing.js";
+import type { ViteDevServer } from 'vite';
+import { waitForViteReady } from '#scripts/dev/http.js';
+import { appName, portlessEnv, portlessPort, uiDir } from '#scripts/dev/paths.js';
+import { output, run } from '#scripts/dev/processes.js';
+import { delay } from '#scripts/dev/timing.js';
 
 export async function startPortlessRoute(server: ViteDevServer, port: number): Promise<string> {
-    await ensurePortlessProxy();
-    await run(
-        "pnpm",
-        ["exec", "portless", "alias", appName, String(port), "--force"],
-        uiDir,
-        portlessEnv,
-    );
+	await ensurePortlessProxy();
 
-    return waitForPortless(server);
+	await run('pnpm', ['exec', 'portless', 'alias', appName, String(port), '--force'], uiDir, portlessEnv);
+
+	return waitForPortless(server);
 }
 
 async function ensurePortlessProxy(): Promise<void> {
-    try {
-        await output(
-            "pnpm",
-            [
-                "exec",
-                "portless",
-                "proxy",
-                "start",
-                "--port",
-                portlessPort,
-                "--https",
-                "--tld",
-                "localhost",
-            ],
-            uiDir,
-            portlessEnv,
-        );
-    } catch (error) {
-        if (!(error instanceof Error) || !error.message.includes("different config")) {
-            throw error;
-        }
+	try {
+		await output('pnpm', ['exec', 'portless', 'proxy', 'start', '--port', portlessPort, '--https', '--tld', 'localhost'], uiDir, portlessEnv);
+	} catch (error) {
+		if (!(error instanceof Error) || !error.message.includes('different config')) {
+			throw error;
+		}
 
-        await output(
-            "pnpm",
-            ["exec", "portless", "proxy", "stop", "--port", portlessPort],
-            uiDir,
-            portlessEnv,
-        );
-        await output(
-            "pnpm",
-            [
-                "exec",
-                "portless",
-                "proxy",
-                "start",
-                "--port",
-                portlessPort,
-                "--https",
-                "--tld",
-                "localhost",
-            ],
-            uiDir,
-            portlessEnv,
-        );
-    }
+		await output('pnpm', ['exec', 'portless', 'proxy', 'stop', '--port', portlessPort], uiDir, portlessEnv);
+
+		await output('pnpm', ['exec', 'portless', 'proxy', 'start', '--port', portlessPort, '--https', '--tld', 'localhost'], uiDir, portlessEnv);
+	}
 }
 
 export async function removePortlessAlias(): Promise<void> {
-    try {
-        await run("pnpm", ["exec", "portless", "alias", "--remove", appName], uiDir, portlessEnv);
-    } catch {}
+	try {
+		await run('pnpm', ['exec', 'portless', 'alias', '--remove', appName], uiDir, portlessEnv);
+	} catch {}
 }
 
 async function waitForPortless(server: ViteDevServer, timeoutMs = 30000): Promise<string> {
-    console.log("Waiting for portless route");
-    const deadline = Date.now() + timeoutMs;
+	console.log('Waiting for portless route');
 
-    for (;;) {
-        try {
-            const url = await output(
-                "pnpm",
-                ["exec", "portless", "get", appName],
-                uiDir,
-                portlessEnv,
-            );
-            const trimmed = url.trim();
+	const deadline = Date.now() + timeoutMs;
 
-            if (trimmed) {
-                waitForViteReady(server);
+	for (;;) {
+		try {
+			const url = await output('pnpm', ['exec', 'portless', 'get', appName], uiDir, portlessEnv);
 
-                return trimmed;
-            }
-        } catch {}
+			const trimmed = url.trim();
 
-        if (Date.now() >= deadline) {
-            throw new Error(`portless route was not ready after ${timeoutMs}ms`);
-        }
+			if (trimmed) {
+				waitForViteReady(server);
 
-        await delay(500);
-    }
+				return trimmed;
+			}
+		} catch {}
+
+		if (Date.now() >= deadline) {
+			throw new Error(`portless route was not ready after ${timeoutMs}ms`);
+		}
+
+		await delay(500);
+	}
 }

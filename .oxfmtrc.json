@@ -1,8 +1,9 @@
 {
-    "$schema": "./node_modules/oxfmt/configuration_schema.json",
-    "tabWidth": 4,
-    "useTabs": false,
-    "vueIndentScriptAndStyle": false,
-    "endOfLine": "lf",
-    "insertFinalNewline": true
+	"semi": true,
+	"singleQuote": true,
+	"trailingComma": "all",
+	"printWidth": 200,
+	"tabWidth": 4,
+	"useTabs": true,
+	"arrowParens": "always"
 }

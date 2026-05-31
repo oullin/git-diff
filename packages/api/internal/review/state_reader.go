@@ -136,7 +136,7 @@ func assembleChangedFiles(
 		if entry.index != ' ' && entry.index != '?' {
 			patch := string(staged[entry.path])
 			binary := isBinaryPatch(patch)
-			file.Sections = append(file.Sections, DiffSection{ID: file.pathSectionID("staged"), Kind: "staged", Patch: patch, Binary: binary})
+			file.Sections = append(file.Sections, DiffSection{ID: pathSectionID(file, "staged"), Kind: "staged", Patch: patch, Binary: binary})
 			file.Binary = file.Binary || binary
 			add, del := countPatchLines(patch)
 			file.Additions += add
@@ -146,7 +146,7 @@ func assembleChangedFiles(
 		if entry.work != ' ' && entry.work != '?' {
 			patch := string(unstaged[entry.path])
 			binary := isBinaryPatch(patch)
-			file.Sections = append(file.Sections, DiffSection{ID: file.pathSectionID("unstaged"), Kind: "unstaged", Patch: patch, Binary: binary})
+			file.Sections = append(file.Sections, DiffSection{ID: pathSectionID(file, "unstaged"), Kind: "unstaged", Patch: patch, Binary: binary})
 			file.Binary = file.Binary || binary
 			add, del := countPatchLines(patch)
 			file.Additions += add
@@ -155,7 +155,7 @@ func assembleChangedFiles(
 
 		if entry.index == '?' && entry.work == '?' {
 			patch, binary := untrackedPatch(root, entry.path)
-			file.Sections = append(file.Sections, DiffSection{ID: file.pathSectionID("untracked"), Kind: "untracked", Patch: patch, Binary: binary})
+			file.Sections = append(file.Sections, DiffSection{ID: pathSectionID(file, "untracked"), Kind: "untracked", Patch: patch, Binary: binary})
 			file.Binary = binary
 			file.Additions, file.Deletions = countPatchLines(patch)
 		}

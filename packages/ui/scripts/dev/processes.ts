@@ -1,126 +1,106 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { delay } from "#scripts/dev/timing.js";
+import { spawn, type ChildProcess } from 'node:child_process';
+import { delay } from '#scripts/dev/timing.js';
 
-export type StartSpec = readonly [
-    command: string,
-    args: string[],
-    cwd: string,
-    env?: NodeJS.ProcessEnv,
-];
+export type StartSpec = readonly [command: string, args: string[], cwd: string, env?: NodeJS.ProcessEnv];
 
 const children = new Map<string, ChildProcess>();
+
 let stoppingChildren = false;
 
-export function start(
-    name: string,
-    [command, args, cwd, env = {}]: StartSpec,
-    onUnexpectedExit: (name: string, code: number | null, signal: NodeJS.Signals | null) => void,
-): void {
-    const child = spawn(command, args, {
-        cwd,
-        detached: true,
-        env: { ...process.env, ...env },
-        stdio: "inherit",
-    });
+export function start(name: string, [command, args, cwd, env = {}]: StartSpec, onUnexpectedExit: (name: string, code: number | null, signal: NodeJS.Signals | null) => void): void {
+	const child = spawn(command, args, {
+		cwd,
+		detached: true,
+		env: { ...process.env, ...env },
+		stdio: 'inherit',
+	});
 
-    children.set(name, child);
+	children.set(name, child);
 
-    child.on("exit", (code, signal) => {
-        children.delete(name);
+	child.on('exit', (code, signal) => {
+		children.delete(name);
 
-        if (!stoppingChildren && code !== 0) {
-            onUnexpectedExit(name, code, signal);
-        }
-    });
+		if (!stoppingChildren && code !== 0) {
+			onUnexpectedExit(name, code, signal);
+		}
+	});
 }
 
-export function run(
-    command: string,
-    args: string[],
-    cwd: string,
-    env: NodeJS.ProcessEnv = {},
-): Promise<void> {
-    return new Promise((resolveRun, rejectRun) => {
-        const child = spawn(command, args, {
-            cwd,
-            env: { ...process.env, ...env },
-            stdio: "inherit",
-        });
+export function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv = {}): Promise<void> {
+	return new Promise((resolveRun, rejectRun) => {
+		const child = spawn(command, args, {
+			cwd,
+			env: { ...process.env, ...env },
+			stdio: 'inherit',
+		});
 
-        child.on("exit", (code, signal) => {
-            if (code === 0) {
-                resolveRun();
+		child.on('exit', (code, signal) => {
+			if (code === 0) {
+				resolveRun();
 
-                return;
-            }
+				return;
+			}
 
-            rejectRun(
-                new Error(
-                    `${command} ${args.join(" ")} exited with ${code ?? signal ?? "unknown status"}`,
-                ),
-            );
-        });
-    });
+			rejectRun(new Error(`${command} ${args.join(' ')} exited with ${code ?? signal ?? 'unknown status'}`));
+		});
+	});
 }
 
-export function output(
-    command: string,
-    args: string[],
-    cwd: string,
-    env: NodeJS.ProcessEnv = {},
-): Promise<string> {
-    return new Promise((resolveOutput, rejectOutput) => {
-        const child = spawn(command, args, {
-            cwd,
-            env: { ...process.env, ...env },
-            stdio: ["ignore", "pipe", "pipe"],
-        });
-        let stdout = "";
-        let stderr = "";
+export function output(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv = {}): Promise<string> {
+	return new Promise((resolveOutput, rejectOutput) => {
+		const child = spawn(command, args, {
+			cwd,
+			env: { ...process.env, ...env },
+			stdio: ['ignore', 'pipe', 'pipe'],
+		});
 
-        child.stdout.on("data", (chunk: Buffer) => {
-            stdout += chunk.toString("utf8");
-        });
+		let stdout = '';
+		let stderr = '';
 
-        child.stderr.on("data", (chunk: Buffer) => {
-            stderr += chunk.toString("utf8");
-        });
+		child.stdout.on('data', (chunk: Buffer) => {
+			stdout += chunk.toString('utf8');
+		});
 
-        child.on("exit", (code) => {
-            if (code === 0) {
-                resolveOutput(stdout);
+		child.stderr.on('data', (chunk: Buffer) => {
+			stderr += chunk.toString('utf8');
+		});
 
-                return;
-            }
+		child.on('exit', (code) => {
+			if (code === 0) {
+				resolveOutput(stdout);
 
-            rejectOutput(new Error(stderr || `${command} ${args.join(" ")} exited with ${code}`));
-        });
-    });
+				return;
+			}
+
+			rejectOutput(new Error(stderr || `${command} ${args.join(' ')} exited with ${code}`));
+		});
+	});
 }
 
 export async function stopChildren(): Promise<void> {
-    stoppingChildren = true;
-    const running = [...children.values()];
+	stoppingChildren = true;
 
-    children.clear();
+	const running = [...children.values()];
 
-    for (const child of running) {
-        if (child.pid) {
-            try {
-                process.kill(-child.pid, "SIGTERM");
-            } catch {}
-        }
-    }
+	children.clear();
 
-    await delay(500);
+	for (const child of running) {
+		if (child.pid) {
+			try {
+				process.kill(-child.pid, 'SIGTERM');
+			} catch {}
+		}
+	}
 
-    for (const child of running) {
-        if (child.pid) {
-            try {
-                process.kill(-child.pid, "SIGKILL");
-            } catch {}
-        }
-    }
+	await delay(500);
 
-    stoppingChildren = false;
+	for (const child of running) {
+		if (child.pid) {
+			try {
+				process.kill(-child.pid, 'SIGKILL');
+			} catch {}
+		}
+	}
+
+	stoppingChildren = false;
 }

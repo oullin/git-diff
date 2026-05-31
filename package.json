@@ -5,17 +5,15 @@
         "build": "pnpm --dir packages/tools run turbo -- run build",
         "test": "pnpm --dir packages/tools run turbo -- run test",
         "dev": "pnpm --dir packages/tools run turbo -- run dev --filter=ui",
-        "format": "pnpm --dir packages/tools run turbo -- run format --filter=ui --filter=@git-diff/bridge --filter=@git-diff/contracts",
-        "format:check": "pnpm --dir packages/tools run turbo -- run format:check --filter=ui --filter=@git-diff/bridge --filter=@git-diff/contracts",
-        "lint": "pnpm --dir packages/tools run turbo -- run lint --filter=ui --filter=@git-diff/bridge --filter=@git-diff/contracts",
+        "format": "make format",
+        "format-all": "make format-all",
+        "lint": "pnpm --dir packages/tools run turbo -- run lint --filter=ui --filter=@git-diff/bridge --filter=@git-diff/domain",
         "tooling:check": "pnpm --dir packages/ui exec tsx scripts/check-tooling-policy.ts ../..",
         "check": "pnpm run tooling:check && pnpm --dir packages/tools run turbo -- run build test",
         "release:mac:unsigned": "pnpm --dir packages/tools run release:mac:unsigned"
     },
     "devDependencies": {
         "@types/node": "^25.6.2",
-        "oxc-parser": "latest",
-        "oxfmt": "0.48.0",
         "oxlint": "1.63.0",
         "tsx": "^4.21.0",
         "turbo": "2.9.12"

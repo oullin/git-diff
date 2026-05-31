@@ -1,43 +1,37 @@
-import { spawn } from "node:child_process";
+import { spawn } from 'node:child_process';
 
-export function openTerminalCommand(
-    command: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-    return new Promise((resolveResult) => {
-        const script = [
-            'tell application "Terminal"',
-            "  activate",
-            `  do script "${appleScriptString(command)}"`,
-            "end tell",
-        ].join("\n");
-        const child = spawn("/usr/bin/osascript", ["-e", script], {
-            stdio: ["ignore", "ignore", "pipe"],
-        });
-        let stderr = "";
+export function openTerminalCommand(command: string): Promise<{ ok: true } | { ok: false; message: string }> {
+	return new Promise((resolveResult) => {
+		const script = ['tell application "Terminal"', '  activate', `  do script "${appleScriptString(command)}"`, 'end tell'].join('\n');
+		const child = spawn('/usr/bin/osascript', ['-e', script], {
+			stdio: ['ignore', 'ignore', 'pipe'],
+		});
 
-        child.stderr?.on("data", (chunk: Buffer) => {
-            stderr += chunk.toString("utf8");
-        });
+		let stderr = '';
 
-        child.on("error", (error) => {
-            resolveResult({ ok: false, message: error.message });
-        });
+		child.stderr?.on('data', (chunk: Buffer) => {
+			stderr += chunk.toString('utf8');
+		});
 
-        child.on("exit", (code) => {
-            if (code === 0) {
-                resolveResult({ ok: true });
+		child.on('error', (error) => {
+			resolveResult({ ok: false, message: error.message });
+		});
 
-                return;
-            }
+		child.on('exit', (code) => {
+			if (code === 0) {
+				resolveResult({ ok: true });
 
-            resolveResult({
-                ok: false,
-                message: stderr.trim() || `osascript exited with code ${code ?? "unknown"}`,
-            });
-        });
-    });
+				return;
+			}
+
+			resolveResult({
+				ok: false,
+				message: stderr.trim() || `osascript exited with code ${code ?? 'unknown'}`,
+			});
+		});
+	});
 }
 
 function appleScriptString(value: string): string {
-    return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+	return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 }

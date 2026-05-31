@@ -237,6 +237,67 @@ func TestReviewFullLifecycle(t *testing.T) {
 	}
 }
 
+func TestResolveReviewCommentRoundTrip(t *testing.T) {
+	srv, _ := testServer(t, testServerOptions{Authenticated: true})
+	ts := startHTTPServer(t, srv, false)
+
+	create := postReview(t, ts.URL+"/v1/reviews", map[string]string{"repoRoot": "/r"})
+
+	defer create.Body.Close()
+
+	var created struct {
+		ID int64 `json:"id"`
+	}
+
+	if err := json.NewDecoder(create.Body).Decode(&created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	commentResp := postReview(t, fmt.Sprintf("%s/v1/reviews/%d/comments", ts.URL, created.ID), map[string]any{
+		"filePath": "a.go",
+		"side":     "right",
+		"line":     1,
+		"bodyHtml": "<p>v1</p>",
+	})
+
+	var comment struct {
+		ID int64 `json:"id"`
+	}
+
+	if err := json.NewDecoder(commentResp.Body).Decode(&comment); err != nil {
+		t.Fatalf("decode comment: %v", err)
+	}
+
+	commentResp.Body.Close()
+
+	body, _ := json.Marshal(map[string]bool{"resolved": true})
+	req, _ := http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/v1/reviews/%d/comments/%d/resolve", ts.URL, created.ID, comment.ID), bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("resolve: expected 200, got %d", resp.StatusCode)
+	}
+
+	var resolved struct {
+		Resolved bool `json:"resolved"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&resolved); err != nil {
+		t.Fatalf("decode resolved: %v", err)
+	}
+
+	if !resolved.Resolved {
+		t.Fatalf("expected comment resolved=true in response")
+	}
+}
+
 func TestUpdateReviewCommentRejectsBadIDs(t *testing.T) {
 	srv, _ := testServer(t, testServerOptions{Authenticated: true})
 	ts := startHTTPServer(t, srv, false)

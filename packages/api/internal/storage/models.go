@@ -142,8 +142,11 @@ type ReviewCommentRow struct {
 	// String null, *not* gorm.DeletedAt: preserves the existing on-disk format
 	// (RFC3339Nano string) so pre-GORM databases keep working.
 	DeletedAt *string `gorm:"column:deleted_at"`
-	CreatedAt string  `gorm:"column:created_at"`
-	UpdatedAt string  `gorm:"column:updated_at"`
+	// SQLite has no bool type; 0/1 int mirrors RepositoryBranchRow.Locked.
+	Resolved   int     `gorm:"column:resolved"`
+	ResolvedAt *string `gorm:"column:resolved_at"`
+	CreatedAt  string  `gorm:"column:created_at"`
+	UpdatedAt  string  `gorm:"column:updated_at"`
 
 	Session *ReviewSessionRow `gorm:"foreignKey:ReviewID;references:ID"`
 }

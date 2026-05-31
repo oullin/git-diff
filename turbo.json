@@ -12,15 +12,9 @@
             "outputs": []
         },
         "dev": {
+            "dependsOn": ["^build"],
             "cache": false,
             "persistent": true
-        },
-        "format": {
-            "cache": false,
-            "outputs": []
-        },
-        "format:check": {
-            "outputs": []
         },
         "lint": {
             "outputs": []

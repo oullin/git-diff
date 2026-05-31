@@ -111,28 +111,34 @@
     --diffs-font-size: 14px;
     --diffs-line-height: 20px;
 
-    /* source palette — light mode (Pierre neutral) */
+    /* GitHub Primer — accent intermediary (per-theme; accent.ts routes --gd-accent
+       through this so the inline override resolves to the right blue in each mode) */
+    --primer-accent: #0969da;
+    --primer-accent-strong: #0860ca;
+    --primer-accent-soft: #ddf4ff;
+
+    /* source palette — light mode (GitHub Primer light) */
     --app-bg: #ffffff;
     --code-bg: #ffffff;
     --file-bg: #ffffff;
-    --file-border: oklch(92.2% 0 0);
-    --soft-muted: oklch(55.6% 0 0);
-    --sidebar-bg: #f7f7f7;
-    --sidebar-border-soft: oklch(92.2% 0 0);
-    --sidebar-text: oklch(20.5% 0 0);
-    --text: oklch(14.5% 0 0);
-    --viewed: #00a347;
-    --accent-blue: oklch(20.5% 0 0);
-    --accent-blue-soft: oklch(97% 0 0);
-    --accent-blue-ring: oklch(55.6% 0 0 / 0.32);
-    --accent-blue-edge: oklch(92.2% 0 0);
-    --danger-red: #ff2e3f;
-    --attention-orange: oklch(75% 0.183 55.934);
+    --file-border: #d1d9e0;
+    --soft-muted: #59636e;
+    --sidebar-bg: #ffffff;
+    --sidebar-border-soft: #d1d9e0;
+    --sidebar-text: #1f2328;
+    --text: #1f2328;
+    --viewed: #1f883d;
+    --accent-blue: #0969da;
+    --accent-blue-soft: #ddf4ff;
+    --accent-blue-ring: rgb(9 105 218 / 0.3);
+    --accent-blue-edge: #b6e3ff;
+    --danger-red: #cf222e;
+    --attention-orange: #9a6700;
 
     /* codex-* tokens (kept; remapped to the source palette so legacy refs keep resolving) */
     --codex-accent: var(--accent-blue);
-    --codex-accent-hover: rgb(82 152 255);
-    --codex-accent-active: rgb(45 118 222);
+    --codex-accent-hover: #0860ca;
+    --codex-accent-active: #0757ba;
     --codex-accent-muted: var(--accent-blue-soft);
     --codex-accent-border: var(--accent-blue-edge);
 
@@ -200,21 +206,33 @@
     --button-secondary-active: rgb(127 127 127 / 0.16);
     --button-destructive-hover: rgb(168 42 40);
 
-    /* Pierre diff fills — light pair (#d6f5e0 / #00c758, #ffdbd6 / #ff2e3f) */
-    --diff-added: #00a347;
-    --diff-added-bg: #d6f5e0;
-    --diff-added-bg-strong: #b8edca;
-    --diff-added-border: #00c758;
-    --diff-removed: #ff2e3f;
-    --diff-removed-bg: #ffdbd6;
-    --diff-removed-bg-strong: #ffc4bc;
-    --diff-removed-border: #ff2e3f;
+    /* GitHub Primer diff fills — light pair (#e6ffec / #ccffd8, #ffebe9 / #ffd7d5) */
+    --diff-added: #1a7f37;
+    --diff-added-bg: #e6ffec;
+    --diff-added-bg-strong: #ccffd8;
+    --diff-added-border: #1f883d;
+    --diff-removed: #cf222e;
+    --diff-removed-bg: #ffebe9;
+    --diff-removed-bg-strong: #ffd7d5;
+    --diff-removed-border: #cf222e;
 
     /* Pierre 4px hunk-edge stripe (matches diffshub-border-deleted ::before) */
     --gd-add-bg: var(--diff-added-bg);
     --gd-add-border: var(--diff-added-border);
     --gd-del-bg: var(--diff-removed-bg);
     --gd-del-border: var(--diff-removed-border);
+
+    /* GitHub Primer status fills — exact design tokens (light).
+       Drive the A/M/D/R change badges and label chips. */
+    --success-fg: #1a7f37;
+    --success-emphasis: #1f883d;
+    --success-subtle: #dafbe1;
+    --attention-fg: #9a6700;
+    --attention-subtle: #fff8c5;
+    --danger-fg: #cf222e;
+    --danger-subtle: #ffebe9;
+    --done-fg: #8250df;
+    --done-subtle: #fbefff;
 
     --skill: var(--codex-skill);
     --skill-bg: rgb(143 93 24 / 0.14);
@@ -242,34 +260,33 @@
     --status-done-fg: var(--codex-skill);
     --status-done-border: var(--skill-border);
 
-    /* Design-bundle tokens (Pierre — light, monochrome-neutral) */
+    /* Design-bundle tokens (GitHub Primer — light) */
     --gd-bg-canvas: #ffffff;
     --gd-bg: #ffffff;
-    --gd-panel: #fafafa;
-    --gd-panel-2: #f4f4f3;
-    --gd-panel-3: #ececea;
-    --gd-hover: oklch(96% 0 0);
-    --gd-border: oklch(92.2% 0 0);
-    --gd-border-strong: oklch(87% 0 0);
-    --gd-border-soft: oklch(96% 0 0);
-    --gd-text: oklch(14.5% 0 0);
-    --gd-text-2: oklch(37.1% 0 0);
-    --gd-text-3: oklch(55.6% 0 0);
-    --gd-text-muted: oklch(70.8% 0 0);
-    --gd-added: #00a347;
-    --gd-removed: #ff2e3f;
-    --gd-warn: oklch(75% 0.183 55.934);
+    --gd-panel: #f6f8fa;
+    --gd-panel-2: #f6f8fa;
+    --gd-panel-3: #eef1f4;
+    --gd-hover: #f6f8fa;
+    --gd-border: #d1d9e0;
+    --gd-border-strong: #afb8c1;
+    --gd-border-soft: #d8dee4;
+    --gd-text: #1f2328;
+    --gd-text-2: #59636e;
+    --gd-text-3: #818b98;
+    --gd-text-muted: #818b98;
+    --gd-added: #1a7f37;
+    --gd-removed: #cf222e;
+    --gd-warn: #9a6700;
     --gd-shadow-lg: 0 24px 64px -12px oklch(0% 0 0 / 0.08), 0 0 0 1px oklch(0% 0 0 / 0.04);
 
-    /* Pierre is monochrome — accent points at the neutral primary.
-       lib/accent.ts collapses to a single Pierre preset. */
-    --gd-accent: oklch(20.5% 0 0);
-    --gd-accent-strong: oklch(14.5% 0 0);
-    --gd-accent-soft: oklch(97% 0 0);
+    /* Accent points at the per-theme Primer blue (set inline by lib/accent.ts). */
+    --gd-accent: var(--primer-accent);
+    --gd-accent-strong: var(--primer-accent-strong);
+    --gd-accent-soft: var(--primer-accent-soft);
 
-    /* Word-level diff highlights — Pierre saturation */
-    --gd-word-add-bg: #b8edca;
-    --gd-word-rem-bg: #ffc4bc;
+    /* Word-level diff highlights — Primer light */
+    --gd-word-add-bg: #abf2bc;
+    --gd-word-rem-bg: rgb(255 129 130 / 0.4);
 
     /* window chrome — softened */
     --window-radius: 17px;
@@ -281,12 +298,12 @@
     --traffic-yellow: #febc2e;
     --traffic-green: #28c840;
 
-    /* Pierre rail / gutter / inputs (sidebar lighter than canvas in light mode) */
-    --gd-bg-rail: #f7f7f7;
+    /* Primer rail / gutter / inputs (white sidebar with a right border) */
+    --gd-bg-rail: #ffffff;
     --gd-bg-input: #ffffff;
     --gd-bg-code: #ffffff;
-    --gd-bg-gutter: #fafafa;
-    --gd-sidebar-bg: #f7f7f7;
+    --gd-bg-gutter: #f6f8fa;
+    --gd-sidebar-bg: #ffffff;
 
     --gd-edge-hi: oklch(0% 0 0 / 0.03);
     --gd-edge-hi-2: oklch(0% 0 0 / 0.02);
@@ -298,9 +315,9 @@
     /* Pierre keeps the canvas flat — no colored bloom */
     --gd-bloom: none;
 
-    /* Diff bar + gutter tints — Pierre's saturated pair */
-    --gd-green-bar: #00c758;
-    --gd-red-bar: #ff2e3f;
+    /* Diff bar + gutter tints — Primer light pair */
+    --gd-green-bar: #1f883d;
+    --gd-red-bar: #cf222e;
     --gd-green-line: oklch(80% 0.16 152 / 0.18);
     --gd-red-line: oklch(70% 0.21 22 / 0.18);
 }
@@ -311,29 +328,35 @@
        Canvas oklch(14.5% 0 0) (~#242424); sidebar #101010 (darker than canvas — signature).
        Foreground oklch(98.5% 0 0). Monochrome accent, hot-pink delete (#ff6762),
        saturated green add (#39d97e). */
-    --app-bg: oklch(14.5% 0 0);
-    --code-bg: oklch(14.5% 0 0);
-    --file-bg: oklch(20.5% 0 0);
-    --file-border: oklch(100% 0 0 / 0.1);
-    --soft-muted: oklch(70.8% 0 0);
-    --sidebar-bg: #101010;
-    --sidebar-border-soft: oklch(100% 0 0 / 0.08);
-    --sidebar-text: oklch(98.5% 0 0 / 0.78);
-    --text: oklch(98.5% 0 0);
-    --viewed: #39d97e;
-    --accent-blue: oklch(92.2% 0 0);
-    --accent-blue-soft: oklch(26.9% 0 0);
-    --accent-blue-ring: oklch(70.8% 0 0 / 0.3);
-    --accent-blue-edge: oklch(100% 0 0 / 0.18);
-    --danger-red: #ff6762;
-    --attention-orange: oklch(82.8% 0.189 84.429);
+    /* GitHub Primer — accent intermediary (dark) */
+    --primer-accent: #2f81f7;
+    --primer-accent-strong: #388bfd;
+    --primer-accent-soft: #388bfd26;
 
-    --codex-accent-hover: oklch(95% 0 0);
-    --codex-accent-active: oklch(85% 0 0);
+    --app-bg: #0d1117;
+    --code-bg: #0d1117;
+    --file-bg: #161b22;
+    --file-border: #30363d;
+    --soft-muted: #8b949e;
+    --sidebar-bg: #0d1117;
+    --sidebar-border-soft: #30363d;
+    --sidebar-text: #e6edf3;
+    --text: #e6edf3;
+    --viewed: #238636;
+    --accent-blue: #2f81f7;
+    --accent-blue-soft: #388bfd26;
+    --accent-blue-ring: #388bfd66;
+    --accent-blue-edge: #388bfd66;
+    --danger-red: #f85149;
+    --attention-orange: #d29922;
+
+    --codex-accent-hover: #388bfd;
+    --codex-accent-active: #1f6feb;
     --codex-border-strong: oklch(100% 0 0 / 0.18);
 
-    --primary-foreground: oklch(20.5% 0 0);
-    --success-foreground: oklch(14.5% 0 0);
+    /* Primer dark: blue/green emphasis backgrounds carry white text */
+    --primary-foreground: #ffffff;
+    --success-foreground: #ffffff;
     --button-secondary-hover: oklch(100% 0 0 / 0.06);
     --button-secondary-active: oklch(100% 0 0 / 0.1);
     --button-destructive-hover: #ff8580;
@@ -341,20 +364,31 @@
     --shadow-overlay-value: 0 18px 58px -34px oklch(0% 0 0 / 0.55);
     --window-shadow: 0 18px 58px -34px oklch(0% 0 0 / 0.55);
 
-    /* Pierre diff fills — dark pair (#0e2818 / #39d97e, #3e1715 / #ff6762) */
-    --diff-added: #39d97e;
-    --diff-added-bg: #0e2818;
-    --diff-added-bg-strong: #143a23;
-    --diff-added-border: #39d97e;
-    --diff-removed: #ff6762;
-    --diff-removed-bg: #3e1715;
-    --diff-removed-bg-strong: #5a1d1d;
-    --diff-removed-border: #ff6762;
+    /* GitHub Primer diff fills — dark pair (translucent green/red overlays) */
+    --diff-added: #3fb950;
+    --diff-added-bg: #2ea04326;
+    --diff-added-bg-strong: #3fb9504d;
+    --diff-added-border: #2ea043;
+    --diff-removed: #f85149;
+    --diff-removed-bg: #f8514926;
+    --diff-removed-bg-strong: #f851494d;
+    --diff-removed-border: #f85149;
 
     --gd-add-bg: var(--diff-added-bg);
     --gd-add-border: var(--diff-added-border);
     --gd-del-bg: var(--diff-removed-bg);
     --gd-del-border: var(--diff-removed-border);
+
+    /* GitHub Primer status fills — dark pair (translucent so badges read on #0d1117) */
+    --success-fg: #3fb950;
+    --success-emphasis: #238636;
+    --success-subtle: rgb(46 160 67 / 0.15);
+    --attention-fg: #d29922;
+    --attention-subtle: rgb(187 128 9 / 0.15);
+    --danger-fg: #f85149;
+    --danger-subtle: rgb(248 81 73 / 0.15);
+    --done-fg: #a371f7;
+    --done-subtle: rgb(163 113 247 / 0.15);
 
     --status-attention-bg: oklch(82.8% 0.189 84.429 / 0.16);
     --status-attention-fg: var(--attention-orange);
@@ -365,28 +399,28 @@
     --skill-bg: oklch(75% 0.12 290 / 0.16);
     --skill-border: oklch(75% 0.12 290 / 0.4);
 
-    /* Design-bundle tokens — Pierre dark, monochrome */
-    --gd-bg-canvas: oklch(14.5% 0 0);
-    --gd-bg: oklch(14.5% 0 0);
-    --gd-bg-rail: #101010;
-    --gd-bg-input: oklch(20.5% 0 0);
-    --gd-bg-code: oklch(14.5% 0 0);
-    --gd-bg-gutter: #101010;
-    --gd-sidebar-bg: #101010;
-    --gd-panel: oklch(20.5% 0 0);
-    --gd-panel-2: oklch(26.9% 0 0);
-    --gd-panel-3: oklch(18% 0 0);
-    --gd-hover: oklch(100% 0 0 / 0.06);
-    --gd-border: oklch(100% 0 0 / 0.1);
-    --gd-border-strong: oklch(100% 0 0 / 0.18);
-    --gd-border-soft: oklch(100% 0 0 / 0.06);
-    --gd-text: oklch(98.5% 0 0);
-    --gd-text-2: oklch(85% 0 0);
-    --gd-text-3: oklch(70.8% 0 0);
-    --gd-text-muted: oklch(55.6% 0 0);
-    --gd-added: #39d97e;
-    --gd-removed: #ff6762;
-    --gd-warn: oklch(82.8% 0.189 84.429);
+    /* Design-bundle tokens — GitHub Primer dark */
+    --gd-bg-canvas: #0d1117;
+    --gd-bg: #0d1117;
+    --gd-bg-rail: #0d1117;
+    --gd-bg-input: #0d1117;
+    --gd-bg-code: #0d1117;
+    --gd-bg-gutter: #161b22;
+    --gd-sidebar-bg: #0d1117;
+    --gd-panel: #161b22;
+    --gd-panel-2: #21262d;
+    --gd-panel-3: #21262d;
+    --gd-hover: #161b22;
+    --gd-border: #30363d;
+    --gd-border-strong: #444c56;
+    --gd-border-soft: #21262d;
+    --gd-text: #e6edf3;
+    --gd-text-2: #8b949e;
+    --gd-text-3: #6e7681;
+    --gd-text-muted: #6e7681;
+    --gd-added: #3fb950;
+    --gd-removed: #f85149;
+    --gd-warn: #d29922;
     --gd-shadow-lg: 0 24px 64px -12px oklch(0% 0 0 / 0.6), 0 0 0 1px oklch(100% 0 0 / 0.04);
 
     /* Pierre dark stays flat — no colored bloom */
@@ -398,19 +432,19 @@
         0 0 0 1px oklch(100% 0 0 / 0.06) inset, 0 12px 32px -16px oklch(0% 0 0 / 0.55);
     --gd-bloom: none;
 
-    /* Diff bar + gutter line tints — Pierre dark pair */
-    --gd-green-bar: #39d97e;
-    --gd-red-bar: #ff6762;
+    /* Diff bar + gutter line tints — Primer dark pair */
+    --gd-green-bar: #2ea043;
+    --gd-red-bar: #f85149;
     --gd-green-line: oklch(75% 0.18 152 / 0.18);
     --gd-red-line: oklch(72% 0.18 22 / 0.18);
 
-    /* Monochrome accent — primary swaps to near-white on dark */
-    --gd-accent: oklch(92.2% 0 0);
-    --gd-accent-strong: oklch(98.5% 0 0);
-    --gd-accent-soft: oklch(26.9% 0 0);
+    /* Accent points at the per-theme Primer blue (set inline by lib/accent.ts). */
+    --gd-accent: var(--primer-accent);
+    --gd-accent-strong: var(--primer-accent-strong);
+    --gd-accent-soft: var(--primer-accent-soft);
 
-    --gd-word-add-bg: oklch(75% 0.18 152 / 0.28);
-    --gd-word-rem-bg: oklch(72% 0.18 22 / 0.28);
+    --gd-word-add-bg: #2ea04366;
+    --gd-word-rem-bg: #f8514966;
 }
 
 /* Carbon-tinted scrollbars across the app — tokens swap per theme */

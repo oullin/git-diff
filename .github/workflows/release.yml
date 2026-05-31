@@ -1,0 +1,141 @@
+name: Release
+
+# Tag a version (e.g. `git tag v0.1.1 && git push origin v0.1.1`) to build the
+# unsigned macOS DMG, publish a GitHub Release, and open a Homebrew cask bump PR
+# against oullin/homebrew-tap.
+#
+# Ships UNSIGNED for now: Homebrew installs fine, but Gatekeeper requires a
+# one-time right-click → Open (or `xattr -dr com.apple.quarantine`). To sign +
+# notarize later, add the Apple secrets and switch the build step to
+# `dist:mac:signed` (see docs/distribution.md).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      sha256: ${{ steps.artifacts.outputs.sha256 }}
+      dmg: ${{ steps.artifacts.outputs.dmg }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: meta
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: pnpm
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/api/go.mod
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The DMG embeds this binary as an extraResource, so it must exist before
+      # electron-builder packages the app.
+      - name: Build Go API binary
+        run: pnpm --dir packages/api run build
+
+      # The renderer build resolves @git-diff/domain and @git-diff/bridge from their
+      # compiled dist/, which is no longer committed — build the libraries first.
+      - name: Build shared TS libraries
+        run: pnpm --dir packages/tools run turbo -- run build --filter=@git-diff/bridge --filter=@git-diff/domain
+
+      - name: Build renderer + electron bundles
+        run: pnpm -C packages/ui run build
+
+      - name: Build unsigned DMG
+        run: pnpm -C packages/ui run dist:mac:unsigned
+
+      - name: Collect artifacts + checksums
+        id: artifacts
+        working-directory: packages/ui/release
+        run: |
+          version="${{ steps.meta.outputs.version }}"
+          dmg="git-diff-review-${version}-arm64.dmg"
+          zip="git-diff-review-${version}-arm64.zip"
+          test -f "$dmg" || { echo "missing $dmg"; ls -la; exit 1; }
+          shasum -a 256 "$dmg" "$zip" > SHASUMS256.txt
+          sha256="$(shasum -a 256 "$dmg" | awk '{print $1}')"
+          {
+            echo "sha256=$sha256"
+            echo "dmg=$dmg"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: packages/ui/release
+        run: |
+          version="${{ steps.meta.outputs.version }}"
+          gh release create "$GITHUB_REF_NAME" \
+            "git-diff-review-${version}-arm64.dmg" \
+            "git-diff-review-${version}-arm64.zip" \
+            SHASUMS256.txt \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
+
+  bump-cask:
+    needs: release
+    runs-on: ubuntu-latest
+    # Skip automatically on prereleases (e.g. v0.1.1-rc1) — only bump the tap for
+    # final releases.
+    if: ${{ !contains(github.ref_name, '-') }}
+    steps:
+      - name: Checkout app repo (for the cask template)
+        uses: actions/checkout@v4
+
+      - name: Render cask
+        run: |
+          version="${{ needs.release.outputs.version }}"
+          sha256="${{ needs.release.outputs.sha256 }}"
+          mkdir -p out/Casks
+          sed \
+            -e "s/^  version \".*\"/  version \"${version}\"/" \
+            -e "s/^  sha256 \".*\"/  sha256 \"${sha256}\"/" \
+            packages/ui/scripts/Casks/git-diff.rb > out/Casks/git-diff.rb
+          echo "Rendered cask:" && cat out/Casks/git-diff.rb
+
+      - name: Checkout tap repo
+        uses: actions/checkout@v4
+        with:
+          repository: oullin/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Apply rendered cask
+        run: |
+          mkdir -p tap/Casks
+          cp out/Casks/git-diff.rb tap/Casks/git-diff.rb
+
+      - name: Open bump PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+          branch: bump-git-diff-${{ needs.release.outputs.version }}
+          title: "git-diff ${{ needs.release.outputs.version }}"
+          commit-message: "git-diff ${{ needs.release.outputs.version }}"
+          body: |
+            Automated cask bump for [git-diff ${{ github.ref_name }}](https://github.com/oullin/git-diff/releases/tag/${{ github.ref_name }}).
+
+            - version: `${{ needs.release.outputs.version }}`
+            - sha256: `${{ needs.release.outputs.sha256 }}`

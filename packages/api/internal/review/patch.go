@@ -43,6 +43,6 @@ func fingerprint(file ChangedFile) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func (file ChangedFile) pathSectionID(kind string) string {
+func pathSectionID(file ChangedFile, kind string) string {
 	return fmt.Sprintf("%s:%s", kind, file.Path)
 }

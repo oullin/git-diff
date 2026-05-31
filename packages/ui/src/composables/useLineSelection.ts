@@ -1,106 +1,98 @@
-import { reactive } from "vue";
+import { reactive } from 'vue';
 
-export type LineSide = "left" | "right";
+export type LineSide = 'left' | 'right';
 
 export interface LineAnchor {
-    sectionId: string;
-    side: LineSide;
-    lineNumber: number;
+	sectionId: string;
+	side: LineSide;
+	lineNumber: number;
 }
 
 export interface LineSelectionRange {
-    sectionId: string;
-    startSide: LineSide;
-    startLine: number;
-    endSide: LineSide;
-    endLine: number;
+	sectionId: string;
+	startSide: LineSide;
+	startLine: number;
+	endSide: LineSide;
+	endLine: number;
 }
 
 interface SelectionState {
-    anchor: LineAnchor | null;
+	anchor: LineAnchor | null;
 }
 
 // Per-instance store — two DiffBody instances no longer corrupt each
 // other's selection state.
 export function useLineSelection() {
-    const state: SelectionState = reactive({ anchor: null });
+	const state: SelectionState = reactive({ anchor: null });
 
-    function setAnchor(anchor: LineAnchor | null): void {
-        state.anchor = anchor;
-    }
+	function setAnchor(anchor: LineAnchor | null): void {
+		state.anchor = anchor;
+	}
 
-    function getAnchor(): LineAnchor | null {
-        return state.anchor;
-    }
+	function getAnchor(): LineAnchor | null {
+		return state.anchor;
+	}
 
-    function clear(): void {
-        state.anchor = null;
-    }
+	function clear(): void {
+		state.anchor = null;
+	}
 
-    // Same-side ranges normalise to top-to-bottom; cross-side ranges
-    // always run left → right regardless of click order.
-    function rangeTo(target: LineAnchor): LineSelectionRange | null {
-        const anchor = state.anchor;
+	// Same-side ranges normalise to top-to-bottom; cross-side ranges
+	// always run left → right regardless of click order.
+	function rangeTo(target: LineAnchor): LineSelectionRange | null {
+		const anchor = state.anchor;
 
-        if (!anchor || anchor.sectionId !== target.sectionId) {
-            return null;
-        }
+		if (!anchor || anchor.sectionId !== target.sectionId) {
+			return null;
+		}
 
-        if (anchor.side === target.side) {
-            const [startLine, endLine] =
-                anchor.lineNumber <= target.lineNumber
-                    ? [anchor.lineNumber, target.lineNumber]
-                    : [target.lineNumber, anchor.lineNumber];
+		if (anchor.side === target.side) {
+			const [startLine, endLine] = anchor.lineNumber <= target.lineNumber ? [anchor.lineNumber, target.lineNumber] : [target.lineNumber, anchor.lineNumber];
 
-            return {
-                sectionId: anchor.sectionId,
-                startSide: anchor.side,
-                startLine,
-                endSide: anchor.side,
-                endLine,
-            };
-        }
+			return {
+				sectionId: anchor.sectionId,
+				startSide: anchor.side,
+				startLine,
+				endSide: anchor.side,
+				endLine,
+			};
+		}
 
-        // Cross-side: deletions (left) before additions (right) by convention.
-        if (anchor.side === "left") {
-            return {
-                sectionId: anchor.sectionId,
-                startSide: "left",
-                startLine: anchor.lineNumber,
-                endSide: "right",
-                endLine: target.lineNumber,
-            };
-        }
+		// Cross-side: deletions (left) before additions (right) by convention.
+		if (anchor.side === 'left') {
+			return {
+				sectionId: anchor.sectionId,
+				startSide: 'left',
+				startLine: anchor.lineNumber,
+				endSide: 'right',
+				endLine: target.lineNumber,
+			};
+		}
 
-        return {
-            sectionId: anchor.sectionId,
-            startSide: "left",
-            startLine: target.lineNumber,
-            endSide: "right",
-            endLine: anchor.lineNumber,
-        };
-    }
+		return {
+			sectionId: anchor.sectionId,
+			startSide: 'left',
+			startLine: target.lineNumber,
+			endSide: 'right',
+			endLine: anchor.lineNumber,
+		};
+	}
 
-    return { setAnchor, getAnchor, clear, rangeTo };
+	return { setAnchor, getAnchor, clear, rangeTo };
 }
 
-export function commentRangeLabel(comment: {
-    side: string;
-    lineNumber: number;
-    startLineNumber?: number;
-    startSide?: string;
-}): string {
-    const startLine = comment.startLineNumber;
-    const startSide = comment.startSide ?? comment.side;
-    const sideLabel = (side: string): string => (side === "left" ? "Old" : "New");
+export function commentRangeLabel(comment: { side: string; lineNumber: number; startLineNumber?: number; startSide?: string }): string {
+	const startLine = comment.startLineNumber;
+	const startSide = comment.startSide ?? comment.side;
+	const sideLabel = (side: string): string => (side === 'left' ? 'Old' : 'New');
 
-    if (startLine == null || (startLine === comment.lineNumber && startSide === comment.side)) {
-        return `${sideLabel(comment.side)} line ${comment.lineNumber}`;
-    }
+	if (startLine == null || (startLine === comment.lineNumber && startSide === comment.side)) {
+		return `${sideLabel(comment.side)} line ${comment.lineNumber}`;
+	}
 
-    if (startSide === comment.side) {
-        return `${sideLabel(comment.side)} lines ${startLine}–${comment.lineNumber}`;
-    }
+	if (startSide === comment.side) {
+		return `${sideLabel(comment.side)} lines ${startLine}–${comment.lineNumber}`;
+	}
 
-    return `${sideLabel(startSide)} line ${startLine} → ${sideLabel(comment.side)} line ${comment.lineNumber}`;
+	return `${sideLabel(startSide)} line ${startLine} → ${sideLabel(comment.side)} line ${comment.lineNumber}`;
 }

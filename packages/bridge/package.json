@@ -18,13 +18,12 @@
         }
     },
     "scripts": {
-        "build": "pnpm run format && tsc -p tsconfig.json",
-        "format": "tsx ../../scripts/blank-lines.ts && oxfmt .",
-        "format:check": "tsx ../../scripts/blank-lines.ts --check && oxfmt --check .",
+        "check:imports": "tsx ../../scripts/check-no-relative-imports.ts src",
+        "build": "pnpm run check:imports && tsc -p tsconfig.json",
         "lint": "oxlint ."
     },
     "dependencies": {
-        "@git-diff/contracts": "workspace:*"
+        "@git-diff/domain": "workspace:*"
     },
     "devDependencies": {
         "@types/node": "^25.6.2",

@@ -1,54 +1,55 @@
-import type { AddressInfo } from "node:net";
-import { join } from "node:path";
-import { createServer, type ViteDevServer } from "vite";
-import { uiDir } from "#scripts/dev/paths.js";
-import { removePortlessAlias, startPortlessRoute } from "#scripts/dev/portless.js";
+import type { AddressInfo } from 'node:net';
+import { join } from 'node:path';
+import { createServer, type ViteDevServer } from 'vite';
+import { uiDir } from '#scripts/dev/paths.js';
+import { removePortlessAlias, startPortlessRoute } from '#scripts/dev/portless.js';
 
 let viteServer: ViteDevServer | undefined;
 
 export async function startDevServer(): Promise<string> {
-    console.log("Starting Vite dev server");
+	console.log('Starting Vite dev server');
 
-    viteServer = await createServer({
-        configFile: join(uiDir, "vite.config.ts"),
-        root: uiDir,
-        server: {
-            host: "127.0.0.1",
-            port: devServerPortPreference(),
-            strictPort: false,
-        },
-    });
+	viteServer = await createServer({
+		configFile: join(uiDir, 'vite.config.ts'),
+		root: uiDir,
+		server: {
+			host: '127.0.0.1',
+			port: devServerPortPreference(),
+			strictPort: false,
+		},
+	});
 
-    await viteServer.listen();
+	await viteServer.listen();
 
-    const port = devServerPort(viteServer);
+	const port = devServerPort(viteServer);
 
-    return startPortlessRoute(viteServer, port);
+	return startPortlessRoute(viteServer, port);
 }
 
 export async function stopDevServer(): Promise<void> {
-    if (!viteServer) {
-        return;
-    }
+	if (!viteServer) {
+		return;
+	}
 
-    const server = viteServer;
+	const server = viteServer;
 
-    viteServer = undefined;
-    await Promise.all([server.close(), removePortlessAlias()]);
+	viteServer = undefined;
+
+	await Promise.all([server.close(), removePortlessAlias()]);
 }
 
 function devServerPort(server: ViteDevServer): number {
-    const address = server.httpServer?.address();
+	const address = server.httpServer?.address();
 
-    if (!address || typeof address === "string") {
-        throw new Error("Vite dev server did not expose a TCP port");
-    }
+	if (!address || typeof address === 'string') {
+		throw new Error('Vite dev server did not expose a TCP port');
+	}
 
-    return (address as AddressInfo).port;
+	return (address as AddressInfo).port;
 }
 
 function devServerPortPreference(): number | undefined {
-    const port = Number.parseInt(process.env.PORT ?? "", 10);
+	const port = Number.parseInt(process.env.PORT ?? '', 10);
 
-    return Number.isInteger(port) && port > 0 ? port : undefined;
+	return Number.isInteger(port) && port > 0 ? port : undefined;
 }

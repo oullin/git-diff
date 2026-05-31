@@ -14,7 +14,6 @@ import (
 
 	"github.com/oullin/git-diff/internal/ai"
 	"github.com/oullin/git-diff/internal/app/setting"
-	"github.com/oullin/git-diff/internal/service"
 	"github.com/oullin/git-diff/internal/storage"
 	"github.com/oullin/git-diff/internal/usercfg"
 )
@@ -71,28 +70,7 @@ func Serve(args []string, cfg ServeConfig) int {
 	providers.Register(ai.NewAnthropicProvider(userCfg.Reader))
 	providers.Register(ai.NewCodexProvider(userCfg.Reader))
 
-	appServer := Server{
-		Home:             cfg.Home,
-		Repo:             settings.RepoRoot,
-		Settings:         settings,
-		Session:          NewAuthState(osUsername),
-		UserConfig:       userCfg.Reader,
-		UserConfigEvents: userCfg.Broker,
-		UserConfigPath:   userCfg.Path,
-
-		auth: service.NewAuthService(store.Users, store.Sessions, service.AuthConfig{
-			BcryptCost:        bcryptCost,
-			SessionTTL:        sessionTTL,
-			MinPasswordLength: minPasswordLength,
-		}),
-		reviews:       service.NewReviewService(store.Reviews, store.ReviewEvents, store.Comments),
-		pending:       service.NewPendingCommentService(store.PendingComments),
-		repos:         service.NewRepositoryService(store.Repos),
-		collaborators: service.NewCollaboratorService(store.Collaborators),
-		preferences:   service.NewPreferenceService(store.Preferences),
-		branches:      service.NewBranchService(store.Branches, store.Repos),
-		walkthroughs:  service.NewWalkthroughService(store.Walkthroughs, providers, userCfg.Reader),
-	}
+	appServer := newServer(cfg, settings, store, providers, userCfg, osUsername)
 
 	server := &http.Server{Handler: NewServerHandler(ServerHandlerConfig{
 		Mux:           withRequestCaches(appServer.requireAuth(appServer.BuildMux())),
