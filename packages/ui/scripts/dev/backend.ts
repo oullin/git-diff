@@ -1,65 +1,61 @@
-import { constants as fsConstants } from "node:fs";
-import { access, rm } from "node:fs/promises";
-import { request as httpRequest } from "node:http";
-import os from "node:os";
-import { join } from "node:path";
-import { apiDir } from "#scripts/dev/paths.js";
-import type { StartSpec } from "#scripts/dev/processes.js";
-import { readSettings, settingsArgs } from "#scripts/dev/settings.js";
-import { delay } from "#scripts/dev/timing.js";
+import { constants as fsConstants } from 'node:fs';
+import { access, rm } from 'node:fs/promises';
+import { request as httpRequest } from 'node:http';
+import os from 'node:os';
+import { join } from 'node:path';
+import { apiDir } from '#scripts/dev/paths.js';
+import type { StartSpec } from '#scripts/dev/processes.js';
+import { readSettings, settingsArgs } from '#scripts/dev/settings.js';
+import { delay } from '#scripts/dev/timing.js';
 
 export async function backendSocketPath(): Promise<string> {
-  const path = join(os.tmpdir(), `api-dev-${process.pid}-${Date.now()}.sock`);
+	const path = join(os.tmpdir(), `api-dev-${process.pid}-${Date.now()}.sock`);
 
-  await rm(path, { force: true });
+	await rm(path, { force: true });
 
-  return path;
+	return path;
 }
 
 export async function backendStartSpec(socketPath: string): Promise<StartSpec> {
-  return [
-    "go",
-    ["run", "./cmd", "serve-http", "--socket", socketPath, ...settingsArgs(await readSettings())],
-    apiDir,
-  ];
+	return ['go', ['run', './cmd', 'serve-http', '--socket', socketPath, ...settingsArgs(await readSettings())], apiDir];
 }
 
 export async function waitForBackend(socketPath: string, timeoutMs = 30000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
+	const deadline = Date.now() + timeoutMs;
 
-  for (;;) {
-    try {
-      await access(socketPath, fsConstants.F_OK);
+	for (;;) {
+		try {
+			await access(socketPath, fsConstants.F_OK);
 
-      await backendHealthz(socketPath);
+			await backendHealthz(socketPath);
 
-      return;
-    } catch {
-      if (Date.now() >= deadline) {
-        throw new Error(`backend was not ready after ${timeoutMs}ms at ${socketPath}`);
-      }
+			return;
+		} catch {
+			if (Date.now() >= deadline) {
+				throw new Error(`backend was not ready after ${timeoutMs}ms at ${socketPath}`);
+			}
 
-      await delay(100);
-    }
-  }
+			await delay(100);
+		}
+	}
 }
 
 function backendHealthz(socketPath: string): Promise<void> {
-  return new Promise((resolveHealthz, rejectHealthz) => {
-    const req = httpRequest({ socketPath, path: "/v1/healthz", method: "GET" }, (res) => {
-      res.resume();
-      res.on("end", () => {
-        if (res.statusCode === 200) {
-          resolveHealthz();
+	return new Promise((resolveHealthz, rejectHealthz) => {
+		const req = httpRequest({ socketPath, path: '/v1/healthz', method: 'GET' }, (res) => {
+			res.resume();
+			res.on('end', () => {
+				if (res.statusCode === 200) {
+					resolveHealthz();
 
-          return;
-        }
+					return;
+				}
 
-        rejectHealthz(new Error(`backend healthz failed with ${res.statusCode}`));
-      });
-    });
+				rejectHealthz(new Error(`backend healthz failed with ${res.statusCode}`));
+			});
+		});
 
-    req.on("error", rejectHealthz);
-    req.end();
-  });
+		req.on('error', rejectHealthz);
+		req.end();
+	});
 }

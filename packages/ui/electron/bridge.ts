@@ -1,13 +1,8 @@
-import type { RuntimeSettings } from "@git-diff/domain";
-import { type ApiClient, createApiClient, waitForReady } from "@git-diff/bridge";
-import { recordDiagnostic } from "#electron/diagnostics.js";
+import type { RuntimeSettings } from '@git-diff/domain';
+import { type ApiClient, createApiClient, waitForReady } from '@git-diff/bridge';
+import { recordDiagnostic } from '#electron/diagnostics.js';
 
-import {
-  type BridgeProcessHandle,
-  externalBridgeSocketPath,
-  killBridge,
-  spawnBridge,
-} from "#electron/bridge-process.js";
+import { type BridgeProcessHandle, externalBridgeSocketPath, killBridge, spawnBridge } from '#electron/bridge-process.js';
 
 let bridgeClient: ApiClient | null = null;
 let bridgeHandle: BridgeProcessHandle | null = null;
@@ -15,101 +10,101 @@ let bridgeStartup: Promise<void> | null = null;
 let savedSettings: Partial<RuntimeSettings> = {};
 
 export function hasExternalBridge(): boolean {
-  return externalBridgeSocketPath() !== "";
+	return externalBridgeSocketPath() !== '';
 }
 
 export function getBridgeSettings(): Partial<RuntimeSettings> {
-  return savedSettings;
+	return savedSettings;
 }
 
 export function setBridgeSettings(settings: Partial<RuntimeSettings>): void {
-  savedSettings = settings;
+	savedSettings = settings;
 }
 
 async function startWorkflowBridge(): Promise<void> {
-  if (bridgeClient) {
-    return;
-  }
+	if (bridgeClient) {
+		return;
+	}
 
-  const handle = spawnBridge(savedSettings);
+	const handle = spawnBridge(savedSettings);
 
-  bridgeHandle = handle;
+	bridgeHandle = handle;
 
-  handle.process?.on("exit", (code, signal) => {
-    if (bridgeClient) {
-      const status = code ?? signal ?? "unknown status";
+	handle.process?.on('exit', (code, signal) => {
+		if (bridgeClient) {
+			const status = code ?? signal ?? 'unknown status';
 
-      recordDiagnostic({
-        level: "error",
-        source: "Backend bridge",
-        message: `api HTTP bridge exited with ${status}`,
-        details: handle.captureStderr().trim() || undefined,
-      });
-      console.error(`api HTTP bridge exited with ${status}`);
-    }
+			recordDiagnostic({
+				level: 'error',
+				source: 'Backend bridge',
+				message: `api HTTP bridge exited with ${status}`,
+				details: handle.captureStderr().trim() || undefined,
+			});
+			console.error(`api HTTP bridge exited with ${status}`);
+		}
 
-    bridgeClient?.close();
-    bridgeClient = null;
-    bridgeHandle = null;
-    bridgeStartup = null;
-  });
+		bridgeClient?.close();
+		bridgeClient = null;
+		bridgeHandle = null;
+		bridgeStartup = null;
+	});
 
-  const httpClient = createApiClient(handle.socketPath);
+	const httpClient = createApiClient(handle.socketPath);
 
-  try {
-    await waitForReady(httpClient);
+	try {
+		await waitForReady(httpClient);
 
-    bridgeClient = httpClient;
-  } catch (error) {
-    httpClient.close();
-    handle.process?.kill();
+		bridgeClient = httpClient;
+	} catch (error) {
+		httpClient.close();
+		handle.process?.kill();
 
-    const stderr = handle.captureStderr();
+		const stderr = handle.captureStderr();
 
-    recordDiagnostic({
-      level: "error",
-      source: "Backend bridge",
-      message: "Failed to start api HTTP bridge",
-      details: stderr || (error instanceof Error ? error.stack : String(error)),
-    });
-    throw new Error(stderr || (error instanceof Error ? error.message : String(error)));
-  }
+		recordDiagnostic({
+			level: 'error',
+			source: 'Backend bridge',
+			message: 'Failed to start api HTTP bridge',
+			details: stderr || (error instanceof Error ? error.stack : String(error)),
+		});
+		throw new Error(stderr || (error instanceof Error ? error.message : String(error)));
+	}
 }
 
 export function stopWorkflowBridge(): void {
-  bridgeClient?.close();
-  bridgeClient = null;
-  bridgeStartup = null;
+	bridgeClient?.close();
+	bridgeClient = null;
+	bridgeStartup = null;
 
-  killBridge(bridgeHandle);
-  bridgeHandle = null;
+	killBridge(bridgeHandle);
+	bridgeHandle = null;
 }
 
 export function startBridgeIfNeeded(): Promise<void> {
-  if (bridgeClient) {
-    return Promise.resolve();
-  }
+	if (bridgeClient) {
+		return Promise.resolve();
+	}
 
-  if (!bridgeStartup) {
-    bridgeStartup = startWorkflowBridge().catch((error: unknown) => {
-      bridgeStartup = null;
-      throw error;
-    });
-  }
+	if (!bridgeStartup) {
+		bridgeStartup = startWorkflowBridge().catch((error: unknown) => {
+			bridgeStartup = null;
+			throw error;
+		});
+	}
 
-  return bridgeStartup;
+	return bridgeStartup;
 }
 
 export async function client(): Promise<ApiClient> {
-  if (!bridgeClient) {
-    await startBridgeIfNeeded();
-  }
+	if (!bridgeClient) {
+		await startBridgeIfNeeded();
+	}
 
-  if (!bridgeClient) {
-    throw new Error("api HTTP bridge is not running");
-  }
+	if (!bridgeClient) {
+		throw new Error('api HTTP bridge is not running');
+	}
 
-  return bridgeClient;
+	return bridgeClient;
 }
 
-export { settingsArgs } from "#electron/bridge-process.js";
+export { settingsArgs } from '#electron/bridge-process.js';

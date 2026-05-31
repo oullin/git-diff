@@ -4,6 +4,6 @@
 // module top-level; under Vite's ESM bundling that lookup falls through to
 // `globalThis.Prism`, so we seed it here before @lexical/code loads.
 // @ts-expect-error -- prismjs ships no types; default export is the Prism object.
-import Prism from "prismjs";
+import Prism from 'prismjs';
 
 (globalThis as unknown as { Prism: unknown }).Prism = Prism;
