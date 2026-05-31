@@ -1,9 +1,10 @@
 import { client } from '#electron/bridge.js';
+import { IpcChannels } from '#electron/ipc/routes.js';
 import type { IpcRouter } from '#electron/ipc/router.js';
 
 export function register(router: IpcRouter): void {
 	router.on(
-		'walkthrough:generate',
+		IpcChannels.walkthrough.generate,
 		async (
 			_event,
 			request: {

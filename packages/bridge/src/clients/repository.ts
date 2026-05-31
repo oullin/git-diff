@@ -1,4 +1,5 @@
 import type { BytesResponse, HttpTransport } from '#bridge/http.js';
+import { HttpRoutes } from '#bridge/routes.js';
 
 import type { CommitSummary, RepositoryFile, RepositoryFileRange, RepositoryState } from '@git-diff/domain';
 
@@ -8,17 +9,17 @@ export class RepositoryClient {
 	state(request: { path?: string }): Promise<RepositoryState> {
 		const query = request.path ? `?path=${encodeURIComponent(request.path)}` : '';
 
-		return this.transport.request<RepositoryState>('GET', `/v1/repository/state${query}`);
+		return this.transport.request<RepositoryState>('GET', `${HttpRoutes.repository.state}${query}`);
 	}
 
 	open(request: { path: string }): Promise<RepositoryState> {
-		return this.transport.request<RepositoryState>('POST', '/v1/repository/open', {
+		return this.transport.request<RepositoryState>('POST', HttpRoutes.repository.open, {
 			path: request.path,
 		});
 	}
 
 	refresh(request: { path: string }): Promise<RepositoryState> {
-		return this.transport.request<RepositoryState>('POST', '/v1/repository/refresh', {
+		return this.transport.request<RepositoryState>('POST', HttpRoutes.repository.refresh, {
 			path: request.path,
 		});
 	}
@@ -30,7 +31,7 @@ export class RepositoryClient {
 			parts.push(`path=${encodeURIComponent(request.path)}`);
 		}
 
-		return this.transport.request<RepositoryState>('GET', `/v1/repository/commit?${parts.join('&')}`);
+		return this.transport.request<RepositoryState>('GET', `${HttpRoutes.repository.commit}?${parts.join('&')}`);
 	}
 
 	listCommits(request: { path?: string; limit?: number }): Promise<{ commits: CommitSummary[] }> {
@@ -46,13 +47,13 @@ export class RepositoryClient {
 
 		const query = parts.length === 0 ? '' : `?${parts.join('&')}`;
 
-		return this.transport.request<{ commits: CommitSummary[] }>('GET', `/v1/repository/log${query}`);
+		return this.transport.request<{ commits: CommitSummary[] }>('GET', `${HttpRoutes.repository.log}${query}`);
 	}
 
 	readFile(request: { root: string; path: string }): Promise<RepositoryFile> {
 		const query = `?root=${encodeURIComponent(request.root)}&path=${encodeURIComponent(request.path)}`;
 
-		return this.transport.request<RepositoryFile>('GET', `/v1/repository/file${query}`);
+		return this.transport.request<RepositoryFile>('GET', `${HttpRoutes.repository.file}${query}`);
 	}
 
 	/**
@@ -72,7 +73,7 @@ export class RepositoryClient {
 			parts.push(`ref=${encodeURIComponent(request.ref)}`);
 		}
 
-		return this.transport.requestBytes(`/v1/repository/file/raw?${parts.join('&')}`);
+		return this.transport.requestBytes(`${HttpRoutes.repository.fileRaw}?${parts.join('&')}`);
 	}
 
 	readFileRange(request: { root: string; path: string; ref?: string; startLine: number; endLine: number }): Promise<RepositoryFileRange> {
@@ -82,6 +83,6 @@ export class RepositoryClient {
 			parts.push(`ref=${encodeURIComponent(request.ref)}`);
 		}
 
-		return this.transport.request<RepositoryFileRange>('GET', `/v1/repository/file-range?${parts.join('&')}`);
+		return this.transport.request<RepositoryFileRange>('GET', `${HttpRoutes.repository.fileRange}?${parts.join('&')}`);
 	}
 }

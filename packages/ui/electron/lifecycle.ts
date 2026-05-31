@@ -3,6 +3,7 @@ import { appIcon } from '#electron/app-icon.js';
 import { setBridgeSettings, startBridgeIfNeeded, stopWorkflowBridge } from '#electron/bridge.js';
 import { recordDiagnostic } from '#electron/diagnostics.js';
 import { registerIpcHandlers } from '#electron/ipc.js';
+import { IpcChannels } from '#electron/ipc/routes.js';
 import type { LaunchIntent } from '#electron/launch-intent.js';
 import { parseLaunchArgs } from '#electron/launch-intent.js';
 import { installApplicationMenu } from '#electron/menu.js';
@@ -38,7 +39,7 @@ export function runApp(initialIntent: LaunchIntent): void {
 
 		setIntentForWindow(window, intent);
 		window.webContents.once('did-finish-load', () => {
-			window.webContents.send('launch-intent:updated', intent);
+			window.webContents.send(IpcChannels.launchIntent.updated, intent);
 		});
 	});
 

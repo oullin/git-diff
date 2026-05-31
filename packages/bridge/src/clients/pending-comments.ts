@@ -1,5 +1,6 @@
 import type { PendingComment } from '@git-diff/domain';
 import type { HttpTransport } from '#bridge/http.js';
+import { HttpRoutes } from '#bridge/routes.js';
 
 export class PendingCommentClient {
 	constructor(private readonly transport: HttpTransport) {}
@@ -21,7 +22,7 @@ export class PendingCommentClient {
 
 		const query = parts.length === 0 ? '' : `?${parts.join('&')}`;
 
-		return this.transport.request<{ comments: PendingComment[] }>('GET', `/v1/pending-comments${query}`);
+		return this.transport.request<{ comments: PendingComment[] }>('GET', `${HttpRoutes.pendingComments.base}${query}`);
 	}
 
 	create(request: {
@@ -37,20 +38,20 @@ export class PendingCommentClient {
 		authorLabel: string;
 		bodyHtml: string;
 	}): Promise<PendingComment> {
-		return this.transport.request<PendingComment>('POST', '/v1/pending-comments', request);
+		return this.transport.request<PendingComment>('POST', HttpRoutes.pendingComments.base, request);
 	}
 
 	update(request: { id: number; bodyHtml: string }): Promise<PendingComment> {
-		return this.transport.request<PendingComment>('PATCH', `/v1/pending-comments/${request.id}`, {
+		return this.transport.request<PendingComment>('PATCH', HttpRoutes.pendingComments.item(request.id), {
 			bodyHtml: request.bodyHtml,
 		});
 	}
 
 	delete(request: { id: number }): Promise<void> {
-		return this.transport.request<void>('DELETE', `/v1/pending-comments/${request.id}`);
+		return this.transport.request<void>('DELETE', HttpRoutes.pendingComments.item(request.id));
 	}
 
 	promote(request: { reviewId: number }): Promise<{ promoted: number }> {
-		return this.transport.request<{ promoted: number }>('POST', '/v1/pending-comments/promote', request);
+		return this.transport.request<{ promoted: number }>('POST', HttpRoutes.pendingComments.promote, request);
 	}
 }

@@ -1,5 +1,6 @@
 import type { PullRequestSummary, RepositoryState } from '@git-diff/domain';
 import type { HttpTransport } from '#bridge/http.js';
+import { HttpRoutes } from '#bridge/routes.js';
 
 export class PullRequestClient {
 	constructor(private readonly transport: HttpTransport) {}
@@ -17,7 +18,7 @@ export class PullRequestClient {
 
 		const query = parts.length === 0 ? '' : `?${parts.join('&')}`;
 
-		return this.transport.request<{ pullRequests: PullRequestSummary[] }>('GET', `/v1/repository/pull-requests${query}`);
+		return this.transport.request<{ pullRequests: PullRequestSummary[] }>('GET', `${HttpRoutes.pullRequests.list}${query}`);
 	}
 
 	read(request: { path?: string; number: number }): Promise<RepositoryState> {
@@ -27,6 +28,6 @@ export class PullRequestClient {
 			parts.push(`path=${encodeURIComponent(request.path)}`);
 		}
 
-		return this.transport.request<RepositoryState>('GET', `/v1/repository/pull-request?${parts.join('&')}`);
+		return this.transport.request<RepositoryState>('GET', `${HttpRoutes.pullRequests.read}?${parts.join('&')}`);
 	}
 }

@@ -1,15 +1,16 @@
 import { client } from '#electron/bridge.js';
+import { IpcChannels } from '#electron/ipc/routes.js';
 import type { IpcRouter } from '#electron/ipc/router.js';
 
 export function register(router: IpcRouter): void {
-	router.on('reviews:create', async (_event, request: Record<string, unknown>) => (await client()).reviews.create(request));
+	router.on(IpcChannels.reviews.create, async (_event, request: Record<string, unknown>) => (await client()).reviews.create(request));
 
-	router.on('reviews:list', async (_event, limit?: number) => (await client()).reviews.list({ limit }));
+	router.on(IpcChannels.reviews.list, async (_event, limit?: number) => (await client()).reviews.list({ limit }));
 
-	router.on('reviews:detail', async (_event, id: number) => (await client()).reviews.detail({ id }));
+	router.on(IpcChannels.reviews.detail, async (_event, id: number) => (await client()).reviews.detail({ id }));
 
 	router.on(
-		'reviews:event',
+		IpcChannels.reviews.event,
 		async (
 			_event,
 			request: {
@@ -23,7 +24,7 @@ export function register(router: IpcRouter): void {
 	);
 
 	router.on(
-		'reviews:comment:create',
+		IpcChannels.reviews.commentCreate,
 		async (
 			_event,
 			request: {
@@ -39,7 +40,7 @@ export function register(router: IpcRouter): void {
 	);
 
 	router.on(
-		'reviews:comment:update',
+		IpcChannels.reviews.commentUpdate,
 		async (
 			_event,
 			request: {
@@ -51,7 +52,7 @@ export function register(router: IpcRouter): void {
 	);
 
 	router.on(
-		'reviews:comment:delete',
+		IpcChannels.reviews.commentDelete,
 		async (
 			_event,
 			request: {
@@ -62,7 +63,7 @@ export function register(router: IpcRouter): void {
 	);
 
 	router.on(
-		'reviews:comment:resolve',
+		IpcChannels.reviews.commentResolve,
 		async (
 			_event,
 			request: {
