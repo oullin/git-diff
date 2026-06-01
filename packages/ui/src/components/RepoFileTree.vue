@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { FileTree, type FileTreeItemHandle } from '@pierre/trees';
+import { FileTree, type FileTreeItemHandle, type GitStatusEntry } from '@pierre/trees';
 import '@pierre/trees/web-components';
 
 type Props = {
 	paths: readonly string[];
 	selectedPath?: string;
-	changedPaths?: ReadonlySet<string>;
+	gitStatus?: readonly GitStatusEntry[];
 	initialExpansion?: 'open' | 'closed';
 	expandAllOnReset?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
-	changedPaths: () => new Set<string>(),
+	gitStatus: () => [],
 	initialExpansion: 'open',
 	expandAllOnReset: false,
 });
@@ -38,32 +38,6 @@ const mountEl = ref<HTMLDivElement | null>(null);
 
 let tree: FileTree | null = null;
 
-function applyChangedDecorations(root: HTMLElement, changed: ReadonlySet<string>) {
-	const rows = root.querySelectorAll<HTMLElement>('[data-item-path]');
-
-	rows.forEach((row) => {
-		const path = row.dataset.itemPath ?? '';
-
-		if (changed.has(path)) {
-			row.setAttribute('data-changed', 'true');
-		} else {
-			row.removeAttribute('data-changed');
-		}
-	});
-
-	const flattened = root.querySelectorAll<HTMLElement>('[data-item-flattened-subitem]');
-
-	flattened.forEach((seg) => {
-		const path = seg.getAttribute('data-item-flattened-subitem') ?? '';
-
-		if (changed.has(path)) {
-			seg.setAttribute('data-changed', 'true');
-		} else {
-			seg.removeAttribute('data-changed');
-		}
-	});
-}
-
 onMounted(() => {
 	if (!mountEl.value) {
 		return;
@@ -71,6 +45,7 @@ onMounted(() => {
 
 	tree = new FileTree({
 		paths: [...props.paths],
+		gitStatus: [...props.gitStatus],
 		flattenEmptyDirectories: true,
 		initialExpansion: props.initialExpansion,
 		search: false,
@@ -81,13 +56,8 @@ onMounted(() => {
 		if (focused && !focused.isDirectory()) {
 			emit('select', focused.getPath());
 		}
-
-		if (mountEl.value) {
-			applyChangedDecorations(mountEl.value, props.changedPaths);
-		}
 	});
 	tree.render({ containerWrapper: mountEl.value });
-	applyChangedDecorations(mountEl.value, props.changedPaths);
 });
 
 watch(
@@ -100,20 +70,14 @@ watch(
 		const options = props.expandAllOnReset ? { initialExpandedPaths: ancestorDirs(next) } : undefined;
 
 		tree.resetPaths([...next], options);
-		if (mountEl.value) {
-			applyChangedDecorations(mountEl.value, props.changedPaths);
-		}
+		tree.setGitStatus([...props.gitStatus]);
 	},
 );
 
 watch(
-	() => props.changedPaths,
+	() => props.gitStatus,
 	(next) => {
-		if (!mountEl.value) {
-			return;
-		}
-
-		applyChangedDecorations(mountEl.value, next);
+		tree?.setGitStatus([...next]);
 	},
 );
 
@@ -147,23 +111,5 @@ onBeforeUnmount(() => {
 	min-height: 120px;
 	font-family: var(--font-code);
 	font-size: 13px;
-}
-
-.repo-file-tree :deep([data-changed='true']) {
-	position: relative;
-	color: var(--codex-accent, var(--primary));
-	font-weight: 500;
-}
-
-.repo-file-tree :deep([data-changed='true'])::before {
-	content: '';
-	position: absolute;
-	left: 2px;
-	top: 50%;
-	width: 6px;
-	height: 6px;
-	border-radius: 9999px;
-	background: var(--codex-accent, var(--primary));
-	transform: translateY(-50%);
 }
 </style>

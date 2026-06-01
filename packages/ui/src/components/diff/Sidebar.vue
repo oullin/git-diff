@@ -39,6 +39,8 @@ const { totalCount, viewedCount, filteredFiles, filteredAllPaths, progressPct } 
 
 const filteredCountLabel = computed(() => filteredFiles.value.length);
 
+const gitStatus = computed(() => props.files.map((file) => ({ path: file.path, status: file.status })));
+
 function onSearchInput(event: Event) {
 	emit('update:searchQuery', (event.target as HTMLInputElement).value);
 }
@@ -52,7 +54,7 @@ function clearSearch() {
 	<div
 		class="flex flex-col"
 		:style="{
-			width: '308px',
+			width: 'var(--gd-sidebar-w)',
 			flexShrink: 0,
 			background: 'linear-gradient(180deg, rgb(255 255 255 / 0.012), transparent 220px), var(--gd-bg-rail, var(--gd-panel))',
 			borderRight: '1px solid var(--gd-border)',
@@ -170,7 +172,7 @@ function clearSearch() {
 				v-if="filteredAllPaths.length > 0"
 				:paths="filteredAllPaths"
 				:selected-path="selectedPath"
-				:changed-paths="changedPathsSet"
+				:git-status="gitStatus"
 				:initial-expansion="searchQuery.trim() ? 'open' : 'closed'"
 				:expand-all-on-reset="!!searchQuery.trim()"
 				class="min-h-0 flex-1 p-2"

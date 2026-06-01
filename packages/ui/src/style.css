@@ -91,6 +91,12 @@
     --app-list-row-padding: 12px;
     --app-list-gap: 8px;
 
+    /* Left rail width + the top chrome's horizontal padding. The branch picker
+       in the top bar derives its width from these so its right edge always
+       lines up with the sidebar's right edge below it. */
+    --gd-sidebar-w: 308px;
+    --gd-topbar-pad-x: 14px;
+
     /* Pierre stack: Geist for UI chrome, Berkeley Mono / JetBrains Mono for code.
        Falls back gracefully — drop woff2 files into ./fonts/geist/ or ./fonts/berkeley/
        and add matching @font-face blocks above to upgrade rendering. */
@@ -1034,18 +1040,31 @@
 
     --trees-font-family-override: var(--font-code);
     --trees-font-size-override: 13px;
-    --trees-accent-override: var(--accent-blue);
+    --trees-accent-override: var(--gd-accent, var(--accent-blue));
 
+    /* surface + text */
+    --trees-bg-override: transparent;
+    --trees-fg-override: var(--gd-text, var(--sidebar-text));
+    --trees-fg-muted-override: var(--gd-text-2, var(--soft-muted));
+
+    /* rows */
     --trees-row-height: 26px;
-    --trees-bg: transparent;
-    --trees-fg: var(--sidebar-text);
-    --trees-fg-muted: var(--soft-muted);
-    --trees-row-hover-bg: rgb(127 127 127 / 0.12);
-    --trees-row-selected-bg: rgb(127 127 127 / 0.14);
-    --trees-row-selected-fg: var(--foreground);
-    --trees-status-fg: var(--soft-muted);
-    --trees-indent-guide: rgb(127 127 127 / 0.18);
-    --trees-icon-color: var(--soft-muted);
+    --trees-theme-list-hover-bg: rgb(127 127 127 / 0.12);
+    --trees-selected-bg-override: rgb(127 127 127 / 0.14);
+    --trees-selected-fg-override: var(--gd-text, var(--foreground));
+    --trees-selected-focused-border-color-override: var(--accent-blue-edge);
+    --trees-focus-ring-color-override: var(--gd-accent, var(--accent-blue));
+
+    /* indent guides + icons */
+    --trees-indent-guide-bg-override: rgb(127 127 127 / 0.18);
+    --trees-file-icon-color: var(--gd-text-3, var(--soft-muted));
+
+    /* git status -> Primer diff tokens */
+    --trees-git-added-color-override: var(--gd-added, var(--diff-added));
+    --trees-git-modified-color-override: var(--gd-warn, #9a6700);
+    --trees-git-deleted-color-override: var(--gd-removed, var(--diff-removed));
+    --trees-git-renamed-color-override: var(--gd-accent, var(--accent-blue));
+    --trees-git-untracked-color-override: var(--gd-added, var(--diff-added));
 }
 
 @layer base {
