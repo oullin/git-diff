@@ -1,15 +1,27 @@
 <script setup lang="ts">
-import { RefreshCw } from 'lucide-vue-next';
+import { RefreshCw, Sparkles } from 'lucide-vue-next';
 import BranchPicker from '@components/diff/BranchPicker.vue';
 import DiffStat from '@components/diff/DiffStat.vue';
 import FileSearchPopover from '@components/diff/FileSearchPopover.vue';
 import Kbd from '@components/diff/Kbd.vue';
-import type { FileSearchResult, RepositoryState } from '@git-diff/domain';
+import CommitPicker from '@entry/components/commits/CommitPicker.vue';
+import PullRequestPicker from '@entry/components/commits/PullRequestPicker.vue';
+import type { CommitSummary, FileSearchResult, PullRequestSummary, RepositoryState } from '@git-diff/domain';
 
 defineProps<{
 	state: RepositoryState | null;
 	creatingBranch: boolean;
 	branchCreateError: string;
+	commits: CommitSummary[];
+	commitsLoading: boolean;
+	repoMode: 'working' | 'commit';
+	pullRequests: PullRequestSummary[];
+	pullRequestsLoading: boolean;
+	activePullRequest: PullRequestSummary | null;
+	walkthroughLoading: boolean;
+	hasWalkthrough: boolean;
+	hasActiveReview: boolean;
+	copyReviewState: 'idle' | 'copied' | 'error';
 }>();
 
 const emit = defineEmits<{
@@ -17,7 +29,29 @@ const emit = defineEmits<{
 	'switch-branch': [branch: string];
 	'create-branch': [name: string];
 	'select-result': [result: FileSearchResult];
+	'load-commits': [];
+	'open-commit': [sha: string];
+	'back-to-working': [];
+	'load-pull-requests': [];
+	'open-pull-request': [number: number];
+	'generate-walkthrough': [];
+	'copy-review-as-markdown': [];
 }>();
+
+const linkButton = {
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: '6px',
+	height: '30px',
+	padding: '0 10px',
+	borderRadius: '6px',
+	border: '1px solid var(--gd-border)',
+	background: 'var(--gd-bg)',
+	color: 'var(--gd-text-2)',
+	fontSize: '13px',
+	fontWeight: 500,
+	cursor: 'pointer',
+} as const;
 </script>
 
 <template>
@@ -74,24 +108,33 @@ const emit = defineEmits<{
 
 		<div class="flex-1" />
 
-		<button
-			type="button"
-			class="inline-flex items-center"
-			:style="{
-				gap: '6px',
-				height: '30px',
-				padding: '0 10px',
-				borderRadius: '8px',
-				border: '1px solid transparent',
-				background: 'transparent',
-				color: 'var(--gd-text-2)',
-				fontSize: '13.5px',
-				fontWeight: 500,
-				cursor: 'pointer',
-			}"
-			:disabled="!state"
-			@click="emit('refresh')"
-		>
+		<template v-if="state">
+			<CommitPicker
+				:commits="commits"
+				:loading="commitsLoading"
+				:active-sha="state.commitSha"
+				:mode="repoMode"
+				@open="emit('load-commits')"
+				@select="(sha: string) => emit('open-commit', sha)"
+				@back="emit('back-to-working')"
+			/>
+			<PullRequestPicker
+				:pull-requests="pullRequests"
+				:loading="pullRequestsLoading"
+				:active-number="activePullRequest?.number"
+				@open="emit('load-pull-requests')"
+				@select="(number: number) => emit('open-pull-request', number)"
+			/>
+			<button type="button" :style="linkButton" :disabled="walkthroughLoading" @click="emit('generate-walkthrough')">
+				<Sparkles :size="14" />
+				{{ walkthroughLoading ? 'Generating…' : hasWalkthrough ? 'Refresh walkthrough' : 'Generate walkthrough' }}
+			</button>
+			<button v-if="hasActiveReview" type="button" :style="linkButton" :disabled="copyReviewState === 'copied'" @click="emit('copy-review-as-markdown')">
+				{{ copyReviewState === 'copied' ? 'Copied!' : 'Copy review as Markdown' }}
+			</button>
+		</template>
+
+		<button type="button" :style="linkButton" :disabled="!state" @click="emit('refresh')">
 			<RefreshCw :size="14" />
 			Refresh
 			<Kbd>R</Kbd>

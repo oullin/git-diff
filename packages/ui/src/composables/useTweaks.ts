@@ -12,6 +12,8 @@ export interface Tweaks {
 	showStatusBar: boolean;
 	wordHighlight: boolean;
 	hideResolved: boolean;
+	wrapLongLines: boolean;
+	hideViewedFiles: boolean;
 	theme: ThemeChoice;
 }
 
@@ -24,6 +26,8 @@ export const TWEAK_DEFAULTS: Tweaks = {
 	showStatusBar: true,
 	wordHighlight: true,
 	hideResolved: false,
+	wrapLongLines: false,
+	hideViewedFiles: false,
 	theme: 'system',
 };
 
@@ -60,6 +64,8 @@ export function useTweaks(prefs: ComputedRef<Record<string, string>>): ComputedR
 			showStatusBar: bool(p[PREF_KEYS.uiShowStatusBar], TWEAK_DEFAULTS.showStatusBar),
 			wordHighlight: bool(p[PREF_KEYS.diffWordHi], TWEAK_DEFAULTS.wordHighlight),
 			hideResolved: bool(p[PREF_KEYS.diffHideResolved], TWEAK_DEFAULTS.hideResolved),
+			wrapLongLines: bool(p[PREF_KEYS.diffWrap], TWEAK_DEFAULTS.wrapLongLines),
+			hideViewedFiles: bool(p[PREF_KEYS.diffHideViewed], TWEAK_DEFAULTS.hideViewedFiles),
 			theme: oneOf(p[PREF_KEYS.theme], ['light', 'dark', 'system'] as const, TWEAK_DEFAULTS.theme),
 		};
 	});
@@ -90,6 +96,12 @@ export function tweakPrefPatch(key: keyof Tweaks, value: Tweaks[keyof Tweaks]): 
 
 		case 'hideResolved':
 			return { [PREF_KEYS.diffHideResolved]: value ? '1' : '0' };
+
+		case 'wrapLongLines':
+			return { [PREF_KEYS.diffWrap]: value ? '1' : '0' };
+
+		case 'hideViewedFiles':
+			return { [PREF_KEYS.diffHideViewed]: value ? '1' : '0' };
 
 		case 'theme':
 			return { [PREF_KEYS.theme]: String(value) };

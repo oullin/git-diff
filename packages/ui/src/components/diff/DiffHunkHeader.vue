@@ -53,7 +53,7 @@ function buttonStyle(enabled: boolean, inflight: boolean) {
 		:style="{
 			gap: '10px',
 			padding: '8px 16px',
-			background: 'var(--gd-bg-gutter, var(--gd-panel))',
+			background: 'var(--accent-subtle)',
 			color: 'var(--gd-text-3)',
 			fontSize: '13px',
 			borderTop: '1px solid var(--gd-border-soft)',

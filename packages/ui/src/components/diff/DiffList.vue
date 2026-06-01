@@ -56,9 +56,11 @@ const emit = defineEmits<{
 			:id="fileElementID(file.path)"
 			:key="file.path"
 			:style="{
-				background: 'var(--gd-panel)',
+				background: 'var(--gd-bg)',
 				overflow: 'clip',
-				borderBottom: '1px solid var(--gd-border)',
+				border: '1px solid var(--gd-border)',
+				borderRadius: '8px',
+				marginBottom: '16px',
 			}"
 		>
 			<FileHeader

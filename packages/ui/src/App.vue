@@ -4,7 +4,6 @@ import AuthGate from '@entry/components/auth/AuthGate.vue';
 import TitleBar from '@entry/components/diff/TitleBar.vue';
 import TopBar from '@entry/components/diff/TopBar.vue';
 import Sidebar from '@entry/components/diff/Sidebar.vue';
-import RepoToolbar from '@entry/components/diff/RepoToolbar.vue';
 import SearchBar from '@entry/components/diff/SearchBar.vue';
 import { ToastViewport } from '@ui/toast';
 import DiffList from '@entry/components/diff/DiffList.vue';
@@ -146,12 +145,16 @@ const {
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
 const { record: walkthrough, loading: walkthroughLoading, error: walkthroughError, generate: generateWalkthrough } = useWalkthrough(state);
 
-const { files, changedByPath, changedPathsSet, repoPaths, selectedFile, selectedIsChanged, reviewComments, userInitials, changedIndex, threadsForFile } = useRepoSelectors({
+const { files, changedByPath, changedPathsSet, repoPaths, selectedFile, selectedIsChanged, reviewComments, userInitials, threadsForFile } = useRepoSelectors({
 	state,
 	selectedPath,
 	activeReview,
 	currentUser,
 });
+
+const visibleFiles = computed(() => (tweaks.value.hideViewedFiles ? files.value.filter((f) => !isViewed(f)) : files.value));
+
+const visibleChangedIndex = computed(() => visibleFiles.value.findIndex((f) => f.path === selectedPath.value));
 
 // Reset viewport-deferred render bookkeeping whenever the diff context changes
 // so a previous search/navigation "render all" doesn't defeat lazy loading.
@@ -180,8 +183,8 @@ watch(
 useStyleWatchers(accent, tweaks);
 
 const { selectAdjacent, jumpToHunk } = useDiffNavigation({
-	files,
-	changedIndex,
+	files: visibleFiles,
+	changedIndex: visibleChangedIndex,
 	onSelect: (path) => selectFile(path),
 });
 
@@ -311,15 +314,6 @@ void ACCENTS;
 				:state="state"
 				:creating-branch="creatingBranch"
 				:branch-create-error="branchCreateError"
-				@refresh="refresh"
-				@switch-branch="switchBranch"
-				@create-branch="createBranch"
-				@select-result="openSearchResult"
-			/>
-
-			<RepoToolbar
-				v-if="state"
-				:state="state"
 				:commits="commits"
 				:commits-loading="commitsLoading"
 				:repo-mode="repoMode"
@@ -330,6 +324,10 @@ void ACCENTS;
 				:has-walkthrough="walkthrough != null"
 				:has-active-review="activeReview != null"
 				:copy-review-state="copyReviewState"
+				@refresh="refresh"
+				@switch-branch="switchBranch"
+				@create-branch="createBranch"
+				@select-result="openSearchResult"
 				@load-commits="loadCommits()"
 				@open-commit="openCommit"
 				@back-to-working="returnToWorkingTree"
@@ -338,6 +336,7 @@ void ACCENTS;
 				@generate-walkthrough="generateWalkthrough(walkthrough != null)"
 				@copy-review-as-markdown="copyReviewAsMarkdown"
 			/>
+
 			<WalkthroughPanel :record="walkthrough" :error="walkthroughError" />
 
 			<main class="flex flex-1 min-h-0">
@@ -356,6 +355,7 @@ void ACCENTS;
 						:selected-path="selectedPath"
 						:search-query="searchQuery"
 						:scope="repoScope"
+						:hide-viewed="tweaks.hideViewedFiles"
 						:is-viewed="isViewed"
 						:threads-for-file="threadsForFile"
 						:all-paths="repoPaths"
@@ -369,9 +369,9 @@ void ACCENTS;
 					/>
 
 					<section class="flex flex-col flex-1 min-w-0 relative">
-						<div class="flex-1 overflow-auto min-h-0">
+						<div class="flex-1 overflow-auto min-h-0" :class="{ 'gd-wrap-lines': tweaks.wrapLongLines }" :style="{ background: 'var(--gd-panel)', padding: '16px 20px 80px' }">
 							<DiffList
-								:files="files"
+								:files="visibleFiles"
 								:selected-path="selectedPath"
 								:selected-is-changed="selectedIsChanged"
 								:selected-repo-file="selectedRepoFile"
@@ -402,7 +402,7 @@ void ACCENTS;
 							/>
 						</div>
 
-						<JumpNav v-if="tweaks.showMinimap && files.length > 0" :index="changedIndex" :total="files.length" @prev="selectAdjacent(-1)" @next="selectAdjacent(1)" />
+						<JumpNav v-if="tweaks.showMinimap && visibleFiles.length > 0" :index="visibleChangedIndex" :total="visibleFiles.length" @prev="selectAdjacent(-1)" @next="selectAdjacent(1)" />
 					</section>
 
 					<ReviewPanel

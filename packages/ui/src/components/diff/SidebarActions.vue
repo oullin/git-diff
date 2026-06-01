@@ -1,10 +1,26 @@
 <script setup lang="ts">
-import { Check } from 'lucide-vue-next';
+import { Check, Eye, MessageSquare } from 'lucide-vue-next';
 import Kbd from '@components/diff/Kbd.vue';
 
 const emit = defineEmits<{
 	'start-review': [];
 }>();
+
+const secondaryButton = {
+	flex: 1,
+	height: '32px',
+	borderRadius: '6px',
+	border: '1px solid var(--gd-border)',
+	background: 'var(--gd-bg)',
+	color: 'var(--gd-text)',
+	fontSize: '13px',
+	fontWeight: 500,
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	gap: '6px',
+	cursor: 'pointer',
+} as const;
 </script>
 
 <template>
@@ -41,5 +57,16 @@ const emit = defineEmits<{
 			Submit review
 			<Kbd tone="on-accent">⌘↵</Kbd>
 		</button>
+
+		<div :style="{ display: 'flex', gap: '8px' }">
+			<button type="button" :style="secondaryButton">
+				<MessageSquare :size="14" />
+				Comment
+			</button>
+			<button type="button" :style="secondaryButton">
+				<Eye :size="14" />
+				Request
+			</button>
+		</div>
 	</div>
 </template>

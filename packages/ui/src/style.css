@@ -891,6 +891,13 @@
         opacity: 1;
     }
 
+    /* "Wrap long lines" tweak: override the inline white-space: pre set on the
+       diff code cell so long lines wrap instead of scrolling horizontally. */
+    .gd-wrap-lines [data-diff-line-text] {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
     /* Floating prev/next jump nav */
     .gd-jump-nav {
         position: absolute;

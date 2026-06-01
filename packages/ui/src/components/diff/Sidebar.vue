@@ -13,6 +13,7 @@ const props = defineProps<{
 	selectedPath: string;
 	searchQuery: string;
 	scope: 'changed' | 'all';
+	hideViewed: boolean;
 	isViewed: (file: ChangedFile) => boolean;
 	threadsForFile: (path: string) => number;
 	allPaths: string[];
@@ -32,6 +33,7 @@ const { totalCount, viewedCount, filteredFiles, filteredAllPaths, progressPct } 
 	files: toRef(props, 'files'),
 	allPaths: toRef(props, 'allPaths'),
 	searchQuery: toRef(props, 'searchQuery'),
+	hideViewed: toRef(props, 'hideViewed'),
 	isViewed: (file) => props.isViewed(file),
 });
 
