@@ -17,9 +17,11 @@ export function registerPierreThemes(): void {
 
 	registered = true;
 
-	registerCustomTheme('licht', () => import('@themes/licht.json').then((m) => m.default as unknown as ThemeRegistration));
-	registerCustomTheme('dunkel', () => import('@themes/dunkel.json').then((m) => m.default as unknown as ThemeRegistration));
+	// The library matches the registered name against the theme JSON's `name`
+	// field, so these must equal "Licht"/"Dunkel" exactly.
+	registerCustomTheme('Licht', () => import('@themes/licht.json').then((m) => m.default as unknown as ThemeRegistration));
+	registerCustomTheme('Dunkel', () => import('@themes/dunkel.json').then((m) => m.default as unknown as ThemeRegistration));
 }
 
 /** Theme map passed to FileDiff options; pairs with `themeType` from useTheme. */
-export const PIERRE_THEMES = { light: 'licht', dark: 'dunkel' } as const;
+export const PIERRE_THEMES = { light: 'Licht', dark: 'Dunkel' } as const;

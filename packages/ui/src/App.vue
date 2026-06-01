@@ -387,6 +387,7 @@ void ACCENTS;
 								:comment-features="commentFeatures"
 								:repo-root="state?.root ?? ''"
 								:commit-ref="state?.commitSha"
+								:base-ref="activePullRequest?.baseRef"
 								:previewing="previewing"
 								:is-viewed-fn="isViewed"
 								:file-element-i-d="fileElementID"

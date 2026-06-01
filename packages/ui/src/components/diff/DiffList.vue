@@ -29,6 +29,7 @@ defineProps<{
 	commentFeatures: RichTextFeatures;
 	repoRoot: string;
 	commitRef?: string;
+	baseRef?: string;
 	previewing: Record<string, boolean>;
 	isViewedFn: (file: ChangedFile) => boolean;
 	fileElementID: (path: string) => string;
@@ -82,12 +83,14 @@ const emit = defineEmits<{
 				:diff-style="tweaks.diffStyle"
 				:density="tweaks.density"
 				:word-highlight="tweaks.wordHighlight"
+				:wrap-long-lines="tweaks.wrapLongLines"
 				:hide-whitespace="hideWhitespace"
 				:hide-resolved="hideResolved"
 				:comments="reviewComments"
 				:reply-features="commentFeatures"
 				:repo-root="repoRoot"
 				:commit-ref="commitRef"
+				:base-ref="baseRef"
 				:split-ratio="splitRatios[file.path] ?? 0.5"
 				@add-comment="(section, line, range) => emit('open-comment-for-line', file, section, line, range)"
 				@delete-comment="(comment) => emit('delete-comment', comment)"

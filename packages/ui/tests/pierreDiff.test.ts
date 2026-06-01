@@ -9,6 +9,7 @@ import { parsePatchFiles } from '@pierre/diffs';
 
 import { getHunkInfos, parsePatch } from '@git-diff/domain/diff';
 import { pierreSurfaceClasses, toPierreDisplayOptions, type PierreDisplayInput } from '@composables/usePierreDiffOptions';
+import { resolveSectionRefs, type DiffSourceContext } from '@composables/usePierreFileDiff';
 
 const SAMPLE_PATCH = [
 	'diff --git a/src/example.ts b/src/example.ts',
@@ -110,10 +111,32 @@ describe('toPierreDisplayOptions', () => {
 	test('theme + themeType wire the registered Primer themes', () => {
 		const opts = toPierreDisplayOptions({ ...base, themeType: 'dark' });
 
-		expect(opts.theme).toEqual({ light: 'licht', dark: 'dunkel' });
+		expect(opts.theme).toEqual({ light: 'Licht', dark: 'Dunkel' });
 		expect(opts.themeType).toBe('dark');
 		expect(opts.disableLineNumbers).toBe(false);
 		expect(opts.expansionLineCount).toBe(100);
+	});
+});
+
+describe('resolveSectionRefs', () => {
+	const working: DiffSourceContext = { repoRoot: '/repo', ignoreWhitespace: false };
+
+	test('working tree sections map to HEAD/index/working-tree refs', () => {
+		expect(resolveSectionRefs('staged', working)).toEqual({ oldRef: 'HEAD', newRef: ':0' });
+		expect(resolveSectionRefs('unstaged', working)).toEqual({ oldRef: ':0', newRef: '' });
+		expect(resolveSectionRefs('untracked', working)).toEqual({ oldRef: null, newRef: '' });
+	});
+
+	test('plain commit diffs against its first parent', () => {
+		const ctx: DiffSourceContext = { repoRoot: '/repo', commitRef: 'abc123', ignoreWhitespace: false };
+
+		expect(resolveSectionRefs('commit', ctx)).toEqual({ oldRef: 'abc123^', newRef: 'abc123' });
+	});
+
+	test('pull request diffs head against the base ref', () => {
+		const ctx: DiffSourceContext = { repoRoot: '/repo', commitRef: 'head456', baseRef: 'main', ignoreWhitespace: false };
+
+		expect(resolveSectionRefs('commit', ctx)).toEqual({ oldRef: 'main', newRef: 'head456' });
 	});
 });
 

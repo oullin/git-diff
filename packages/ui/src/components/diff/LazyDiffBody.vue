@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import type { RichTextFeatures } from '@ui/rich-text-editor';
 import type { LineSelectionRange } from '@composables/useLineSelection';
 import type { PatchLine } from '@git-diff/domain/diff';
-import DiffBody from '@entry/components/diff/DiffBody.vue';
+import PierreDiffBody from '@entry/components/diff/PierreDiffBody.vue';
 import DiffPlaceholder from '@entry/components/diff/DiffPlaceholder.vue';
 import { LAZY_DIFF_LINE_THRESHOLD, useLazyDiffFile } from '@composables/useLazyDiffFile';
 import { forceRenderDiffFile } from '@composables/useLazyRender';
@@ -17,15 +17,17 @@ const props = withDefaults(
 		diffStyle: DiffHunkStyle;
 		density: 'comfortable' | 'compact';
 		wordHighlight: boolean;
+		wrapLongLines: boolean;
 		hideWhitespace: boolean;
 		hideResolved?: boolean;
 		comments: ReviewComment[];
 		replyFeatures: RichTextFeatures;
 		repoRoot: string;
 		commitRef?: string;
+		baseRef?: string;
 		splitRatio?: number;
 	}>(),
-	{ splitRatio: 0.5, commitRef: undefined, hideResolved: false },
+	{ splitRatio: 0.5, commitRef: undefined, baseRef: undefined, hideResolved: false },
 );
 
 const emit = defineEmits<{
@@ -52,25 +54,25 @@ function loadNow() {
 
 <template>
 	<div ref="root">
-		<DiffBody
+		<PierreDiffBody
 			v-if="rendered"
 			:file="file"
 			:view-mode="viewMode"
 			:diff-style="diffStyle"
 			:density="density"
 			:word-highlight="wordHighlight"
+			:wrap-long-lines="wrapLongLines"
 			:hide-whitespace="hideWhitespace"
 			:hide-resolved="hideResolved"
 			:comments="comments"
 			:reply-features="replyFeatures"
 			:repo-root="repoRoot"
 			:commit-ref="commitRef"
-			:split-ratio="splitRatio"
+			:base-ref="baseRef"
 			@add-comment="(section, line, range) => emit('add-comment', section, line, range)"
 			@delete-comment="(comment) => emit('delete-comment', comment)"
 			@reply-comment="(parent, bodyHtml) => emit('reply-comment', parent, bodyHtml)"
 			@resolve-comment="(comment, resolved) => emit('resolve-comment', comment, resolved)"
-			@update:split-ratio="(value) => emit('update:splitRatio', value)"
 		/>
 		<DiffPlaceholder v-else :file="file" @load="loadNow" />
 	</div>
