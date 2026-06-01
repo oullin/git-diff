@@ -1155,6 +1155,12 @@
     --diffs-bg-separator-override: var(--gd-bg-gutter);
 }
 
+/* punchy: stronger line fills (the library has no fill-intensity knob) */
+.pierre-diff--punchy {
+    --diffs-bg-addition-override: var(--diff-added-bg-strong);
+    --diffs-bg-deletion-override: var(--diff-removed-bg-strong);
+}
+
 /* density: comfortable is the 14px/20px default declared on :root */
 .pierre-diff.density-compact {
     --diffs-font-size: 12.5px;
