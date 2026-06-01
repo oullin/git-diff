@@ -1125,3 +1125,38 @@
     background: color-mix(in oklab, var(--gd-accent, gold) 75%, transparent);
     outline: 1px solid var(--gd-accent, gold);
 }
+
+/* ── @pierre/diffs (diffs.com) renderer surface ──────────────────────────────
+   FileDiff renders into a Shadow DOM whose styles read `--diffs-*` custom
+   properties (with `*-override` escape hatches). CSS custom properties inherit
+   through shadow boundaries, so setting the override vars on this light-DOM
+   wrapper themes the diff with the app's Primer tokens (which already switch
+   per app theme via :root / :root.dark). Code-token colors come from the
+   registered Shiki themes (licht/dunkel); only chrome is bridged here.
+   Refined during the Phase 5 visual-parity pass against the live renderer. */
+.pierre-diff {
+    /* surface + text */
+    --diffs-bg: var(--gd-bg-code);
+    --diffs-fg: var(--gd-text);
+    --diffs-fg-number-override: var(--gd-text-3);
+
+    /* addition / deletion line + gutter fills → Primer */
+    --diffs-bg-addition-override: var(--gd-add-bg);
+    --diffs-bg-deletion-override: var(--gd-del-bg);
+    --diffs-bg-addition-emphasis-override: var(--diff-added-bg-strong);
+    --diffs-bg-deletion-emphasis-override: var(--diff-removed-bg-strong);
+    --diffs-bg-context-override: var(--gd-bg-code);
+    --diffs-bg-context-gutter-override: var(--gd-bg-gutter);
+
+    /* bar indicators (diffStyle 'bar') */
+    --diffs-decoration-bar-color: var(--gd-add-border);
+
+    /* hunk separator */
+    --diffs-bg-separator-override: var(--gd-bg-gutter);
+}
+
+/* density: comfortable is the 14px/20px default declared on :root */
+.pierre-diff.density-compact {
+    --diffs-font-size: 12.5px;
+    --diffs-line-height: 18px;
+}
