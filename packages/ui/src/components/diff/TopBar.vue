@@ -61,7 +61,7 @@ const linkButton = {
 			height: '48px',
 			flexShrink: 0,
 			gap: '10px',
-			padding: '0 14px',
+			padding: '0 var(--gd-topbar-pad-x)',
 			borderBottom: '1px solid var(--gd-border)',
 			background: 'var(--gd-bg)',
 		}"
@@ -76,13 +76,15 @@ const linkButton = {
 
 		<div class="flex items-center" :style="{ gap: '8px', paddingLeft: '4px' }">
 			<span
+				class="inline-flex items-center"
 				:style="{
-					fontSize: '11.5px',
+					height: '34px',
+					fontSize: '13px',
 					fontFamily: 'var(--font-mono)',
 					color: 'var(--gd-text-3)',
-					padding: '3px 7px',
+					padding: '0 8px',
 					background: 'var(--gd-panel-2)',
-					borderRadius: '5px',
+					borderRadius: '8px',
 					border: '1px solid var(--gd-border)',
 				}"
 				>{{ state?.headSha?.slice(0, 8) || '—' }}</span
