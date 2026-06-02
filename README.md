@@ -115,8 +115,9 @@ desktop app with a Go backend.
 | `packages/tools`  | Turbo cache wrapper and unsigned macOS release helper.                      |
 
 To set up the toolchain, run it locally, and learn the development commands, see
-**[docs/development.md](docs/development.md)**. For packaging, signing, and the
-release pipeline, see **[docs/distribution.md](docs/distribution.md)**.
+**[docs/development.md](docs/development.md)**. Releases are built with
+[Electron Forge](https://www.electronforge.io/) — for tagging, packaging, signing,
+and the release pipeline, see **[docs/distribution.md](docs/distribution.md)**.
 
 ## License
 

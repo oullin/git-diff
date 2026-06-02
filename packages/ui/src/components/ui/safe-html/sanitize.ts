@@ -4,6 +4,7 @@ export type SanitizeProfile = 'rich-text' | 'minimal';
 
 const MINIMAL_TAGS = ['strong', 'em', 'u', 's', 'code', 'a', 'br', 'span'];
 const MINIMAL_ATTRS = ['href', 'target', 'rel', 'class'];
+const RICH_TEXT_ATTRS = ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'data-mention-id', 'data-language', 'data-lexical-text', 'colspan', 'rowspan'];
 
 const RICH_TEXT_TAGS = [
 	'p',
@@ -35,8 +36,6 @@ const RICH_TEXT_TAGS = [
 	'span',
 	'hr',
 ];
-
-const RICH_TEXT_ATTRS = ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'data-mention-id', 'data-language', 'data-lexical-text', 'colspan', 'rowspan'];
 
 export type SanitizeOptions = {
 	profile?: SanitizeProfile;

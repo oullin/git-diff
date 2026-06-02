@@ -2,11 +2,13 @@ import { createApp } from 'vue';
 import App from '@entry/App.vue';
 import { initTheme } from '@composables/useTheme';
 import { installBrowserFallback } from '@lib/browser-fallback';
+import { registerPierreThemes } from '@lib/pierreTheme';
 import { pinia } from '@/stores';
 import './style.css';
 
 installBrowserFallback();
 initTheme();
+registerPierreThemes();
 
 function reportRendererError(message: string, details?: string) {
 	console.error(message, details);

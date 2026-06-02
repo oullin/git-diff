@@ -66,6 +66,16 @@ const themeOptions: { value: ThemeChoice; label: string; icon: typeof Sun }[] = 
 					<Label for="tweaks-status-bar" class="text-[12.5px] font-normal" :style="{ color: 'var(--gd-text-2)' }"> Status bar </Label>
 					<Switch id="tweaks-status-bar" :model-value="tweaks.showStatusBar" @update:model-value="(value) => setKey('showStatusBar', value)" />
 				</div>
+
+				<div class="flex items-center justify-between gap-3">
+					<Label for="tweaks-wrap" class="text-[12.5px] font-normal" :style="{ color: 'var(--gd-text-2)' }"> Wrap long lines </Label>
+					<Switch id="tweaks-wrap" :model-value="tweaks.wrapLongLines" @update:model-value="(value) => setKey('wrapLongLines', value)" />
+				</div>
+
+				<div class="flex items-center justify-between gap-3">
+					<Label for="tweaks-hide-viewed" class="text-[12.5px] font-normal" :style="{ color: 'var(--gd-text-2)' }"> Hide viewed files </Label>
+					<Switch id="tweaks-hide-viewed" :model-value="tweaks.hideViewedFiles" @update:model-value="(value) => setKey('hideViewedFiles', value)" />
+				</div>
 			</div>
 		</section>
 

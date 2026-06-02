@@ -70,6 +70,8 @@ watch(
 				:disabled="!state"
 				:style="{
 					gap: '8px',
+					/* Right edge aligns with the sidebar below: sidebar width minus the top bar's left padding. */
+					width: 'calc(var(--gd-sidebar-w) - var(--gd-topbar-pad-x))',
 					height: '34px',
 					padding: '0 10px 0 12px',
 					borderRadius: '8px',
@@ -83,9 +85,20 @@ watch(
 					cursor: state ? 'pointer' : 'not-allowed',
 				}"
 			>
-				<GitBranch :size="13" :style="{ color: 'var(--gd-text-3)' }" />
-				<span :style="{ fontFamily: 'var(--font-mono)' }">{{ state?.branch || 'detached' }}</span>
-				<ChevronDown :size="12" :style="{ color: 'var(--gd-text-3)', marginLeft: '2px' }" />
+				<GitBranch :size="13" :style="{ color: 'var(--gd-text-3)', flexShrink: 0 }" />
+				<span
+					:style="{
+						fontFamily: 'var(--font-mono)',
+						flex: 1,
+						minWidth: 0,
+						overflow: 'hidden',
+						textOverflow: 'ellipsis',
+						whiteSpace: 'nowrap',
+						textAlign: 'left',
+					}"
+					>{{ state?.branch || 'detached' }}</span
+				>
+				<ChevronDown :size="12" :style="{ color: 'var(--gd-text-3)', marginLeft: '2px', flexShrink: 0 }" />
 			</button>
 		</DropdownMenuTrigger>
 		<DropdownMenuContent align="start" class="w-[260px] max-h-[320px] overflow-auto">

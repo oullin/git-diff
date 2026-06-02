@@ -24,7 +24,6 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{ 'update:modelValue': [string] }>();
-
 const RichTextEditor = defineAsyncComponent(() => import('@rich-text-editor/RichTextEditor.vue').then((m) => m.default));
 
 const ready = ref(false);

@@ -91,6 +91,12 @@
     --app-list-row-padding: 12px;
     --app-list-gap: 8px;
 
+    /* Left rail width + the top chrome's horizontal padding. The branch picker
+       in the top bar derives its width from these so its right edge always
+       lines up with the sidebar's right edge below it. */
+    --gd-sidebar-w: 308px;
+    --gd-topbar-pad-x: 14px;
+
     /* Pierre stack: Geist for UI chrome, Berkeley Mono / JetBrains Mono for code.
        Falls back gracefully — drop woff2 files into ./fonts/geist/ or ./fonts/berkeley/
        and add matching @font-face blocks above to upgrade rendering. */
@@ -891,6 +897,13 @@
         opacity: 1;
     }
 
+    /* "Wrap long lines" tweak: override the inline white-space: pre set on the
+       diff code cell so long lines wrap instead of scrolling horizontally. */
+    .gd-wrap-lines [data-diff-line-text] {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
     /* Floating prev/next jump nav */
     .gd-jump-nav {
         position: absolute;
@@ -1027,18 +1040,31 @@
 
     --trees-font-family-override: var(--font-code);
     --trees-font-size-override: 13px;
-    --trees-accent-override: var(--accent-blue);
+    --trees-accent-override: var(--gd-accent, var(--accent-blue));
 
+    /* surface + text */
+    --trees-bg-override: transparent;
+    --trees-fg-override: var(--gd-text, var(--sidebar-text));
+    --trees-fg-muted-override: var(--gd-text-2, var(--soft-muted));
+
+    /* rows */
     --trees-row-height: 26px;
-    --trees-bg: transparent;
-    --trees-fg: var(--sidebar-text);
-    --trees-fg-muted: var(--soft-muted);
-    --trees-row-hover-bg: rgb(127 127 127 / 0.12);
-    --trees-row-selected-bg: rgb(127 127 127 / 0.14);
-    --trees-row-selected-fg: var(--foreground);
-    --trees-status-fg: var(--soft-muted);
-    --trees-indent-guide: rgb(127 127 127 / 0.18);
-    --trees-icon-color: var(--soft-muted);
+    --trees-theme-list-hover-bg: rgb(127 127 127 / 0.12);
+    --trees-selected-bg-override: rgb(127 127 127 / 0.14);
+    --trees-selected-fg-override: var(--gd-text, var(--foreground));
+    --trees-selected-focused-border-color-override: var(--accent-blue-edge);
+    --trees-focus-ring-color-override: var(--gd-accent, var(--accent-blue));
+
+    /* indent guides + icons */
+    --trees-indent-guide-bg-override: rgb(127 127 127 / 0.18);
+    --trees-file-icon-color: var(--gd-text-3, var(--soft-muted));
+
+    /* git status -> Primer diff tokens */
+    --trees-git-added-color-override: var(--gd-added, var(--diff-added));
+    --trees-git-modified-color-override: var(--gd-warn, #9a6700);
+    --trees-git-deleted-color-override: var(--gd-removed, var(--diff-removed));
+    --trees-git-renamed-color-override: var(--gd-accent, var(--accent-blue));
+    --trees-git-untracked-color-override: var(--gd-added, var(--diff-added));
 }
 
 @layer base {
@@ -1098,4 +1124,45 @@
 .gd-search-hit-active {
     background: color-mix(in oklab, var(--gd-accent, gold) 75%, transparent);
     outline: 1px solid var(--gd-accent, gold);
+}
+
+/* ── @pierre/diffs (diffs.com) renderer surface ──────────────────────────────
+   FileDiff renders into a Shadow DOM whose styles read `--diffs-*` custom
+   properties (with `*-override` escape hatches). CSS custom properties inherit
+   through shadow boundaries, so setting the override vars on this light-DOM
+   wrapper themes the diff with the app's Primer tokens (which already switch
+   per app theme via :root / :root.dark). Code-token colors come from the
+   registered Shiki themes (licht/dunkel); only chrome is bridged here.
+   Refined during the Phase 5 visual-parity pass against the live renderer. */
+.pierre-diff {
+    /* surface + text */
+    --diffs-bg: var(--gd-bg-code);
+    --diffs-fg: var(--gd-text);
+    --diffs-fg-number-override: var(--gd-text-3);
+
+    /* addition / deletion line + gutter fills → Primer */
+    --diffs-bg-addition-override: var(--gd-add-bg);
+    --diffs-bg-deletion-override: var(--gd-del-bg);
+    --diffs-bg-addition-emphasis-override: var(--diff-added-bg-strong);
+    --diffs-bg-deletion-emphasis-override: var(--diff-removed-bg-strong);
+    --diffs-bg-context-override: var(--gd-bg-code);
+    --diffs-bg-context-gutter-override: var(--gd-bg-gutter);
+
+    /* bar indicators (diffStyle 'bar') */
+    --diffs-decoration-bar-color: var(--gd-add-border);
+
+    /* hunk separator */
+    --diffs-bg-separator-override: var(--gd-bg-gutter);
+}
+
+/* punchy: stronger line fills (the library has no fill-intensity knob) */
+.pierre-diff--punchy {
+    --diffs-bg-addition-override: var(--diff-added-bg-strong);
+    --diffs-bg-deletion-override: var(--diff-removed-bg-strong);
+}
+
+/* density: comfortable is the 14px/20px default declared on :root */
+.pierre-diff.density-compact {
+    --diffs-font-size: 12.5px;
+    --diffs-line-height: 18px;
 }

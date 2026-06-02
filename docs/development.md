@@ -96,13 +96,24 @@ Viewed-file state is stored by the renderer per repository root.
 
 ## Release
 
-Build an unsigned macOS release artifact with:
+Releases are built with [Electron Forge](https://www.electronforge.io/). Tag a
+version to cut a release in CI:
 
 ```sh
-pnpm release:mac:unsigned
+git tag v0.1.1 && git push origin v0.1.1
 ```
 
-The Electron package is configured with:
+The `Release` workflow builds the unsigned macOS arm64 `.dmg` + `.zip`, publishes
+a GitHub Release, and opens a Homebrew cask bump PR against `oullin/homebrew-tap`
+on final (non-prerelease) tags.
+
+To build the same artifacts locally:
+
+```sh
+pnpm release:mac:unsigned   # builds the Go API + renderer, then `electron-forge make`
+```
+
+The Electron package is configured (in `packages/ui/forge.config.ts`) with:
 
 - app id: `io.gocanto.git-diff`
 - product name: `Git Diff Review`

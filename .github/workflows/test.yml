@@ -1,0 +1,59 @@
+name: test
+
+# CI for the hybrid Electron + Go app: the TypeScript/Vue suite and the Go API
+# suite run as separate jobs.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-ts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 23
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Filter to the TS packages so this job doesn't require a Go toolchain;
+      # the Go suite runs in test-go.
+      - name: Test TS packages
+        run: pnpm --dir packages/tools run turbo -- run test --filter=ui --filter=@git-diff/bridge --filter=@git-diff/domain
+
+  test-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/api/go.mod
+
+      - name: Test Go API
+        run: make test-api

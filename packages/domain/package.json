@@ -74,10 +74,8 @@
         "build": "pnpm run check:imports && tsc -p tsconfig.json",
         "lint": "oxlint ."
     },
-    "dependencies": {
-        "@pierre/diffs": "1.2.0-beta.6"
-    },
     "devDependencies": {
+        "@pierre/diffs": "1.2.0-beta.6",
         "tsx": "^4.21.0",
         "typescript": "^6.0.3"
     }

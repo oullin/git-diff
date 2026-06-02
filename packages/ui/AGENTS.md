@@ -10,14 +10,16 @@ Parsing helpers — `parsePatchFiles`, `parseDiffFromFile`, `processFile`, `proc
 
 ## Diff rendering
 
-Rendering, syntax highlighting, comment overlays, split/unified layout, hide-whitespace, and word-level intra-line highlights all live in Vue components and Vue-flavoured TS:
+Diffs are rendered by the **`@pierre/diffs`** (diffs.com) vanilla `FileDiff` engine — it owns syntax highlighting (Shiki), split/unified layout, change indicators, line wrapping, word/char intra-line highlighting, and native context expansion. We wrap it; we do not re-implement rendering.
 
-- [src/components/diff/DiffBody.vue](src/components/diff/DiffBody.vue) — main view
-- [src/lib/highlight.ts](src/lib/highlight.ts) — Shiki integration via Vue refs
-- [src/lib/wordHi.ts](src/lib/wordHi.ts) — cheap intra-line highlight heuristic
-- [src/components/diff/CommentThread.vue](src/components/diff/CommentThread.vue) — overlay
+- [src/components/diff/PierreDiffBody.vue](src/components/diff/PierreDiffBody.vue) — Vue wrapper: one `FileDiff` per diff section, options, theme, add-comment affordance, outdated detection
+- [src/composables/usePierreFileDiff.ts](src/composables/usePierreFileDiff.ts) — resolves a `FileDiffMetadata` per section (full-file mode via `parseDiffFromFile`, patch fallback via `processFile`)
+- [src/composables/usePierreDiffOptions.ts](src/composables/usePierreDiffOptions.ts) — Tweaks/props → `FileDiffOptions`
+- [src/composables/usePierreComments.ts](src/composables/usePierreComments.ts) — comment side translation + selection→target
+- [src/lib/pierreTheme.ts](src/lib/pierreTheme.ts) — registers the Primer Licht/Dunkel Shiki themes
+- [src/components/diff/CommentThread.vue](src/components/diff/CommentThread.vue) — comment UI, rendered in light DOM beneath each section (FileDiff renders into a Shadow DOM, so rich Vue comment UI can't be embedded inline)
 
-`@pierre/diffs` also exports a React `<CodeView>` component. **Do not import it.** If we ever need its virtualization or worker-based highlighting, build a Vue equivalent on top of the parser plus a Vue virtualizer (`@tanstack/vue-virtual`) and a worker-wrapped Shiki.
+`FileDiff` renders into a **Shadow DOM**; theme it via the `--diffs-*` override vars in the `.pierre-diff` scope in `src/style.css`. `@pierre/diffs` also exports React components under `@pierre/diffs/react` and a `<diffs-container>` web component — **do not import either**; use the vanilla `FileDiff` class directly.
 
 ## File tree
 
