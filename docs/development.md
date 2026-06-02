@@ -74,7 +74,7 @@ go test ./packages/api/...
 
 ## Formatting
 
-Format changed sources (Go + TS/Vue) through go-fmt:
+Format changed sources (Go + TS/Vue):
 
 ```sh
 pnpm format      # or: make format

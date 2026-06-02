@@ -51,7 +51,7 @@ Git Diff Review gives you the **pull-request review experience, locally**:
   against, and browse pull requests and history without leaving the app.
 - **AI walkthroughs (optional).** Generate a guided walkthrough of a change to get
   oriented fast.
-- **Keyboard-driven.** `J`/`K` to navigate, `V` to mark viewed, `C` to comment,
+- **Keyboard-driven.** `j`/`k` to navigate, `v` to mark viewed, `c` to comment,
   `⌘↵` to submit — review without touching the mouse.
 - **Native and local.** A fast Electron + Vue interface backed by a Go engine that
   reads Git directly and stores your reviews in local SQLite.
