@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="card.css" />
+    <style>
+      .card {
+        width: 1080px;
+        height: 1080px;
+        padding: 96px 84px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 56px;
+      }
+      .head img {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+      }
+      .head .name {
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: 84px;
+        line-height: 1.02;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+      }
+      h2 b {
+        color: var(--accent);
+      }
+      .sub {
+        margin-top: 38px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+      .chip {
+        font-size: 28px;
+        font-weight: 600;
+        padding: 14px 26px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: #ffffff0a;
+      }
+      .term {
+        margin-top: 60px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--bg-2);
+      }
+      .term .bar {
+        height: 42px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 16px;
+        background: #2a2a2a;
+        border-bottom: 1px solid var(--border);
+      }
+      .term .bar i {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .term .body {
+        font-family: "Fira Code", monospace;
+        font-size: 23px;
+        line-height: 1.7;
+        padding: 26px 28px;
+      }
+      .term .body .muted {
+        color: var(--faint);
+      }
+      .foot {
+        margin-top: 56px;
+        font-size: 24px;
+        color: var(--muted);
+      }
+      .foot .mono {
+        color: #cfcfcf;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="head">
+        <img src="../../../packages/ui/public/icon-512.png" alt="" />
+        <span class="name">Git Diff Review</span>
+      </div>
+      <h2>Your code never <b>leaves your machine.</b></h2>
+      <div class="sub">
+        <span class="chip">No cloud</span>
+        <span class="chip">No sign-up</span>
+        <span class="chip">No telemetry</span>
+      </div>
+      <div class="term">
+        <div class="bar">
+          <i style="background:#ff5f57"></i>
+          <i style="background:#febc2e"></i>
+          <i style="background:#28c840"></i>
+        </div>
+        <div class="body">
+          <span class="muted"># reviews, comments &amp; prefs live here — only here</span><br />
+          <span class="cyan">~/Library/Application Support/git-diff/</span>reviews.sqlite3
+        </div>
+      </div>
+      <div class="foot">Reads Git over a local Unix socket. Never pushes, never opens a PR. <span class="mono">github.com/oullin/git-diff</span></div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="card.css" />
+    <style>
+      .card {
+        width: 1200px;
+        height: 630px;
+        padding: 72px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .gutter span {
+        font-family: "Fira Code", monospace;
+        font-size: 0;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .logo {
+        width: 96px;
+        height: 96px;
+        border-radius: 22px;
+      }
+      .kicker {
+        font-family: "Fira Code", monospace;
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 9px 16px;
+      }
+      h1 {
+        font-size: 92px;
+        line-height: 0.98;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+        margin-top: 6px;
+      }
+      .tag {
+        font-size: 31px;
+        line-height: 1.32;
+        color: #e7e7e7;
+        max-width: 880px;
+        margin-top: 30px;
+      }
+      .tag b {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 21px;
+        color: var(--muted);
+      }
+      .foot .mono {
+        color: #cfcfcf;
+      }
+      .badges {
+        display: flex;
+        gap: 12px;
+      }
+      .badge {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-size: 17px;
+      }
+      .codeline {
+        font-family: "Fira Code", monospace;
+        font-size: 20px;
+        margin-top: 34px;
+      }
+      .codeline .add::before {
+        content: "+ ";
+      }
+      .codeline .del::before {
+        content: "- ";
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div>
+        <div class="top">
+          <img class="logo" src="../../../packages/ui/public/icon-512.png" alt="" />
+          <span class="pill kicker"><span class="cyan">●</span> before you commit</span>
+        </div>
+        <h1>Git Diff<br />Review</h1>
+        <div class="tag">
+          Review your local Git changes like a pull request.
+          <b>On your machine. Nothing leaves it.</b>
+        </div>
+        <div class="codeline">
+          <span class="add">caught the stray debug log</span> &nbsp;
+          <span class="del">before it hit history</span>
+        </div>
+      </div>
+      <div class="foot">
+        <span class="mono">github.com/oullin/git-diff</span>
+        <span class="badges">
+          <span class="badge">MIT</span>
+          <span class="badge">macOS · Apple Silicon</span>
+        </span>
+      </div>
+    </div>
+  </body>
+</html>

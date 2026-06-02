@@ -1,0 +1,113 @@
+/* Shared brand tokens for Git Diff Review social cards.
+   Colors/fonts mirror the app theme (dunkel.json + style.css). */
+
+@font-face {
+  font-family: "Fira Code";
+  font-weight: 400;
+  font-display: block;
+  src: url("../../../packages/ui/src/fonts/firacode/FiraCode-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Fira Code";
+  font-weight: 600;
+  font-display: block;
+  src: url("../../../packages/ui/src/fonts/firacode/FiraCode-SemiBold.woff2") format("woff2");
+}
+
+:root {
+  --bg: #242424;
+  --bg-2: #1c1c1c;
+  --panel: #2c2c2c;
+  --fg: #fafafa;
+  --muted: #a0a0a0;
+  --faint: #6b6b6b;
+  --accent: #89ddff;
+  --green: #5ad27e;
+  --red: #ff6762;
+  --border: #ffffff14;
+  --radius: 18px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg);
+}
+
+body {
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+.mono {
+  font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Card frame: each card sets data-w / data-h via inline width/height. */
+.card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 120% at 100% 0%, #2f2f2f 0%, var(--bg) 55%) ,
+    var(--bg);
+}
+
+/* Subtle diff-gutter motif used on several cards. */
+.gutter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+.gutter span {
+  position: absolute;
+  left: 0;
+  width: 6px;
+  border-radius: 0 4px 4px 0;
+}
+.add {
+  color: var(--green);
+}
+.del {
+  color: var(--red);
+}
+.cyan {
+  color: var(--accent);
+}
+.muted {
+  color: var(--muted);
+}
+
+.wordmark {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff0a;
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 8px;
+}
+.dots i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  display: inline-block;
+}

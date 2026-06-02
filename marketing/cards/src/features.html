@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="card.css" />
+    <style>
+      .card {
+        width: 1080px;
+        height: 1080px;
+        padding: 70px 76px 64px;
+        display: flex;
+        flex-direction: column;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 8px;
+      }
+      .head img {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+      }
+      .head .name {
+        font-size: 40px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      h2 {
+        font-size: 56px;
+        line-height: 1.04;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        margin: 20px 0 34px;
+      }
+      h2 b {
+        color: var(--accent);
+      }
+      .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        border: 1px solid var(--border);
+        background: #ffffff07;
+        border-radius: 16px;
+        padding: 20px 28px;
+      }
+      .ic {
+        width: 56px;
+        height: 56px;
+        flex: 0 0 56px;
+        border-radius: 13px;
+        background: #ffffff0d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+      }
+      .row .t {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .row .s {
+        font-size: 21px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .row .s .mono {
+        color: #cfcfcf;
+      }
+      .foot {
+        margin-top: auto;
+        padding-top: 28px;
+        font-size: 23px;
+        color: var(--faint);
+      }
+      .foot .mono {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="head">
+        <img src="../../../packages/ui/public/icon-512.png" alt="" />
+        <span class="name">Git Diff Review</span>
+      </div>
+      <h2>The pull-request review you already know — <b>locally</b>.</h2>
+      <div class="rows">
+        <div class="row">
+          <div class="ic cyan">⌥</div>
+          <div>
+            <div class="t">A real review surface</div>
+            <div class="s">File list, status badges, +/− counts, jump between hunks.</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ic"><span class="add">±</span></div>
+          <div>
+            <div class="t">Split or unified diffs</div>
+            <div class="s">Syntax-highlighted, your choice per session.</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ic cyan">✓</div>
+          <div>
+            <div class="t">Viewed-file tracking &amp; inline notes</div>
+            <div class="s">Tick files off (<span class="mono">0/14 viewed</span>), drop comments on lines.</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ic mono cyan">⌨</div>
+          <div>
+            <div class="t">Keyboard-driven</div>
+            <div class="s"><span class="mono">j</span>/<span class="mono">k</span> navigate · <span class="mono">v</span> viewed · <span class="mono">c</span> comment · <span class="mono">⌘↵</span> submit</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="ic cyan">⌂</div>
+          <div>
+            <div class="t">100% local</div>
+            <div class="s">No cloud, no sign-up, no telemetry — stored in local SQLite.</div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span class="mono">github.com/oullin/git-diff</span> · MIT · macOS (Apple Silicon)</div>
+    </div>
+  </body>
+</html>

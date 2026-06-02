@@ -89,6 +89,8 @@ export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): () => v
 		if ((bindings.fileFilter && matchesBinding(event, bindings.fileFilter)) || (bindings.diffSearch && matchesBinding(event, bindings.diffSearch))) {
 			event.preventDefault();
 			opts.onOpenSearch();
+
+			return;
 		}
 	}
 
