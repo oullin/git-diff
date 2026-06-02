@@ -82,6 +82,15 @@ export async function resolveFileDiff(file: ChangedFile, section: DiffSection, c
 		return { meta: undefined, partial: true };
 	}
 
+	// PR diffs are computed by the backend against the merge-base, but the only
+	// base ref surfaced here is a (possibly-moved) branch name — recomputing a
+	// full-file diff from its current tip could drift from the real PR diff. The
+	// pre-computed patch is the accurate source, so PRs use patch mode. (Native
+	// expansion for PRs needs the exact base SHA surfaced — a future change.)
+	if (section.kind === 'commit' && ctx.baseRef) {
+		return patchFallback();
+	}
+
 	const refs = resolveSectionRefs(section.kind, ctx);
 	const oldPath = file.oldPath ?? file.path;
 
