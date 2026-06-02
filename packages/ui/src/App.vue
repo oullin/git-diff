@@ -79,13 +79,11 @@ const diffViewMode = computed<DiffViewMode>(() => tweaks.value.viewMode);
 const hideWhitespace = computed(() => prefValues.value[PREF_KEYS.diffHideWhitespace] === '1');
 
 const lastRepoRoot = computed(() => prefValues.value[PREF_KEYS.lastRepoRoot] ?? '');
-
 const { items: repositories, loading: repositoriesLoading, refresh: refreshRepositoryList, remove: removeRepositoryFromList } = useRepositoryList();
 
 const selectedPath = ref('');
 
 const searchQuery = ref('');
-
 const { collapsed, splitRatios, previewing, toggleCollapsed, setSplitRatio, togglePreview } = useDiffLayout();
 
 const reviewPanelOpen = ref(false);
@@ -146,7 +144,6 @@ const {
 });
 
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
-
 const { record: walkthrough, loading: walkthroughLoading, error: walkthroughError, generate: generateWalkthrough } = useWalkthrough(state);
 
 const { files, changedByPath, changedPathsSet, repoPaths, selectedFile, selectedIsChanged, reviewComments, userInitials, changedIndex, threadsForFile } = useRepoSelectors({
