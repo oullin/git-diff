@@ -24,17 +24,25 @@
         "dev": "tsx scripts/dev/index.ts",
         "dev:vite": "portless git-diff-ui vite --host 127.0.0.1",
         "dev:electron": "pnpm exec tsc -p tsconfig.electron.json && pnpm exec vite build --config vite.electron.config.ts && VITE_DEV_SERVER_URL=https://git-diff-ui.localhost:1355 electron dist-electron/main.js",
-        "build": "pnpm run check:typescript && pnpm run check:imports && vue-tsc --noEmit && vite build && tsc -p tsconfig.electron.json && vite build --config vite.electron.config.ts",
+        "build": "pnpm run check:typescript && pnpm run check:imports && vue-tsc --noEmit && vite build && tsc -p tsconfig.electron.json --noEmit && ELECTRON_BUILD_TARGET=main vite build --config vite.electron.config.ts && ELECTRON_BUILD_TARGET=preload vite build --config vite.electron.config.ts",
         "test": "pnpm run check:typescript && pnpm run check:imports && vitest run",
         "start": "electron dist-electron/main.js",
-        "dist:mac:unsigned": "pnpm run icon:generate && tsx scripts/dist-mac.ts unsigned",
-        "dist:mac:signed": "pnpm run icon:generate && tsx scripts/dist-mac.ts signed",
+        "package": "electron-forge package",
+        "make": "electron-forge make",
+        "make:mac": "electron-forge make --platform=darwin --arch=arm64",
+        "publish": "electron-forge publish",
         "lint": "oxlint .",
         "icon:generate": "bash scripts/generate-app-icon.sh"
     },
     "dependencies": {
         "@git-diff/bridge": "workspace:*",
-        "@git-diff/domain": "workspace:*",
+        "@git-diff/domain": "workspace:*"
+    },
+    "devDependencies": {
+        "@electron-forge/cli": "^7.11.2",
+        "@electron-forge/maker-dmg": "^7.11.2",
+        "@electron-forge/maker-zip": "^7.11.2",
+        "@electron-forge/publisher-github": "^7.11.2",
         "@lexical/code": "0.38.1",
         "@lexical/html": "0.38.1",
         "@lexical/link": "0.38.1",
@@ -46,14 +54,6 @@
         "@lexical/utils": "0.38.1",
         "@pierre/diffs": "1.2.0-beta.6",
         "@pierre/trees": "1.0.0-beta.3",
-        "dompurify": "3.4.2",
-        "lexical": "0.38.1",
-        "lexical-vue": "0.14.1",
-        "marked": "^18.0.4",
-        "pinia": "^3.0.4",
-        "prismjs": "1.30.0"
-    },
-    "devDependencies": {
         "@primer/primitives": "^11.8.0",
         "@radix-icons/vue": "^1.0.0",
         "@shikijs/themes": "^4.0.2",
@@ -65,14 +65,19 @@
         "@vueuse/core": "^14.3.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "dompurify": "3.4.2",
         "electron": "42.0.1",
-        "electron-builder": "26.8.1",
         "ghostty-web": "0.4.0",
         "happy-dom": "^20.0.11",
+        "lexical": "0.38.1",
+        "lexical-vue": "0.14.1",
         "lucide-vue-next": "^1.0.0",
+        "marked": "^18.0.4",
         "monaco-editor": "^0.55.1",
         "monaco-yaml": "^5.4.1",
+        "pinia": "^3.0.4",
         "portless": "0.13.0",
+        "prismjs": "1.30.0",
         "reka-ui": "^2.9.7",
         "shiki": "^4.0.2",
         "tailwind-merge": "^3.4.0",
@@ -83,45 +88,5 @@
         "vitest": "4.1.5",
         "vue": "3.5.34",
         "vue-tsc": "^3.2.8"
-    },
-    "build": {
-        "appId": "io.gocanto.git-diff",
-        "productName": "Git Diff Review",
-        "artifactName": "git-diff-review-${version}-${arch}.${ext}",
-        "npmRebuild": false,
-        "publish": {
-            "provider": "github",
-            "owner": "oullin",
-            "repo": "git-diff"
-        },
-        "directories": {
-            "output": "release"
-        },
-        "files": [
-            "dist/**/*",
-            "dist-electron/**/*"
-        ],
-        "mac": {
-            "category": "public.app-category.utilities",
-            "icon": "build/icon.icns",
-            "hardenedRuntime": true,
-            "gatekeeperAssess": false,
-            "extendInfo": {
-                "CFBundleDisplayName": "Git Diff Review"
-            },
-            "target": [
-                "dmg",
-                "zip"
-            ]
-        },
-        "dmg": {
-            "sign": false
-        },
-        "extraResources": [
-            {
-                "from": "../api/dist/api",
-                "to": "api"
-            }
-        ]
     }
 }

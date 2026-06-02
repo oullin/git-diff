@@ -1,16 +1,17 @@
 /**
- * Electron Forge configuration.
+ * Electron Forge configuration (the supported packaging path).
  *
- * This config lives alongside the existing electron-builder block in
- * package.json. Both target the same outputs (.dmg + .zip on macOS arm64)
- * so we can cut over once a signed/notarized Forge build has been verified
- * in CI. After the cutover, the "build" key in package.json + the
- * electron-builder devDep can be removed.
+ * Builds the unsigned macOS arm64 .dmg + .zip and embeds the Go API binary as
+ * an extraResource. Signing/notarization stay off until the Apple secrets are
+ * provided (see docs/distribution.md); when present, osxSign/osxNotarize wire
+ * themselves in automatically.
  *
- * See docs/distribution.md for the rollout plan.
+ * Loaded by Forge via jiti, so native ESM + TypeScript (and `import.meta`) work
+ * without a separate loader.
  */
 
-import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
 
 const here = import.meta.dirname;
 
@@ -21,6 +22,35 @@ export default {
 		asar: true,
 		icon: resolve(here, 'build/icon'),
 		extraResource: [resolve(here, '../api/dist/api')],
+		// Electron downloads cache; honored by the actions/cache step in CI.
+		download: {
+			cacheRoot: process.env.ELECTRON_CACHE || join(here, '.cache/electron'),
+		},
+		// The main + preload bundles inline their full dependency graph (see
+		// vite.electron.config.ts), so the packaged app needs no node_modules.
+		// Disabling prune skips Forge's dependency walker, which can't resolve
+		// pnpm's workspace layout; we then ignore everything except the built
+		// renderer (dist/) + electron bundles (dist-electron/) and package.json.
+		prune: false,
+		ignore: [
+			/^\/node_modules(?:$|\/)/,
+			/^\/\.cache(?:$|\/)/,
+			/^\/\.turbo(?:$|\/)/,
+			/^\/build(?:$|\/)/,
+			/^\/coverage(?:$|\/)/,
+			/^\/electron(?:$|\/)/,
+			/^\/out(?:$|\/)/,
+			/^\/public(?:$|\/)/,
+			/^\/release(?:$|\/)/,
+			/^\/scripts(?:$|\/)/,
+			/^\/src(?:$|\/)/,
+			/^\/tests(?:$|\/)/,
+			/^\/forge\.config\.ts$/,
+			/^\/index\.html$/,
+			/^\/tsconfig.*\.json$/,
+			/^\/vite\..*config\..*$/,
+			/\.DS_Store$/,
+		],
 		osxSign: process.env.APPLE_SIGNING_IDENTITY ? { identity: process.env.APPLE_SIGNING_IDENTITY } : undefined,
 		osxNotarize:
 			process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && process.env.APPLE_API_ISSUER
@@ -46,4 +76,14 @@ export default {
 			},
 		},
 	],
+	hooks: {
+		// The old dist:mac:* scripts generated the app icon before packaging;
+		// keep that guarantee by regenerating it at the start of every build.
+		generateAssets: async () => {
+			execFileSync('bash', ['scripts/generate-app-icon.sh'], {
+				cwd: here,
+				stdio: 'inherit',
+			});
+		},
+	},
 };
