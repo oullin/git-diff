@@ -122,31 +122,47 @@ function sourceContext(): DiffSourceContext {
 	};
 }
 
-async function renderSection(section: DiffSection): Promise<void> {
-	const { meta, partial } = await resolveFileDiff(props.file, section, sourceContext());
-
-	metas.set(section.id, meta);
-	fallbacks.value = { ...fallbacks.value, [section.id]: partial && !meta };
-
-	const el = containers.value[section.id];
-
-	if (!el || !meta) {
-		return;
-	}
-
-	let fd = instances.get(section.id);
-
-	if (!fd) {
-		fd = new FileDiff<undefined>(buildOptions(section));
-		instances.set(section.id, fd);
-	}
-
-	fd.render({ fileDiff: meta, fileContainer: el });
-}
+// Monotonic id stamped on each renderAll pass. Because resolveFileDiff is
+// async, rapid prop changes can launch overlapping passes; a stale one that
+// resolves late would otherwise render outdated content into the container.
+let currentRenderId = 0;
 
 /** Re-resolve + re-render every section (content/ref/whitespace changed). */
 async function renderAll(): Promise<void> {
-	await Promise.all(props.file.sections.map((section) => renderSection(section)));
+	const renderId = ++currentRenderId;
+
+	const results = await Promise.all(
+		props.file.sections.map(async (section) => ({
+			section,
+			...(await resolveFileDiff(props.file, section, sourceContext())),
+		})),
+	);
+
+	// A newer renderAll started while we were resolving — discard this pass so
+	// only the latest one mutates the DOM and the instances map.
+	if (renderId !== currentRenderId) {
+		return;
+	}
+
+	for (const { section, meta, partial } of results) {
+		metas.set(section.id, meta);
+		fallbacks.value = { ...fallbacks.value, [section.id]: partial && !meta };
+
+		const el = containers.value[section.id];
+
+		if (!el || !meta) {
+			continue;
+		}
+
+		let fd = instances.get(section.id);
+
+		if (!fd) {
+			fd = new FileDiff<undefined>(buildOptions(section));
+			instances.set(section.id, fd);
+		}
+
+		fd.render({ fileDiff: meta, fileContainer: el });
+	}
 }
 
 /** Cheap option-only update (layout/indicators/word-diff/theme). */
@@ -183,6 +199,22 @@ watch(
 
 // Display-only options → in-place update, no re-fetch.
 watch(() => [props.viewMode, props.diffStyle, props.wordHighlight, props.wrapLongLines, resolvedTheme.value].join('|'), applyOptions);
+
+// Comments may load/update asynchronously after the last render; recompute each
+// section's outdated map against its live FileDiff instance so anchors stay accurate.
+watch(
+	() => props.comments,
+	() => {
+		for (const [sectionId, fd] of instances) {
+			const section = props.file.sections.find((s) => s.id === sectionId);
+
+			if (section) {
+				recomputeOutdated(section, fd);
+			}
+		}
+	},
+	{ deep: true },
+);
 
 onBeforeUnmount(disposeAll);
 </script>
