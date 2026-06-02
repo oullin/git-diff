@@ -5,6 +5,7 @@ export interface UseFileListFilterOptions {
 	files: Ref<ChangedFile[]> | ComputedRef<ChangedFile[]>;
 	allPaths: Ref<string[]> | ComputedRef<string[]>;
 	searchQuery: Ref<string> | ComputedRef<string>;
+	hideViewed?: Ref<boolean> | ComputedRef<boolean>;
 	isViewed: (file: ChangedFile) => boolean;
 }
 
@@ -15,8 +16,15 @@ export function useFileListFilter(opts: UseFileListFilterOptions) {
 
 	const filteredFiles = computed(() => {
 		const q = opts.searchQuery.value.trim().toLowerCase();
+		const hideViewed = opts.hideViewed?.value ?? false;
 
-		return q ? opts.files.value.filter((f) => f.path.toLowerCase().includes(q)) : opts.files.value;
+		return opts.files.value.filter((f) => {
+			if (hideViewed && opts.isViewed(f)) {
+				return false;
+			}
+
+			return q ? f.path.toLowerCase().includes(q) : true;
+		});
 	});
 
 	const filteredAllPaths = computed(() => {

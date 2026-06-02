@@ -20,7 +20,7 @@ interface SelectionState {
 	anchor: LineAnchor | null;
 }
 
-// Per-instance store — two DiffBody instances no longer corrupt each
+// Per-instance store — separate diff instances don't corrupt each
 // other's selection state.
 export function useLineSelection() {
 	const state: SelectionState = reactive({ anchor: null });

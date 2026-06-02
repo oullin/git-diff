@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 export function openTerminalCommand(command: string): Promise<{ ok: true } | { ok: false; message: string }> {
 	return new Promise((resolveResult) => {
 		const script = ['tell application "Terminal"', '  activate', `  do script "${appleScriptString(command)}"`, 'end tell'].join('\n');
+
 		const child = spawn('/usr/bin/osascript', ['-e', script], {
 			stdio: ['ignore', 'ignore', 'pipe'],
 		});

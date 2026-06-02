@@ -32,12 +32,10 @@ const canPreview = computed(() => isMarkdownPath(props.file.path) && props.file.
 		class="flex items-center sticky top-0 z-[5]"
 		:style="{
 			gap: '10px',
-			padding: '10px 16px',
-			height: '52px',
-			backgroundColor: 'var(--gd-panel-2)',
-			backgroundImage: 'linear-gradient(180deg, rgb(255 255 255 / 0.025), rgb(255 255 255 / 0) 40%)',
+			padding: '0 12px',
+			height: '44px',
+			backgroundColor: 'var(--gd-panel)',
 			borderBottom: '1px solid var(--gd-border)',
-			boxShadow: '0 1px 0 var(--gd-edge-hi) inset',
 		}"
 	>
 		<button
