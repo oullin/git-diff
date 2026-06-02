@@ -4,7 +4,6 @@ import AuthGate from '@entry/components/auth/AuthGate.vue';
 import TitleBar from '@entry/components/diff/TitleBar.vue';
 import TopBar from '@entry/components/diff/TopBar.vue';
 import Sidebar from '@entry/components/diff/Sidebar.vue';
-import RepoToolbar from '@entry/components/diff/RepoToolbar.vue';
 import SearchBar from '@entry/components/diff/SearchBar.vue';
 import { ToastViewport } from '@ui/toast';
 import DiffList from '@entry/components/diff/DiffList.vue';
@@ -17,7 +16,6 @@ import AddCommentDialog from '@entry/components/diff/AddCommentDialog.vue';
 import type { RichTextFeatures } from '@ui/rich-text-editor';
 import type { DiffViewMode } from '@git-diff/domain';
 import { PREF_KEYS } from '@git-diff/domain';
-import { ensureLanguage, languageFor } from '@lib/highlight';
 import { ACCENTS, resolveAccent } from '@lib/accent';
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from '@composables/useTweaks';
 import { useToasts } from '@composables/useToasts';
@@ -84,7 +82,7 @@ const { items: repositories, loading: repositoriesLoading, refresh: refreshRepos
 const selectedPath = ref('');
 
 const searchQuery = ref('');
-const { collapsed, splitRatios, previewing, toggleCollapsed, setSplitRatio, togglePreview } = useDiffLayout();
+const { collapsed, previewing, toggleCollapsed, togglePreview } = useDiffLayout();
 
 const reviewPanelOpen = ref(false);
 
@@ -146,12 +144,16 @@ const {
 const { toasts, show: showToast, dismiss: dismissToast } = useToasts();
 const { record: walkthrough, loading: walkthroughLoading, error: walkthroughError, generate: generateWalkthrough } = useWalkthrough(state);
 
-const { files, changedByPath, changedPathsSet, repoPaths, selectedFile, selectedIsChanged, reviewComments, userInitials, changedIndex, threadsForFile } = useRepoSelectors({
+const { files, changedByPath, changedPathsSet, repoPaths, selectedFile, selectedIsChanged, reviewComments, userInitials, threadsForFile } = useRepoSelectors({
 	state,
 	selectedPath,
 	activeReview,
 	currentUser,
 });
+
+const visibleFiles = computed(() => (tweaks.value.hideViewedFiles ? files.value.filter((f) => !isViewed(f)) : files.value));
+
+const visibleChangedIndex = computed(() => visibleFiles.value.findIndex((f) => f.path === selectedPath.value));
 
 // Reset viewport-deferred render bookkeeping whenever the diff context changes
 // so a previous search/navigation "render all" doesn't defeat lazy loading.
@@ -160,28 +162,11 @@ watch(
 	() => resetLazyRender(),
 );
 
-watch(
-	files,
-	(list) => {
-		const seen = new Set<string>();
-
-		for (const file of list) {
-			const lang = languageFor(file.path);
-
-			if (lang && !seen.has(lang)) {
-				seen.add(lang);
-				void ensureLanguage(lang);
-			}
-		}
-	},
-	{ immediate: true },
-);
-
 useStyleWatchers(accent, tweaks);
 
 const { selectAdjacent, jumpToHunk } = useDiffNavigation({
-	files,
-	changedIndex,
+	files: visibleFiles,
+	changedIndex: visibleChangedIndex,
 	onSelect: (path) => selectFile(path),
 });
 
@@ -297,29 +282,20 @@ void ACCENTS;
 				:repositories="repositories"
 				:repositories-loading="repositoriesLoading"
 				:active-repo-path="activeRepoPath"
+				:current-user="currentUser"
+				:user-initials="userInitials"
+				:tweaks="tweaks"
 				@select-repo="openRepo"
 				@add-repo="addRepository"
 				@remove-repo="removeRepository"
 				@refresh-repos="refreshRepositoryList"
+				@update:tweak="updateTweak"
+				@log-out="logOut"
 			/>
 			<TopBar
 				:state="state"
-				:current-user="currentUser"
-				:user-initials="userInitials"
-				:tweaks="tweaks"
 				:creating-branch="creatingBranch"
 				:branch-create-error="branchCreateError"
-				@update:tweak="updateTweak"
-				@refresh="refresh"
-				@log-out="logOut"
-				@switch-branch="switchBranch"
-				@create-branch="createBranch"
-				@select-result="openSearchResult"
-			/>
-
-			<RepoToolbar
-				v-if="state"
-				:state="state"
 				:commits="commits"
 				:commits-loading="commitsLoading"
 				:repo-mode="repoMode"
@@ -330,6 +306,10 @@ void ACCENTS;
 				:has-walkthrough="walkthrough != null"
 				:has-active-review="activeReview != null"
 				:copy-review-state="copyReviewState"
+				@refresh="refresh"
+				@switch-branch="switchBranch"
+				@create-branch="createBranch"
+				@select-result="openSearchResult"
 				@load-commits="loadCommits()"
 				@open-commit="openCommit"
 				@back-to-working="returnToWorkingTree"
@@ -338,6 +318,7 @@ void ACCENTS;
 				@generate-walkthrough="generateWalkthrough(walkthrough != null)"
 				@copy-review-as-markdown="copyReviewAsMarkdown"
 			/>
+
 			<WalkthroughPanel :record="walkthrough" :error="walkthroughError" />
 
 			<main class="flex flex-1 min-h-0">
@@ -356,6 +337,7 @@ void ACCENTS;
 						:selected-path="selectedPath"
 						:search-query="searchQuery"
 						:scope="repoScope"
+						:hide-viewed="tweaks.hideViewedFiles"
 						:is-viewed="isViewed"
 						:threads-for-file="threadsForFile"
 						:all-paths="repoPaths"
@@ -369,16 +351,15 @@ void ACCENTS;
 					/>
 
 					<section class="flex flex-col flex-1 min-w-0 relative">
-						<div class="flex-1 overflow-auto min-h-0">
+						<div class="flex-1 overflow-auto min-h-0" :class="{ 'gd-wrap-lines': tweaks.wrapLongLines }" :style="{ background: 'var(--gd-panel)', padding: '16px 20px 80px' }">
 							<DiffList
-								:files="files"
+								:files="visibleFiles"
 								:selected-path="selectedPath"
 								:selected-is-changed="selectedIsChanged"
 								:selected-repo-file="selectedRepoFile"
 								:selected-file-loading="selectedFileLoading"
 								:selected-file-error="selectedFileError"
 								:collapsed="collapsed"
-								:split-ratios="splitRatios"
 								:tweaks="tweaks"
 								:diff-view-mode="diffViewMode"
 								:hide-whitespace="hideWhitespace"
@@ -387,6 +368,7 @@ void ACCENTS;
 								:comment-features="commentFeatures"
 								:repo-root="state?.root ?? ''"
 								:commit-ref="state?.commitSha"
+								:base-ref="activePullRequest?.baseRef"
 								:previewing="previewing"
 								:is-viewed-fn="isViewed"
 								:file-element-i-d="fileElementID"
@@ -398,11 +380,10 @@ void ACCENTS;
 								@delete-comment="deleteComment"
 								@reply-comment="replyToComment"
 								@resolve-comment="resolveComment"
-								@update:split-ratio="setSplitRatio"
 							/>
 						</div>
 
-						<JumpNav v-if="tweaks.showMinimap && files.length > 0" :index="changedIndex" :total="files.length" @prev="selectAdjacent(-1)" @next="selectAdjacent(1)" />
+						<JumpNav v-if="tweaks.showMinimap && visibleFiles.length > 0" :index="visibleChangedIndex" :total="visibleFiles.length" @prev="selectAdjacent(-1)" @next="selectAdjacent(1)" />
 					</section>
 
 					<ReviewPanel

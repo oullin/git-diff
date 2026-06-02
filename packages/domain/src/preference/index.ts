@@ -19,6 +19,8 @@ export const PREF_KEYS = {
 	diffDensity: 'diff.density',
 	diffWordHi: 'diff.wordHi',
 	diffHideResolved: 'diff.hideResolved',
+	diffWrap: 'diff.wrap',
+	diffHideViewed: 'diff.hideViewed',
 	lastRepoRoot: 'repo.lastRoot',
 	panelLeftWidth: 'panel.left.width',
 	panelFileTreeWidth: 'panel.fileTree.width',

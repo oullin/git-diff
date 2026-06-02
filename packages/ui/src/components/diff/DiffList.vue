@@ -20,7 +20,6 @@ defineProps<{
 	selectedFileLoading: boolean;
 	selectedFileError: string;
 	collapsed: Record<string, boolean>;
-	splitRatios: Record<string, number>;
 	tweaks: Tweaks;
 	diffViewMode: DiffViewMode;
 	hideWhitespace: boolean;
@@ -29,6 +28,7 @@ defineProps<{
 	commentFeatures: RichTextFeatures;
 	repoRoot: string;
 	commitRef?: string;
+	baseRef?: string;
 	previewing: Record<string, boolean>;
 	isViewedFn: (file: ChangedFile) => boolean;
 	fileElementID: (path: string) => string;
@@ -43,7 +43,6 @@ const emit = defineEmits<{
 	'delete-comment': [comment: ReviewComment];
 	'reply-comment': [parent: ReviewComment, bodyHtml: string];
 	'resolve-comment': [comment: ReviewComment, resolved: boolean];
-	'update:split-ratio': [path: string, ratio: number];
 }>();
 </script>
 
@@ -56,9 +55,11 @@ const emit = defineEmits<{
 			:id="fileElementID(file.path)"
 			:key="file.path"
 			:style="{
-				background: 'var(--gd-panel)',
+				background: 'var(--gd-bg)',
 				overflow: 'clip',
-				borderBottom: '1px solid var(--gd-border)',
+				border: '1px solid var(--gd-border)',
+				borderRadius: '8px',
+				marginBottom: '16px',
 			}"
 		>
 			<FileHeader
@@ -80,18 +81,18 @@ const emit = defineEmits<{
 				:diff-style="tweaks.diffStyle"
 				:density="tweaks.density"
 				:word-highlight="tweaks.wordHighlight"
+				:wrap-long-lines="tweaks.wrapLongLines"
 				:hide-whitespace="hideWhitespace"
 				:hide-resolved="hideResolved"
 				:comments="reviewComments"
 				:reply-features="commentFeatures"
 				:repo-root="repoRoot"
 				:commit-ref="commitRef"
-				:split-ratio="splitRatios[file.path] ?? 0.5"
+				:base-ref="baseRef"
 				@add-comment="(section, line, range) => emit('open-comment-for-line', file, section, line, range)"
 				@delete-comment="(comment) => emit('delete-comment', comment)"
 				@reply-comment="(parent, bodyHtml) => emit('reply-comment', parent, bodyHtml)"
 				@resolve-comment="(comment, resolved) => emit('resolve-comment', comment, resolved)"
-				@update:split-ratio="(value: number) => emit('update:split-ratio', file.path, value)"
 			/>
 		</article>
 	</template>
