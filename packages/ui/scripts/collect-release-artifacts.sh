@@ -5,14 +5,15 @@
 #
 # Run from the repo root. Usage: collect-release-artifacts.sh <version>
 set -euo pipefail
-shopt -s nullglob globstar
 
 version="${1:?usage: collect-release-artifacts.sh <version>}"
 
+# macOS GitHub runners ship bash 3.2, which lacks `globstar`. Use `find` instead
+# of `**` so artifact discovery works regardless of the bash version.
 out="packages/ui/out/make"
-dmgs=("$out"/**/*.dmg)
-zips=("$out"/**/*.zip)
-if [ "${#dmgs[@]}" -eq 0 ] || [ "${#zips[@]}" -eq 0 ]; then
+src_dmg="$(set +o pipefail; find "$out" -type f -name '*.dmg' | head -n1)"
+src_zip="$(set +o pipefail; find "$out" -type f -name '*.zip' | head -n1)"
+if [ -z "$src_dmg" ] || [ -z "$src_zip" ]; then
 	echo "Missing Forge artifacts under $out"
 	find "$out" -type f || true
 	exit 1
@@ -21,8 +22,8 @@ fi
 mkdir -p dist-release
 dmg="git-diff-review-${version}-arm64.dmg"
 zip="git-diff-review-${version}-arm64.zip"
-cp "${dmgs[0]}" "dist-release/${dmg}"
-cp "${zips[0]}" "dist-release/${zip}"
+cp "$src_dmg" "dist-release/${dmg}"
+cp "$src_zip" "dist-release/${zip}"
 
 cd dist-release
 shasum -a 256 "$dmg" "$zip" > SHASUMS256.txt
