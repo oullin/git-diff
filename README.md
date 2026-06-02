@@ -56,18 +56,6 @@ Git Diff Review gives you the **pull-request review experience, locally**:
 - **Native and local.** A fast Electron + Vue interface backed by a Go engine that
   reads Git directly and stores your reviews in local SQLite.
 
-## See it in action
-
-| | |
-| --- | --- |
-| ![File navigation and status badges](docs/images/file-navigation.png) | ![Split diff view](docs/images/split-view.png) |
-| **Walk every changed file** with status, counts, and viewed tracking. | **Read split or unified diffs** with syntax highlighting. |
-| ![Review notes and inline comments](docs/images/review-notes.png) | ![AI walkthrough](docs/images/walkthrough.png) |
-| **Leave notes and inline comments** as you review. | **Generate an AI walkthrough** to get oriented fast. |
-
-> Screenshots live in [`docs/images/`](docs/images/). See that folder's README for
-> what each capture should show.
-
 ## Install
 
 > **macOS on Apple Silicon.** The app is currently in beta and distributed
