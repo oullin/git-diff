@@ -1,7 +1,7 @@
 name: test
 
 # CI for the hybrid Electron + Go app: the TypeScript/Vue suite and the Go API
-# suite run as separate jobs. Modeled on nkzw-tech/codiff's test workflow.
+# suite run as separate jobs.
 
 on:
   push:

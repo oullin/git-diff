@@ -12,7 +12,7 @@ removed.
 | `electron-forge` (current) | `packages/ui/forge.config.ts`; `pnpm -C packages/ui run make:mac` (local) / `pnpm release:mac:unsigned` (root, builds the Go API + renderer first) |
 | GitHub Releases publishing | Automated on `v*` tags via `.github/workflows/release.yml` (unsigned Forge build); a Forge GitHub publisher is also configured for `pnpm -C packages/ui run publish` |
 | Auto-update | Not wired |
-| Homebrew cask | Template at `packages/ui/scripts/Casks/git-diff.rb`; release workflow opens a bump PR to `oullin/homebrew-tap` (tap repo must be created once) |
+| Homebrew cask | Template at `packages/ui/scripts/Casks/git-diff.rb`; release workflow opens a bump PR to `oullin/homebrew-tap` |
 | Terminal helper | Implemented — menu item "Install Terminal Helper…" writes a launcher script |
 
 ## Packaging with Electron Forge
@@ -64,12 +64,16 @@ publisher config and triggers Squirrel.Mac restarts.
 
 ## Homebrew tap
 
-1. Create a new repository `oullin/homebrew-tap` (the user has to do this;
-   tap repos can't be created from a PR).
-2. Add `Casks/git-diff.rb` to the tap. The file in
-   `packages/ui/scripts/Casks/git-diff.rb` is the source of truth; the
-   release pipeline substitutes `version` and `sha256` from the published
-   DMG.
+The tap lives at [`oullin/homebrew-tap`](https://github.com/oullin/homebrew-tap)
+and is already seeded with `Casks/git-diff.rb`.
+
+1. The source of truth for the cask is `packages/ui/scripts/Casks/git-diff.rb`
+   in this repo; the `bump-cask` release job substitutes `version` and `sha256`
+   from the published DMG and opens a PR against the tap.
+2. The job authenticates with a `HOMEBREW_TAP_TOKEN` repo secret — a PAT with
+   write access to the tap (the default `GITHUB_TOKEN` can't push cross-repo).
+   Set it once with `gh secret set HOMEBREW_TAP_TOKEN` (or via the GitHub UI)
+   before the first tagged release.
 3. End users install with:
    ```
    brew install --cask oullin/tap/git-diff
@@ -99,9 +103,8 @@ user's actual cwd; commit SHAs and flags pass through unchanged.
 
 ## Release workflow
 
-`.github/workflows/release.yml` runs on a `v*` tag, modeled on
-[nkzw-tech/codiff](https://github.com/nkzw-tech/codiff)'s `build-app` workflow:
-an idempotent `create-release` job fans out to a per-platform build job.
+`.github/workflows/release.yml` runs on a `v*` tag: an idempotent
+`create-release` job fans out to a per-platform build job.
 
 1. **`create-release`** (ubuntu) — `gh release view "$TAG" || gh release create
    "$TAG" --generate-notes --title "$TAG" --verify-tag`. Idempotent, so re-runs

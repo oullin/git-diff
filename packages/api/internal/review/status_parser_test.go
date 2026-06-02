@@ -49,8 +49,8 @@ func TestStatusParserHandlesRename(t *testing.T) {
 	}
 }
 
-// Regression: codiff v0.7.0 fixed a bug where stashed changes displayed as
-// unstaged modifications. Our backend reads working-tree state exclusively via
+// Regression: a prior bug displayed stashed changes as unstaged modifications.
+// Our backend reads working-tree state exclusively via
 // `git status --porcelain=v1 -z` (see state_reader.go), which by design omits
 // stashed entries — so a clean tree after `git stash` produces empty output.
 // This test locks in that the parser turns that empty input into zero entries,

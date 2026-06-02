@@ -23,7 +23,9 @@ export default defineConfig({
 		],
 	},
 	build: {
-		emptyOutDir: false,
+		// Clean dist-electron once on the first (main) build, then preserve it
+		// for the subsequent preload build so neither output clobbers the other.
+		emptyOutDir: target === 'main',
 		lib,
 		outDir: 'dist-electron',
 		rollupOptions: {

@@ -4,8 +4,8 @@ name: Release
 # unsigned macOS DMG/ZIP with Electron Forge, publish a GitHub Release, and open
 # a Homebrew cask bump PR against oullin/homebrew-tap.
 #
-# Modeled on nkzw-tech/codiff's build-app workflow: an idempotent create-release
-# job fans out to a per-platform build job that uploads its own assets.
+# An idempotent create-release job fans out to a per-platform build job that
+# uploads its own assets.
 #
 # Ships UNSIGNED for now: Homebrew installs fine, but Gatekeeper requires a
 # one-time right-click → Open (or `xattr -dr com.apple.quarantine`). To sign +
@@ -106,34 +106,7 @@ jobs:
       # expects (git-diff-review-${version}-arm64.{dmg,zip}).
       - name: Collect artifacts + checksums
         id: artifacts
-        run: |
-          set -euo pipefail
-          shopt -s nullglob globstar
-          version="${{ steps.meta.outputs.version }}"
-
-          out="packages/ui/out/make"
-          dmgs=("$out"/**/*.dmg)
-          zips=("$out"/**/*.zip)
-          if [ "${#dmgs[@]}" -eq 0 ] || [ "${#zips[@]}" -eq 0 ]; then
-            echo "Missing Forge artifacts under $out"
-            find "$out" -type f || true
-            exit 1
-          fi
-
-          mkdir -p dist-release
-          dmg="git-diff-review-${version}-arm64.dmg"
-          zip="git-diff-review-${version}-arm64.zip"
-          cp "${dmgs[0]}" "dist-release/${dmg}"
-          cp "${zips[0]}" "dist-release/${zip}"
-
-          cd dist-release
-          shasum -a 256 "$dmg" "$zip" > SHASUMS256.txt
-          sha256="$(shasum -a 256 "$dmg" | awk '{print $1}')"
-          {
-            echo "sha256=$sha256"
-            echo "dmg=$dmg"
-          } >> "$GITHUB_OUTPUT"
-          echo "Artifacts:" && ls -la
+        run: packages/ui/scripts/collect-release-artifacts.sh "${{ steps.meta.outputs.version }}"
 
       - name: Upload assets to release
         env:
