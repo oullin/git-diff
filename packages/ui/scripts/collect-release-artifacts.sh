@@ -11,8 +11,8 @@ version="${1:?usage: collect-release-artifacts.sh <version>}"
 # macOS GitHub runners ship bash 3.2, which lacks `globstar`. Use `find` instead
 # of `**` so artifact discovery works regardless of the bash version.
 out="packages/ui/out/make"
-src_dmg="$(find "$out" -type f -name '*.dmg' | head -n1)"
-src_zip="$(find "$out" -type f -name '*.zip' | head -n1)"
+src_dmg="$(set +o pipefail; find "$out" -type f -name '*.dmg' | head -n1)"
+src_zip="$(set +o pipefail; find "$out" -type f -name '*.zip' | head -n1)"
 if [ -z "$src_dmg" ] || [ -z "$src_zip" ]; then
 	echo "Missing Forge artifacts under $out"
 	find "$out" -type f || true
