@@ -29,9 +29,7 @@ export interface ReviewSessionOptions {
 
 export function useReviewSession(opts: ReviewSessionOptions) {
 	const { state, activeReview, reviews, summaryDraft, reviewPanelOpen, currentUser, prefValues, savePreferences } = opts;
-
 	const { target: commentTarget, draft: commentDraft, open: commentDialogOpen, begin: beginCommentDraft, cancel: cancelCommentDraft, close: closeCommentDraft } = useCommentDraft();
-
 	const { items: pendingComments, reload: loadPendingComments, clear: clearPendingComments } = usePendingComments(state);
 
 	const { state: copyReviewState, copy: copyActiveReviewAsMarkdown } = useReviewMarkdownCopy({

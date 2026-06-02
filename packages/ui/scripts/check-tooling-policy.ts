@@ -16,7 +16,6 @@ type PolicyMatch = {
 
 const repoRoot = resolve(process.argv[2] ?? '.');
 const matches: PolicyMatch[] = [];
-
 const ignoredDirectories = new Set(['.git', '.idea', '.turbo', 'dist', 'dist-electron', 'node_modules', 'release', 'storage']);
 
 const forbiddenPackages = [
