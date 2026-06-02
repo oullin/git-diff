@@ -1,21 +1,26 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { FileDiff, type FileDiffMetadata, type FileDiffOptions } from '@pierre/diffs';
+import { FileDiff, type FileDiffMetadata, type FileDiffOptions, type SelectedLineRange } from '@pierre/diffs';
 import { resolvedTheme } from '@composables/useTheme';
 import { registerPierreThemes } from '@lib/pierreTheme';
 import { pierreSurfaceClasses, toPierreDisplayOptions } from '@composables/usePierreDiffOptions';
 import { resolveFileDiff, type DiffSourceContext } from '@composables/usePierreFileDiff';
-import type { ChangedFile, DiffHunkStyle, DiffSection, DiffViewMode, ReviewComment } from '@git-diff/domain';
+import { commentsForSection, lineSideToSelectionSide, selectionToCommentTarget } from '@composables/usePierreComments';
+import CommentThread from '@diff/CommentThread.vue';
+import type { ChangedFile, DiffSection, DiffHunkStyle, DiffViewMode, ReviewComment } from '@git-diff/domain';
 import type { PatchLine } from '@git-diff/domain/diff';
 import type { LineSelectionRange } from '@composables/useLineSelection';
 import type { RichTextFeatures } from '@ui/rich-text-editor';
 
 // Renders a changed file's diff sections with the @pierre/diffs FileDiff
 // engine — one instance per DiffSection (staged/unstaged/untracked/commit).
-// Phase 3: rendering + theming + native context expansion only. Comments,
-// the add-comment affordance, and line selection are layered on in Phase 4
-// (the comment-related props/emits are accepted here to preserve the
-// DiffBody.vue contract so LazyDiffBody.vue is a drop-in swap).
+//
+// Comments: FileDiff renders into a Shadow DOM, where the app's Tailwind-based
+// CommentThread can't be styled. So the add-comment affordance lives inline in
+// the diff (a Shadow-DOM-safe gutter "+" button), while the threads themselves
+// render in light DOM beneath each section, labelled by line. A comment is
+// "outdated" when its anchored line is no longer present in the rendered diff
+// (FileDiff.getLineIndex returns undefined), recomputed after every render.
 
 const props = withDefaults(
 	defineProps<{
@@ -36,8 +41,7 @@ const props = withDefaults(
 	{ commitRef: undefined, baseRef: undefined, hideResolved: false },
 );
 
-// Emits kept for the DiffBody contract; wired up in Phase 4.
-defineEmits<{
+const emit = defineEmits<{
 	'add-comment': [section: DiffSection, line: PatchLine, range?: LineSelectionRange];
 	'delete-comment': [comment: ReviewComment];
 	'reply-comment': [parent: ReviewComment, bodyHtml: string];
@@ -55,6 +59,8 @@ const metas = new Map<string, FileDiffMetadata | undefined>();
 
 const fallbacks = ref<Record<string, boolean>>({});
 
+const outdatedById = ref<Record<number, boolean>>({});
+
 const surfaceClasses = computed(() => pierreSurfaceClasses({ diffStyle: props.diffStyle, density: props.density }));
 
 function setContainerRef(id: string) {
@@ -63,7 +69,23 @@ function setContainerRef(id: string) {
 	};
 }
 
-function buildOptions(): FileDiffOptions<undefined> {
+function sectionComments(section: DiffSection): ReviewComment[] {
+	return commentsForSection(props.comments, props.file.path, section.kind).filter((c) => !(props.hideResolved && c.resolved));
+}
+
+function recomputeOutdated(section: DiffSection, instance: FileDiff<undefined>): void {
+	const next = { ...outdatedById.value };
+
+	for (const comment of commentsForSection(props.comments, props.file.path, section.kind)) {
+		const present = instance.getLineIndex(comment.lineNumber, lineSideToSelectionSide(comment.side)) != null;
+
+		next[comment.id] = !present;
+	}
+
+	outdatedById.value = next;
+}
+
+function buildOptions(section: DiffSection): FileDiffOptions<undefined> {
 	return {
 		...toPierreDisplayOptions({
 			viewMode: props.viewMode,
@@ -78,6 +100,15 @@ function buildOptions(): FileDiffOptions<undefined> {
 		// file:// origin; revisit for perf in a later pass.
 		preferredHighlighter: 'shiki-js',
 		useCSSClasses: true,
+		// Library renders its own "+" gutter affordance (single click or drag to
+		// select a range); we only handle the resulting selection.
+		enableGutterUtility: true,
+		onGutterUtilityClick: (range: SelectedLineRange) => {
+			const target = selectionToCommentTarget(range, section.id);
+
+			emit('add-comment', section, target.line, target.range);
+		},
+		onPostRender: (_node, instance) => recomputeOutdated(section, instance as FileDiff<undefined>),
 	};
 }
 
@@ -90,7 +121,7 @@ function sourceContext(): DiffSourceContext {
 	};
 }
 
-async function renderSection(section: ChangedFile['sections'][number]): Promise<void> {
+async function renderSection(section: DiffSection): Promise<void> {
 	const { meta, partial } = await resolveFileDiff(props.file, section, sourceContext());
 
 	metas.set(section.id, meta);
@@ -105,7 +136,7 @@ async function renderSection(section: ChangedFile['sections'][number]): Promise<
 	let fd = instances.get(section.id);
 
 	if (!fd) {
-		fd = new FileDiff<undefined>(buildOptions());
+		fd = new FileDiff<undefined>(buildOptions(section));
 		instances.set(section.id, fd);
 	}
 
@@ -119,11 +150,13 @@ async function renderAll(): Promise<void> {
 
 /** Cheap option-only update (layout/indicators/word-diff/theme). */
 function applyOptions(): void {
-	const options = buildOptions();
+	for (const section of props.file.sections) {
+		const fd = instances.get(section.id);
 
-	for (const fd of instances.values()) {
-		fd.setOptions(options);
-		fd.rerender();
+		if (fd) {
+			fd.setOptions(buildOptions(section));
+			fd.rerender();
+		}
 	}
 }
 
@@ -159,6 +192,16 @@ onBeforeUnmount(disposeAll);
 			<div :ref="setContainerRef(section.id)"></div>
 			<div v-if="section.binary || file.binary" :style="{ padding: '12px 16px', color: 'var(--gd-text-3)', fontSize: '13px' }">Binary file not shown</div>
 			<div v-else-if="fallbacks[section.id]" :style="{ padding: '12px 16px', color: 'var(--gd-text-3)', fontSize: '13px' }">Diff unavailable</div>
+			<CommentThread
+				v-for="comment in sectionComments(section)"
+				:key="comment.id"
+				:comment="comment"
+				:reply-features="replyFeatures"
+				:outdated="outdatedById[comment.id] === true"
+				@delete="emit('delete-comment', comment)"
+				@reply="(bodyHtml) => emit('reply-comment', comment, bodyHtml)"
+				@resolve="(resolved) => emit('resolve-comment', comment, resolved)"
+			/>
 		</section>
 	</div>
 </template>

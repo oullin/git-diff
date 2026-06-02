@@ -10,6 +10,8 @@ import { parsePatchFiles } from '@pierre/diffs';
 import { getHunkInfos, parsePatch } from '@git-diff/domain/diff';
 import { pierreSurfaceClasses, toPierreDisplayOptions, type PierreDisplayInput } from '@composables/usePierreDiffOptions';
 import { resolveSectionRefs, type DiffSourceContext } from '@composables/usePierreFileDiff';
+import { commentsForSection, lineSideToSelectionSide, selectionToCommentTarget, sideToLineSide } from '@composables/usePierreComments';
+import type { ReviewComment } from '@git-diff/domain';
 
 const SAMPLE_PATCH = [
 	'diff --git a/src/example.ts b/src/example.ts',
@@ -137,6 +139,53 @@ describe('resolveSectionRefs', () => {
 		const ctx: DiffSourceContext = { repoRoot: '/repo', commitRef: 'head456', baseRef: 'main', ignoreWhitespace: false };
 
 		expect(resolveSectionRefs('commit', ctx)).toEqual({ oldRef: 'main', newRef: 'head456' });
+	});
+});
+
+describe('comment side translation', () => {
+	test('library side ↔ app side', () => {
+		expect(sideToLineSide('deletions')).toBe('left');
+		expect(sideToLineSide('additions')).toBe('right');
+		expect(sideToLineSide(undefined)).toBe('right');
+		expect(lineSideToSelectionSide('left')).toBe('deletions');
+		expect(lineSideToSelectionSide('right')).toBe('additions');
+	});
+
+	test('single-line selection → line anchor, no range', () => {
+		const { line, range } = selectionToCommentTarget({ start: 42, side: 'additions', end: 42, endSide: 'additions' }, 'sec');
+
+		expect(range).toBeUndefined();
+		expect(line.newLine).toBe(42);
+		expect(line.oldLine).toBeUndefined();
+		expect(line.type).toBe('add');
+	});
+
+	test('deletion-side single line anchors on the old line', () => {
+		const { line } = selectionToCommentTarget({ start: 7, side: 'deletions', end: 7, endSide: 'deletions' }, 'sec');
+
+		expect(line.oldLine).toBe(7);
+		expect(line.newLine).toBeUndefined();
+		expect(line.type).toBe('del');
+	});
+
+	test('multi-line selection → range anchored at the end', () => {
+		const { line, range } = selectionToCommentTarget({ start: 10, side: 'additions', end: 15, endSide: 'additions' }, 'sec');
+
+		expect(line.newLine).toBe(15);
+		expect(range).toEqual({ sectionId: 'sec', startSide: 'right', startLine: 10, endSide: 'right', endLine: 15 });
+	});
+});
+
+describe('commentsForSection', () => {
+	const make = (id: number, side: 'left' | 'right', lineNumber: number, diffSection = 'unstaged'): ReviewComment =>
+		({ id, filePath: 'a.ts', diffSection, side, lineNumber, resolved: false, bodyHtml: '', authorLabel: 'x', createdAt: '' }) as unknown as ReviewComment;
+
+	test('filters by file + section and sorts left-before-right then by line', () => {
+		const comments = [make(1, 'right', 20), make(2, 'left', 5), make(3, 'right', 8), make(4, 'left', 30, 'staged'), { ...make(5, 'right', 9), filePath: 'b.ts' } as ReviewComment];
+
+		const result = commentsForSection(comments, 'a.ts', 'unstaged');
+
+		expect(result.map((c) => c.id)).toEqual([2, 3, 1]);
 	});
 });
 
