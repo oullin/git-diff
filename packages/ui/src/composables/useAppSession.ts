@@ -45,8 +45,28 @@ export interface AppSessionOptions {
 }
 
 export function useAppSession(opts: AppSessionOptions) {
-	let unsubscribeShortcuts: (() => void) | null = null;
 	let unsubscribeLaunchIntent: (() => void) | null = null;
+
+	// Attach keyboard shortcuts synchronously during setup so the listener is
+	// live regardless of auth-bootstrap outcome or timing. Wiring this after
+	// `await bootstrapAuth()` meant a throwing/hanging bootstrap left every
+	// shortcut dead. The composable registers its own onUnmounted cleanup.
+	useKeyboardShortcuts({
+		enabled: opts.shortcutsEnabled,
+		onSelectAdjacent: opts.selectAdjacent,
+		onJumpToHunk: opts.jumpToHunk,
+		onToggleViewed: () => {
+			const file = opts.selectedFile.value;
+
+			if (file && opts.changedByPath.value.has(file.path)) {
+				void opts.toggleViewed(file);
+			}
+		},
+		onStartReview: () => void opts.startReview(),
+		onOpenSearch: () => {
+			opts.searchOpen.value = true;
+		},
+	});
 
 	async function bootstrapAuth() {
 		const { entered } = await opts.bootstrapAuthStore();
@@ -129,22 +149,6 @@ export function useAppSession(opts: AppSessionOptions) {
 	onMounted(async () => {
 		await bootstrapAuth();
 
-		unsubscribeShortcuts = useKeyboardShortcuts({
-			enabled: opts.shortcutsEnabled,
-			onSelectAdjacent: opts.selectAdjacent,
-			onJumpToHunk: opts.jumpToHunk,
-			onToggleViewed: () => {
-				const file = opts.selectedFile.value;
-
-				if (file && opts.changedByPath.value.has(file.path)) {
-					void opts.toggleViewed(file);
-				}
-			},
-			onStartReview: () => void opts.startReview(),
-			onOpenSearch: () => {
-				opts.searchOpen.value = true;
-			},
-		});
 		unsubscribeLaunchIntent = window.diffApp.onLaunchIntent(async (intent) => {
 			if (intent.kind === 'help' || !intent.repoPath) {
 				return;
@@ -164,7 +168,6 @@ export function useAppSession(opts: AppSessionOptions) {
 	});
 
 	onUnmounted(() => {
-		unsubscribeShortcuts?.();
 		unsubscribeLaunchIntent?.();
 	});
 
