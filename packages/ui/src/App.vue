@@ -16,7 +16,6 @@ import AddCommentDialog from '@entry/components/diff/AddCommentDialog.vue';
 import type { RichTextFeatures } from '@ui/rich-text-editor';
 import type { DiffViewMode } from '@git-diff/domain';
 import { PREF_KEYS } from '@git-diff/domain';
-import { ensureLanguage, languageFor } from '@lib/highlight';
 import { ACCENTS, resolveAccent } from '@lib/accent';
 import { TWEAK_DEFAULTS, tweakPrefPatch, useTweaks, type Tweaks } from '@composables/useTweaks';
 import { useToasts } from '@composables/useToasts';
@@ -161,23 +160,6 @@ const visibleChangedIndex = computed(() => visibleFiles.value.findIndex((f) => f
 watch(
 	() => [state.value?.root, state.value?.commitSha, state.value?.mode],
 	() => resetLazyRender(),
-);
-
-watch(
-	files,
-	(list) => {
-		const seen = new Set<string>();
-
-		for (const file of list) {
-			const lang = languageFor(file.path);
-
-			if (lang && !seen.has(lang)) {
-				seen.add(lang);
-				void ensureLanguage(lang);
-			}
-		}
-	},
-	{ immediate: true },
 );
 
 useStyleWatchers(accent, tweaks);
