@@ -1,2 +1,6 @@
 packages:
   - "packages/*"
+
+# Electron Forge requires a flat node_modules so the packaged app resolves its
+# runtime deps without pnpm's symlinks.
+nodeLinker: hoisted

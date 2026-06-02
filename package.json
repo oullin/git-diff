@@ -10,7 +10,7 @@
         "lint": "pnpm --dir packages/tools run turbo -- run lint --filter=ui --filter=@git-diff/bridge --filter=@git-diff/domain",
         "tooling:check": "pnpm --dir packages/ui exec tsx scripts/check-tooling-policy.ts ../..",
         "check": "pnpm run tooling:check && pnpm --dir packages/tools run turbo -- run build test",
-        "release:mac:unsigned": "pnpm --dir packages/tools run release:mac:unsigned"
+        "release:mac:unsigned": "pnpm --dir packages/api run build && pnpm -C packages/ui run build && pnpm -C packages/ui run make:mac"
     },
     "devDependencies": {
         "@types/node": "^25.6.2",
@@ -22,6 +22,10 @@
     "pnpm": {
         "overrides": {
             "@ungap/structured-clone": "^1.3.1"
-        }
+        },
+        "onlyBuiltDependencies": [
+            "fs-xattr",
+            "macos-alias"
+        ]
     }
 }

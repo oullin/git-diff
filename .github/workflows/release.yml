@@ -1,13 +1,17 @@
 name: Release
 
 # Tag a version (e.g. `git tag v0.1.1 && git push origin v0.1.1`) to build the
-# unsigned macOS DMG, publish a GitHub Release, and open a Homebrew cask bump PR
-# against oullin/homebrew-tap.
+# unsigned macOS DMG/ZIP with Electron Forge, publish a GitHub Release, and open
+# a Homebrew cask bump PR against oullin/homebrew-tap.
+#
+# An idempotent create-release job fans out to a per-platform build job that
+# uploads its own assets.
 #
 # Ships UNSIGNED for now: Homebrew installs fine, but Gatekeeper requires a
 # one-time right-click → Open (or `xattr -dr com.apple.quarantine`). To sign +
-# notarize later, add the Apple secrets and switch the build step to
-# `dist:mac:signed` (see docs/distribution.md).
+# notarize later, add the Apple secrets (APPLE_SIGNING_IDENTITY / APPLE_API_KEY /
+# APPLE_API_KEY_ID / APPLE_API_ISSUER) — forge.config.cjs wires them in
+# automatically (see docs/distribution.md).
 
 on:
   push:
@@ -17,9 +21,30 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  release:
+  create-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          gh release view "${TAG_NAME}" >/dev/null 2>&1 \
+            || gh release create "${TAG_NAME}" --generate-notes --title "${TAG_NAME}" --verify-tag
+
+  build-macos:
+    needs: create-release
     runs-on: macos-14
+    timeout-minutes: 60
     outputs:
       version: ${{ steps.meta.outputs.version }}
       sha256: ${{ steps.artifacts.outputs.sha256 }}
@@ -46,55 +71,58 @@ jobs:
         with:
           go-version-file: packages/api/go.mod
 
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/electron-cache
+          key: ${{ runner.os }}-electron-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The DMG embeds this binary as an extraResource, so it must exist before
-      # electron-builder packages the app.
+      # The .app embeds this binary as an extraResource, so it must exist before
+      # electron-forge packages the app.
       - name: Build Go API binary
         run: pnpm --dir packages/api run build
 
-      # The renderer build resolves @git-diff/domain and @git-diff/bridge from their
-      # compiled dist/, which is no longer committed — build the libraries first.
+      # The renderer build resolves @git-diff/domain and @git-diff/bridge from
+      # their compiled dist/, which is no longer committed — build the libraries
+      # first.
       - name: Build shared TS libraries
         run: pnpm --dir packages/tools run turbo -- run build --filter=@git-diff/bridge --filter=@git-diff/domain
 
       - name: Build renderer + electron bundles
         run: pnpm -C packages/ui run build
 
-      - name: Build unsigned DMG
-        run: pnpm -C packages/ui run dist:mac:unsigned
+      - name: Make unsigned macOS app
+        env:
+          ELECTRON_CACHE: ${{ runner.temp }}/electron-cache
+        run: pnpm -C packages/ui run make:mac
 
+      # Forge names its outputs unpredictably and nests the ZIP under
+      # out/make/zip/...; canonicalize to the names the Homebrew cask url
+      # expects (git-diff-review-${version}-arm64.{dmg,zip}).
       - name: Collect artifacts + checksums
         id: artifacts
-        working-directory: packages/ui/release
-        run: |
-          version="${{ steps.meta.outputs.version }}"
-          dmg="git-diff-review-${version}-arm64.dmg"
-          zip="git-diff-review-${version}-arm64.zip"
-          test -f "$dmg" || { echo "missing $dmg"; ls -la; exit 1; }
-          shasum -a 256 "$dmg" "$zip" > SHASUMS256.txt
-          sha256="$(shasum -a 256 "$dmg" | awk '{print $1}')"
-          {
-            echo "sha256=$sha256"
-            echo "dmg=$dmg"
-          } >> "$GITHUB_OUTPUT"
+        run: packages/ui/scripts/collect-release-artifacts.sh "${{ steps.meta.outputs.version }}"
 
-      - name: Publish GitHub Release
+      - name: Upload assets to release
         env:
           GH_TOKEN: ${{ github.token }}
-        working-directory: packages/ui/release
+          TAG_NAME: ${{ github.ref_name }}
+        working-directory: dist-release
         run: |
           version="${{ steps.meta.outputs.version }}"
-          gh release create "$GITHUB_REF_NAME" \
+          gh release upload "${TAG_NAME}" \
             "git-diff-review-${version}-arm64.dmg" \
             "git-diff-review-${version}-arm64.zip" \
             SHASUMS256.txt \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
+            --clobber
 
   bump-cask:
-    needs: release
+    needs: build-macos
     runs-on: ubuntu-latest
     # Skip automatically on prereleases (e.g. v0.1.1-rc1) — only bump the tap for
     # final releases.
@@ -105,8 +133,8 @@ jobs:
 
       - name: Render cask
         run: |
-          version="${{ needs.release.outputs.version }}"
-          sha256="${{ needs.release.outputs.sha256 }}"
+          version="${{ needs.build-macos.outputs.version }}"
+          sha256="${{ needs.build-macos.outputs.sha256 }}"
           mkdir -p out/Casks
           sed \
             -e "s/^  version \".*\"/  version \"${version}\"/" \
@@ -131,11 +159,11 @@ jobs:
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
-          branch: bump-git-diff-${{ needs.release.outputs.version }}
-          title: "git-diff ${{ needs.release.outputs.version }}"
-          commit-message: "git-diff ${{ needs.release.outputs.version }}"
+          branch: bump-git-diff-${{ needs.build-macos.outputs.version }}
+          title: "git-diff ${{ needs.build-macos.outputs.version }}"
+          commit-message: "git-diff ${{ needs.build-macos.outputs.version }}"
           body: |
             Automated cask bump for [git-diff ${{ github.ref_name }}](https://github.com/oullin/git-diff/releases/tag/${{ github.ref_name }}).
 
-            - version: `${{ needs.release.outputs.version }}`
-            - sha256: `${{ needs.release.outputs.sha256 }}`
+            - version: `${{ needs.build-macos.outputs.version }}`
+            - sha256: `${{ needs.build-macos.outputs.sha256 }}`
