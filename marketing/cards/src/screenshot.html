@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="card.css" />
+    <style>
+      .card {
+        width: 1200px;
+        height: 630px;
+        padding: 54px 64px 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 30px;
+      }
+      .title {
+        font-size: 33px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .title b {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        color: var(--muted);
+        font-size: 21px;
+      }
+      .brand img {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+      }
+      .window {
+        flex: 1;
+        border: 1px solid var(--border);
+        border-bottom: none;
+        border-radius: 16px 16px 0 0;
+        overflow: hidden;
+        background: var(--bg-2);
+        box-shadow: 0 -2px 60px #00000055;
+      }
+      .titlebar {
+        height: 46px;
+        display: flex;
+        align-items: center;
+        padding: 0 18px;
+        gap: 9px;
+        background: #2a2a2a;
+        border-bottom: 1px solid var(--border);
+      }
+      .titlebar i {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .shot {
+        width: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="head">
+        <div class="title">A real PR review surface — for your <b>local working tree</b>.</div>
+        <div class="brand">
+          <img src="../../../packages/ui/public/icon-512.png" alt="" />
+          <span>Git Diff Review</span>
+        </div>
+      </div>
+      <div class="window">
+        <div class="titlebar">
+          <i style="background:#ff5f57"></i>
+          <i style="background:#febc2e"></i>
+          <i style="background:#28c840"></i>
+        </div>
+        <img class="shot" src="../../../docs/images/hero.png" alt="" />
+      </div>
+    </div>
+  </body>
+</html>
