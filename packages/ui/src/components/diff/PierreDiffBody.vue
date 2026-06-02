@@ -100,7 +100,6 @@ function buildOptions(section: DiffSection): FileDiffOptions<undefined> {
 		// Pure-JS Shiki avoids wasm/worker bundling friction under Electron's
 		// file:// origin; revisit for perf in a later pass.
 		preferredHighlighter: 'shiki-js',
-		useCSSClasses: true,
 		// Library renders its own "+" gutter affordance (single click or drag to
 		// select a range); we only handle the resulting selection.
 		enableGutterUtility: true,
@@ -161,7 +160,12 @@ async function renderAll(): Promise<void> {
 			instances.set(section.id, fd);
 		}
 
-		fd.render({ fileDiff: meta, fileContainer: el });
+		// Pass the wrapper as `containerWrapper` (not `fileContainer`): the library
+		// then creates its own <diffs-container> custom element inside `el`, whose
+		// constructor adopts the core stylesheet that resolves Shiki's per-token
+		// CSS variables to actual colors. Handing it a plain element as
+		// `fileContainer` skips that element, so tokens render uncoloured.
+		fd.render({ fileDiff: meta, containerWrapper: el });
 	}
 }
 
