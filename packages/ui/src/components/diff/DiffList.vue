@@ -20,7 +20,6 @@ defineProps<{
 	selectedFileLoading: boolean;
 	selectedFileError: string;
 	collapsed: Record<string, boolean>;
-	splitRatios: Record<string, number>;
 	tweaks: Tweaks;
 	diffViewMode: DiffViewMode;
 	hideWhitespace: boolean;
@@ -44,7 +43,6 @@ const emit = defineEmits<{
 	'delete-comment': [comment: ReviewComment];
 	'reply-comment': [parent: ReviewComment, bodyHtml: string];
 	'resolve-comment': [comment: ReviewComment, resolved: boolean];
-	'update:split-ratio': [path: string, ratio: number];
 }>();
 </script>
 
@@ -91,12 +89,10 @@ const emit = defineEmits<{
 				:repo-root="repoRoot"
 				:commit-ref="commitRef"
 				:base-ref="baseRef"
-				:split-ratio="splitRatios[file.path] ?? 0.5"
 				@add-comment="(section, line, range) => emit('open-comment-for-line', file, section, line, range)"
 				@delete-comment="(comment) => emit('delete-comment', comment)"
 				@reply-comment="(parent, bodyHtml) => emit('reply-comment', parent, bodyHtml)"
 				@resolve-comment="(comment, resolved) => emit('resolve-comment', comment, resolved)"
-				@update:split-ratio="(value: number) => emit('update:split-ratio', file.path, value)"
 			/>
 		</article>
 	</template>

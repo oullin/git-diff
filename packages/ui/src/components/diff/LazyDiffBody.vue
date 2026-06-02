@@ -25,9 +25,8 @@ const props = withDefaults(
 		repoRoot: string;
 		commitRef?: string;
 		baseRef?: string;
-		splitRatio?: number;
 	}>(),
-	{ splitRatio: 0.5, commitRef: undefined, baseRef: undefined, hideResolved: false },
+	{ commitRef: undefined, baseRef: undefined, hideResolved: false },
 );
 
 const emit = defineEmits<{
@@ -35,7 +34,6 @@ const emit = defineEmits<{
 	'delete-comment': [comment: ReviewComment];
 	'reply-comment': [parent: ReviewComment, bodyHtml: string];
 	'resolve-comment': [comment: ReviewComment, resolved: boolean];
-	'update:splitRatio': [value: number];
 }>();
 
 const root = ref<HTMLElement | null>(null);

@@ -16,9 +16,10 @@ import type { RichTextFeatures } from '@ui/rich-text-editor';
 // engine — one instance per DiffSection (staged/unstaged/untracked/commit).
 //
 // Comments: FileDiff renders into a Shadow DOM, where the app's Tailwind-based
-// CommentThread can't be styled. So the add-comment affordance lives inline in
-// the diff (a Shadow-DOM-safe gutter "+" button), while the threads themselves
-// render in light DOM beneath each section, labelled by line. A comment is
+// CommentThread can't be styled. So the add-comment affordance uses the
+// library's own in-diff gutter "+" (single click or drag-select), while the
+// threads themselves render in light DOM beneath each section, labelled by
+// line, with reply/resolve/delete intact. A comment is
 // "outdated" when its anchored line is no longer present in the rendered diff
 // (FileDiff.getLineIndex returns undefined), recomputed after every render.
 

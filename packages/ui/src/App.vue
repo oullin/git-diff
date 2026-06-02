@@ -83,7 +83,7 @@ const { items: repositories, loading: repositoriesLoading, refresh: refreshRepos
 const selectedPath = ref('');
 
 const searchQuery = ref('');
-const { collapsed, splitRatios, previewing, toggleCollapsed, setSplitRatio, togglePreview } = useDiffLayout();
+const { collapsed, previewing, toggleCollapsed, togglePreview } = useDiffLayout();
 
 const reviewPanelOpen = ref(false);
 
@@ -378,7 +378,6 @@ void ACCENTS;
 								:selected-file-loading="selectedFileLoading"
 								:selected-file-error="selectedFileError"
 								:collapsed="collapsed"
-								:split-ratios="splitRatios"
 								:tweaks="tweaks"
 								:diff-view-mode="diffViewMode"
 								:hide-whitespace="hideWhitespace"
@@ -399,7 +398,6 @@ void ACCENTS;
 								@delete-comment="deleteComment"
 								@reply-comment="replyToComment"
 								@resolve-comment="resolveComment"
-								@update:split-ratio="setSplitRatio"
 							/>
 						</div>
 
